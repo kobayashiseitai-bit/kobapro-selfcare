@@ -1,101 +1,1037 @@
-import Image from "next/image";
+"use client";
+
+import { useRef, useState, useEffect, useCallback } from "react";
+import { addRecord, getRecords, deleteRecord, Landmark, PostureRecord } from "./lib/storage";
+import { analyzePosture, drawDiagnosisOverlay } from "./lib/postureAnalysis";
+import type { DiagnosisItem } from "./lib/storage";
+
+const SELF_ID = "self";
+
+const POSE_CONNECTIONS: [number, number][] = [
+  [0, 1], [1, 2], [2, 3], [3, 7],
+  [0, 4], [4, 5], [5, 6], [6, 8],
+  [9, 10], [11, 12],
+  [11, 13], [13, 15], [15, 17], [15, 19], [15, 21],
+  [12, 14], [14, 16], [16, 18], [16, 20], [16, 22],
+  [11, 23], [12, 24], [23, 24],
+  [23, 25], [25, 27], [27, 29], [27, 31],
+  [24, 26], [26, 28], [28, 30], [28, 32],
+];
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type MediaPipeModules = { PoseLandmarker: any; FilesetResolver: any; DrawingUtils: any };
+
+type Screen = "home" | "ai-counsel" | "selfcare" | "check" | "history";
+
+// 症状データ（後からYouTubeのURLに差し替え可能）
+const SYMPTOMS = [
+  {
+    id: "neck",
+    label: "首が痛い",
+    icon: "🦴",
+    videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    videoTitle: "首の痛みを解消するセルフケア",
+    description: "首周りの筋肉をほぐし、痛みを和らげるストレッチです。",
+  },
+  {
+    id: "shoulder_stiff",
+    label: "肩が凝っている",
+    icon: "💆",
+    videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    videoTitle: "肩こり解消セルフケア",
+    description: "デスクワークなどで固まった肩周りをほぐすストレッチです。",
+  },
+  {
+    id: "shoulder_pain",
+    label: "肩が痛い",
+    icon: "🤕",
+    videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    videoTitle: "肩の痛みを改善するセルフケア",
+    description: "肩関節の可動域を広げ、痛みを緩和するエクササイズです。",
+  },
+  {
+    id: "back",
+    label: "腰が痛い",
+    icon: "🏋️",
+    videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    videoTitle: "腰痛改善セルフケア",
+    description: "腰回りの筋肉を緩め、腰痛を予防・改善するストレッチです。",
+  },
+  {
+    id: "eye_fatigue",
+    label: "眼精疲労",
+    icon: "😫",
+    videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    videoTitle: "眼精疲労を解消するセルフケア",
+    description: "目の疲れを取り、スッキリさせるツボ押し＆エクササイズです。",
+  },
+  {
+    id: "eye_recovery",
+    label: "視力回復",
+    icon: "👁️",
+    videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    videoTitle: "視力回復トレーニング",
+    description: "目の筋肉を鍛え、視力の維持・回復を目指すトレーニングです。",
+  },
+];
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [screen, setScreen] = useState<Screen>("home");
+  const [selectedSymptomId, setSelectedSymptomId] = useState<string | null>(null);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
+  const goToSelfcare = (symptomId: string) => {
+    setSelectedSymptomId(symptomId);
+    setScreen("selfcare");
+  };
+
+  return (
+    <>
+      {screen === "home" && <HomeScreen onNavigate={setScreen} onSelectSymptom={goToSelfcare} />}
+      {screen === "ai-counsel" && <AiCounselScreen onNavigate={setScreen} onSelectSymptom={goToSelfcare} />}
+      {screen === "selfcare" && <SelfcareScreen onNavigate={setScreen} initialSymptomId={selectedSymptomId} />}
+      {screen === "check" && <CheckScreen onNavigate={setScreen} />}
+      {screen === "history" && <HistoryScreen onNavigate={setScreen} />}
+    </>
+  );
+}
+
+// ==================== PWAインストールバナー ====================
+function InstallBanner() {
+  const [show, setShow] = useState(false);
+
+  useEffect(() => {
+    // スタンドアロンモードで起動済みなら表示しない
+    const isStandalone = window.matchMedia("(display-mode: standalone)").matches
+      || ("standalone" in window.navigator && (window.navigator as unknown as { standalone: boolean }).standalone);
+    if (isStandalone) return;
+
+    // 一度閉じたら24時間非表示
+    const dismissed = localStorage.getItem("install_banner_dismissed");
+    if (dismissed && Date.now() - parseInt(dismissed) < 86400000) return;
+
+    setShow(true);
+  }, []);
+
+  if (!show) return null;
+
+  const dismiss = () => {
+    localStorage.setItem("install_banner_dismissed", String(Date.now()));
+    setShow(false);
+  };
+
+  return (
+    <div className="w-full max-w-md bg-blue-900/80 border border-blue-500 rounded-xl p-4 mb-4">
+      <div className="flex items-start gap-3">
+        <span className="text-2xl">📲</span>
+        <div className="flex-1">
+          <p className="font-bold text-sm mb-1">アプリをホーム画面に追加</p>
+          <p className="text-xs text-blue-200">
+            下の共有ボタン <span className="inline-block">⬆️</span> →「ホーム画面に追加」でアプリとして使えます
+          </p>
+        </div>
+        <button onClick={dismiss} className="text-gray-400 text-lg">✕</button>
+      </div>
+    </div>
+  );
+}
+
+// ==================== ホーム画面 ====================
+function HomeScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Screen) => void; onSelectSymptom: (id: string) => void }) {
+  const records = getRecords(SELF_ID);
+  return (
+    <main className="fixed inset-0 bg-gray-950 text-white flex flex-col overflow-y-auto">
+      {/* ヘッダー */}
+      <header className="sticky top-0 z-10 bg-gray-950/95 backdrop-blur-sm border-b border-gray-800/50 px-4 py-3">
+        <h1 className="text-lg font-bold text-center">KOBAPRO セルフケア</h1>
+      </header>
+
+      <div className="flex-1 px-4 py-5 space-y-5 max-w-md w-full mx-auto">
+        <InstallBanner />
+
+        {/* AIカウンセリング */}
+        <button
+          onClick={() => onNavigate("ai-counsel")}
+          className="w-full px-5 py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 active:from-blue-800 active:to-purple-800 rounded-2xl font-bold transition-colors text-left flex items-center gap-4 shadow-lg shadow-blue-900/30"
+        >
+          <span className="text-3xl">🤖</span>
+          <div>
+            <p className="text-base font-bold">KOBAPRO AIに相談する</p>
+            <p className="text-xs font-normal opacity-80">症状を聞き取り、最適なケアを提案します</p>
+          </div>
+        </button>
+
+        {/* 症状選択 */}
+        <div>
+          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">セルフケアメニュー</h2>
+          <div className="grid grid-cols-3 gap-2.5">
+            {SYMPTOMS.map((symptom) => (
+              <button
+                key={symptom.id}
+                onClick={() => onSelectSymptom(symptom.id)}
+                className="px-2 py-4 bg-gray-900 hover:bg-gray-800 active:bg-gray-700 border border-gray-800 rounded-2xl font-semibold transition-all active:scale-95"
+              >
+                <span className="text-2xl block mb-1.5">{symptom.icon}</span>
+                <span className="text-[11px] leading-tight text-gray-300">{symptom.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 全身チェック */}
+        <div className="space-y-2.5">
+          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">姿勢チェック</h2>
+          <button
+            onClick={() => onNavigate("check")}
+            className="w-full px-5 py-5 bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-700 hover:to-amber-600 active:from-orange-800 active:to-amber-700 rounded-2xl font-semibold transition-all flex items-center gap-4 active:scale-[0.98] shadow-lg shadow-orange-900/30"
+          >
+            <span className="text-4xl">🧍</span>
+            <div className="text-left">
+              <p className="text-base font-bold">KOBAPRO AIで姿勢スキャン</p>
+              <p className="text-xs font-normal opacity-80">スマホを置いて全身撮影 → 歪みを自動診断</p>
+            </div>
+          </button>
+          <button
+            onClick={() => onNavigate("history")}
+            disabled={records.length === 0}
+            className="w-full px-5 py-3.5 bg-indigo-900/60 hover:bg-indigo-800/60 active:bg-indigo-700/60 disabled:bg-gray-900 disabled:opacity-40 rounded-2xl font-semibold transition-all border border-indigo-700/50 flex items-center gap-3 active:scale-[0.98]"
+          >
+            <span className="text-xl">📊</span>
+            <div className="text-left">
+              <p className="text-sm font-semibold">過去の記録を見る</p>
+              <p className="text-[11px] text-gray-500">
+                {records.length > 0 ? `${records.length}件の記録` : "まだ記録がありません"}
+              </p>
+            </div>
+          </button>
+        </div>
+
+        {/* LINE予約 */}
+        <a
+          href="https://lin.ee/TKHXNpJn"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-full px-5 py-4 bg-[#06C755] hover:bg-[#05b04c] active:bg-[#04a044] rounded-2xl font-semibold transition-all flex items-center gap-4 active:scale-[0.98] shadow-lg shadow-green-900/30"
+        >
+          <svg viewBox="0 0 120 120" className="w-10 h-10 flex-shrink-0" fill="white">
+            <path d="M60 0C26.86 0 0 22.39 0 50c0 24.72 21.94 45.43 51.58 49.33 2.01.43 4.74 1.33 5.43 3.05.62 1.56.41 4.01.2 5.59l-.88 5.27c-.27 1.56-1.24 6.11 5.35 3.33s35.6-20.96 48.57-35.89h-.01C118.24 71.67 120 61.27 120 50 120 22.39 93.14 0 60 0zm-26.99 64.64h-9.93c-1.82 0-3.3-1.48-3.3-3.3V34.56c0-1.82 1.48-3.3 3.3-3.3s3.3 1.48 3.3 3.3v23.48h6.63c1.82 0 3.3 1.48 3.3 3.3s-1.48 3.3-3.3 3.3zm12.18-3.3c0 1.82-1.48 3.3-3.3 3.3s-3.3-1.48-3.3-3.3V34.56c0-1.82 1.48-3.3 3.3-3.3s3.3 1.48 3.3 3.3v26.78zm27.94 0c0 1.37-.85 2.6-2.13 3.09-.39.15-.79.22-1.18.22-.98 0-1.93-.44-2.56-1.23l-13.02-17.74v15.66c0 1.82-1.48 3.3-3.3 3.3s-3.3-1.48-3.3-3.3V34.56c0-1.37.85-2.6 2.13-3.09.39-.15.79-.22 1.18-.22.98 0 1.93.44 2.56 1.23l13.02 17.74V34.56c0-1.82 1.48-3.3 3.3-3.3s3.3 1.48 3.3 3.3v26.78zm18.18-17.55c1.82 0 3.3 1.48 3.3 3.3s-1.48 3.3-3.3 3.3h-6.63v6.63h6.63c1.82 0 3.3 1.48 3.3 3.3s-1.48 3.3-3.3 3.3h-9.93c-1.82 0-3.3-1.48-3.3-3.3V34.56c0-1.82 1.48-3.3 3.3-3.3h9.93c1.82 0 3.3 1.48 3.3 3.3s-1.48 3.3-3.3 3.3h-6.63v6.63h6.63z"/>
+          </svg>
+          <div className="text-left">
+            <p className="text-base font-bold">LINEで予約・確認・変更</p>
+            <p className="text-xs font-normal opacity-80">ご予約はこちらから</p>
+          </div>
+        </a>
+      </div>
+    </main>
+  );
+}
+
+// ==================== AIカウンセリング画面 ====================
+type ChatMessage = { role: "user" | "assistant"; content: string };
+
+function AiCounselScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Screen) => void; onSelectSymptom: (id: string) => void }) {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [recommendedId, setRecommendedId] = useState<string | null>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // 初回メッセージ
+  useEffect(() => {
+    async function firstMessage() {
+      setLoading(true);
+      try {
+        const res = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messages: [] }),
+        });
+        const data = await res.json();
+        if (data.message) {
+          setMessages([{ role: "assistant", content: data.message }]);
+        }
+      } catch {
+        const fallback = "こんにちは！今日はどんな症状が気になりますか？お気軽にお話しください。";
+        setMessages([{ role: "assistant", content: fallback }]);
+      }
+      setLoading(false);
+    }
+    firstMessage();
+  }, []);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const sendMessage = async () => {
+    if (!input.trim() || loading) return;
+    const userMsg: ChatMessage = { role: "user", content: input.trim() };
+    const newMessages = [...messages, userMsg];
+    setMessages(newMessages);
+    setInput("");
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
+        }),
+      });
+      const data = await res.json();
+      if (data.message) {
+        setMessages([...newMessages, { role: "assistant", content: data.message }]);
+      }
+      if (data.recommendedSymptomId) {
+        setRecommendedId(data.recommendedSymptomId);
+      }
+    } catch {
+      setMessages([...newMessages, { role: "assistant", content: "すみません、通信エラーが発生しました。もう一度お試しください。" }]);
+    }
+    setLoading(false);
+  };
+
+  const recommendedSymptom = SYMPTOMS.find((s) => s.id === recommendedId);
+
+  return (
+    <main className="fixed inset-0 bg-gray-950 text-white flex flex-col">
+      <header className="sticky top-0 z-10 bg-gray-950/95 backdrop-blur-sm border-b border-gray-800/50 px-4 py-3 flex items-center gap-3">
+        <button onClick={() => onNavigate("home")} className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm">← 戻る</button>
+        <h1 className="text-base font-bold">KOBAPRO AIカウンセリング</h1>
+      </header>
+
+      {/* チャットエリア */}
+      <div className="flex-1 overflow-y-auto space-y-3 px-4 py-4 max-w-md w-full mx-auto">
+        {messages.map((msg, i) => (
+          <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+            <div className={`max-w-[85%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${
+              msg.role === "user"
+                ? "bg-blue-600 rounded-br-md"
+                : "bg-gray-800 rounded-bl-md"
+            }`}>
+              {msg.role === "assistant" && <p className="text-xs text-gray-400 mb-1">🤖 KOBAPRO AI</p>}
+              <p className="whitespace-pre-wrap">{msg.content}</p>
+            </div>
+          </div>
+        ))}
+        {loading && (
+          <div className="flex justify-start">
+            <div className="bg-gray-800 px-4 py-3 rounded-2xl rounded-bl-md">
+              <p className="text-xs text-gray-400 mb-1">🤖 KOBAPRO AI</p>
+              <p className="text-sm animate-pulse">考え中...</p>
+            </div>
+          </div>
+        )}
+        <div ref={chatEndRef} />
+      </div>
+
+      {/* おすすめセルフケアボタン */}
+      {recommendedSymptom && (
+        <div className="max-w-md w-full mx-auto mb-3">
+          <button
+            onClick={() => onSelectSymptom(recommendedId!)}
+            className="w-full px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 rounded-xl font-semibold text-sm flex items-center gap-3"
+          >
+            <span className="text-2xl">{recommendedSymptom.icon}</span>
+            <div className="text-left">
+              <p className="font-bold">おすすめ: {recommendedSymptom.videoTitle}</p>
+              <p className="text-xs opacity-80">タップしてセルフケア動画を見る</p>
+            </div>
+          </button>
+        </div>
+      )}
+
+      {/* LINE予約導線 */}
+      {messages.length >= 4 && (
+        <div className="max-w-md w-full mx-auto mb-3 px-4">
           <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+            href="https://lin.ee/TKHXNpJn"
             target="_blank"
             rel="noopener noreferrer"
+            className="w-full px-4 py-3 bg-[#06C755] hover:bg-[#05b04c] active:bg-[#04a044] rounded-xl font-semibold text-sm flex items-center gap-3 text-white block text-center"
           >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
+            <span className="text-2xl">💬</span>
+            <div className="text-left">
+              <p className="font-bold">改善しない場合はプロにお任せ</p>
+              <p className="text-xs opacity-90">LINEから予約する</p>
+            </div>
           </a>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+      )}
+
+      {/* 入力エリア */}
+      <div className="border-t border-gray-800 px-4 py-3 max-w-md w-full mx-auto flex gap-2">
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && !("isComposing" in e.nativeEvent && e.nativeEvent.isComposing)) sendMessage(); }}
+          placeholder="症状を入力..."
+          className="flex-1 px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-blue-500 text-sm"
+          disabled={loading}
+        />
+        <button
+          onClick={sendMessage}
+          disabled={loading || !input.trim()}
+          className="px-4 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 rounded-xl font-semibold text-sm"
         >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+          送信
+        </button>
+      </div>
+    </main>
+  );
+}
+
+// ==================== セルフケア画面（症状→動画） ====================
+function SelfcareScreen({ onNavigate, initialSymptomId }: { onNavigate: (s: Screen) => void; initialSymptomId: string | null }) {
+  const [selectedId, setSelectedId] = useState<string | null>(initialSymptomId);
+  const activeSymptom = SYMPTOMS.find((s) => s.id === selectedId);
+
+  return (
+    <main className="fixed inset-0 bg-gray-950 overflow-y-auto text-white flex flex-col items-center p-4 pb-20">
+      <div className="flex items-center gap-3 mb-4 w-full max-w-md">
+        <button onClick={() => onNavigate("home")} className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm">← 戻る</button>
+        <h1 className="text-lg font-bold">セルフケア</h1>
+      </div>
+
+      <p className="text-gray-400 text-sm mb-4 w-full max-w-md">
+        気になる症状を選んでください
+      </p>
+
+      <div className="w-full max-w-md grid grid-cols-2 gap-3">
+        {SYMPTOMS.map((symptom) => (
+          <button
+            key={symptom.id}
+            onClick={() => setSelectedId(selectedId === symptom.id ? null : symptom.id)}
+            className={`px-4 py-4 rounded-xl font-semibold transition-colors border ${
+              selectedId === symptom.id
+                ? "bg-blue-600 border-blue-400 text-white"
+                : "bg-gray-800 border-gray-700 hover:bg-gray-700 text-gray-200"
+            }`}
+          >
+            <span className="text-2xl block mb-1">{symptom.icon}</span>
+            <span className="text-sm">{symptom.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {activeSymptom && (
+        <div className="w-full max-w-md mt-6">
+          <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
+            <h3 className="font-bold text-base mb-1">{activeSymptom.videoTitle}</h3>
+            <p className="text-gray-400 text-xs mb-3">{activeSymptom.description}</p>
+            <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-black">
+              <iframe
+                src={`${activeSymptom.videoUrl}?rel=0&modestbranding=1`}
+                title={activeSymptom.videoTitle}
+                className="absolute inset-0 w-full h-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+            <button
+              onClick={() => setSelectedId(null)}
+              className="mt-3 w-full py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm"
+            >
+              閉じる
+            </button>
+            <a
+              href="https://lin.ee/TKHXNpJn"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 w-full py-3 bg-[#06C755] hover:bg-[#05b04c] rounded-lg text-sm font-semibold flex items-center justify-center gap-2 text-white block"
+            >
+              💬 改善しない場合はLINEで予約
+            </a>
+          </div>
+        </div>
+      )}
+    </main>
+  );
+}
+
+// ==================== 音声ガイド ====================
+function speak(text: string) {
+  try {
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = "ja-JP";
+      u.rate = 0.9;
+      u.pitch = 1.1;
+      window.speechSynthesis.speak(u);
+    }
+  } catch { /* ignore */ }
+}
+
+// 全身が映っているか判定
+function checkFullBody(lm: Landmark[]): { ok: boolean; guide: string } {
+  if (lm.length < 33) return { ok: false, guide: "人物が見つかりません" };
+
+  const HEAD = lm[0]; // nose
+  const L_ANKLE = lm[27];
+  const R_ANKLE = lm[28];
+  const L_SHOULDER = lm[11];
+  const R_SHOULDER = lm[12];
+
+  const vis = (l: Landmark) => (l.visibility ?? 0) > 0.5;
+  const headVis = vis(HEAD);
+  const ankleVis = vis(L_ANKLE) && vis(R_ANKLE);
+  const shoulderVis = vis(L_SHOULDER) && vis(R_SHOULDER);
+
+  if (!headVis && !shoulderVis) return { ok: false, guide: "カメラの前に立ってください" };
+  if (!ankleVis) return { ok: false, guide: "もう少し離れてください。足元が映るように" };
+
+  // 中央にいるか
+  const cx = (L_SHOULDER.x + R_SHOULDER.x) / 2;
+  if (cx < 0.25) return { ok: false, guide: "もう少し右に移動してください" };
+  if (cx > 0.75) return { ok: false, guide: "もう少し左に移動してください" };
+
+  // 大きすぎ/小さすぎ
+  const bodyHeight = Math.abs(HEAD.y - ((L_ANKLE.y + R_ANKLE.y) / 2));
+  if (bodyHeight > 0.9) return { ok: false, guide: "もう少し離れてください" };
+  if (bodyHeight < 0.4) return { ok: false, guide: "もう少し近づいてください" };
+
+  return { ok: true, guide: "そのままの位置でストップ！" };
+}
+
+// ==================== 撮影＋診断画面（AIガイド付き） ====================
+function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const guideCanvasRef = useRef<HTMLCanvasElement>(null);
+  const [cameraReady, setCameraReady] = useState(false);
+  const [captured, setCaptured] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [initStatus, setInitStatus] = useState("モデルを読み込み中...");
+  const [modelReady, setModelReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [diagnosis, setDiagnosis] = useState<DiagnosisItem[]>([]);
+  const [landmarks, setLandmarks] = useState<Landmark[]>([]);
+  const [saved, setSaved] = useState(false);
+  const [photoSaved, setPhotoSaved] = useState(false);
+  const [guideText, setGuideText] = useState("スマホを立てかけて、スタートを押してください");
+  const [guideMode, setGuideMode] = useState(false);
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const [guideBorderColor, setGuideBorderColor] = useState("border-gray-700");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const poseLandmarkerRef = useRef<any>(null);
+  const mpModulesRef = useRef<MediaPipeModules | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const guideLoopRef = useRef<number | null>(null);
+  const countdownRef = useRef<number | null>(null);
+  const lastSpokenRef = useRef("");
+  const readyCountRef = useRef(0);
+
+  // MediaPipe初期化 (VIDEO mode)
+  useEffect(() => {
+    let cancelled = false;
+    async function init() {
+      try {
+        setInitStatus("MediaPipe ライブラリを読み込み中...");
+        const mp = await import("@mediapipe/tasks-vision");
+        if (cancelled) return;
+        mpModulesRef.current = mp;
+        setInitStatus("WASM を初期化中...");
+        const vision = await mp.FilesetResolver.forVisionTasks(
+          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
+        );
+        if (cancelled) return;
+        setInitStatus("姿勢検出モデルを読み込み中...");
+        let landmarker;
+        try {
+          landmarker = await mp.PoseLandmarker.createFromOptions(vision, {
+            baseOptions: {
+              modelAssetPath:
+                "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
+              delegate: "GPU",
+            },
+            runningMode: "VIDEO",
+            numPoses: 1,
+          });
+        } catch {
+          // GPU失敗時はCPUにフォールバック
+          landmarker = await mp.PoseLandmarker.createFromOptions(vision, {
+            baseOptions: {
+              modelAssetPath:
+                "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
+              delegate: "CPU",
+            },
+            runningMode: "VIDEO",
+            numPoses: 1,
+          });
+        }
+        if (cancelled) return;
+        poseLandmarkerRef.current = landmarker;
+        setModelReady(true);
+        setInitStatus("");
+      } catch (e) {
+        console.error("PoseLandmarker init error:", e);
+        if (!cancelled) {
+          setError(`初期化に失敗しました: ${e instanceof Error ? e.message : String(e)}`);
+          setInitStatus("");
+        }
+      }
+    }
+    init();
+    return () => { cancelled = true; };
+  }, []);
+
+  // カメラ起動
+  useEffect(() => {
+    async function startCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
+        });
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.onloadeddata = () => setCameraReady(true);
+        }
+      } catch {
+        setError("カメラへのアクセスが拒否されました。");
+      }
+    }
+    startCamera();
+    return () => {
+      if (streamRef.current) streamRef.current.getTracks().forEach((t) => t.stop());
+      if (guideLoopRef.current) cancelAnimationFrame(guideLoopRef.current);
+      if (countdownRef.current) clearInterval(countdownRef.current);
+    };
+  }, []);
+
+  // AIガイドモード開始
+  const startGuide = useCallback(() => {
+    setGuideMode(true);
+    setGuideText("カメラの前に全身が映る位置に立ってください");
+    speak("カメラの前に立ってください。全身が映る位置まで下がってください。");
+    readyCountRef.current = 0;
+    lastSpokenRef.current = "";
+
+    const detectLoop = () => {
+      const video = videoRef.current;
+      const landmarker = poseLandmarkerRef.current;
+      if (!video || !landmarker || video.readyState < 2) {
+        guideLoopRef.current = requestAnimationFrame(detectLoop);
+        return;
+      }
+
+      try {
+        const result = landmarker.detectForVideo(video, performance.now());
+        if (result.landmarks.length > 0) {
+          const lm: Landmark[] = result.landmarks[0];
+          const check = checkFullBody(lm);
+
+          // ガイドキャンバスにシルエット描画
+          const gc = guideCanvasRef.current;
+          if (gc) {
+            gc.width = video.videoWidth;
+            gc.height = video.videoHeight;
+            const gctx = gc.getContext("2d")!;
+            gctx.clearRect(0, 0, gc.width, gc.height);
+            // ランドマーク点を描画
+            lm.forEach((l) => {
+              if ((l.visibility ?? 0) > 0.5) {
+                gctx.beginPath();
+                gctx.arc(l.x * gc.width, l.y * gc.height, 5, 0, Math.PI * 2);
+                gctx.fillStyle = check.ok ? "#22c55e" : "#eab308";
+                gctx.fill();
+              }
+            });
+          }
+
+          setGuideText(check.guide);
+          setGuideBorderColor(check.ok ? "border-green-500" : "border-yellow-500");
+
+          // 音声ガイド（同じ内容は繰り返さない）
+          if (!check.ok && check.guide !== lastSpokenRef.current) {
+            speak(check.guide);
+            lastSpokenRef.current = check.guide;
+            readyCountRef.current = 0;
+          }
+
+          if (check.ok) {
+            readyCountRef.current++;
+            // 1.5秒間（約45フレーム）安定したらカウントダウン開始
+            if (readyCountRef.current > 45) {
+              startCountdown(lm);
+              return; // ループ停止
+            }
+          } else {
+            readyCountRef.current = 0;
+          }
+        } else {
+          setGuideText("カメラの前に立ってください");
+          setGuideBorderColor("border-yellow-500");
+          readyCountRef.current = 0;
+        }
+      } catch { /* skip frame */ }
+
+      guideLoopRef.current = requestAnimationFrame(detectLoop);
+    };
+
+    guideLoopRef.current = requestAnimationFrame(detectLoop);
+  }, []);
+
+  // カウントダウン→自動撮影
+  const startCountdown = useCallback((detectedLm: Landmark[]) => {
+    if (guideLoopRef.current) cancelAnimationFrame(guideLoopRef.current);
+    guideLoopRef.current = null;
+
+    speak("そのままの位置でストップ。撮影します。3");
+    setCountdown(3);
+    setGuideBorderColor("border-green-500");
+
+    let count = 3;
+    countdownRef.current = window.setInterval(() => {
+      count--;
+      if (count > 0) {
+        setCountdown(count);
+        speak(String(count));
+      } else {
+        if (countdownRef.current) clearInterval(countdownRef.current);
+        countdownRef.current = null;
+        setCountdown(null);
+        speak("撮影しました");
+        doCapture(detectedLm);
+      }
+    }, 1000);
+  }, []);
+
+  // 実際の撮影処理
+  const doCapture = useCallback((lm: Landmark[]) => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const mp = mpModulesRef.current;
+    if (!video || !canvas || !mp) return;
+
+    setLoading(true);
+    setCaptured(true);
+    setGuideMode(false);
+
+    const ctx = canvas.getContext("2d")!;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0);
+
+    setLandmarks(lm);
+    const drawingUtils = new mp.DrawingUtils(ctx);
+    drawingUtils.drawConnectors(lm, POSE_CONNECTIONS.map(([s, e]) => ({ start: s, end: e })), { color: "#00FF00", lineWidth: 2 });
+    drawingUtils.drawLandmarks(lm, { color: "#FF0000", fillColor: "#FF0000", radius: 4 });
+    drawDiagnosisOverlay(ctx, lm, canvas.width, canvas.height);
+    setDiagnosis(analyzePosture(lm));
+    setLoading(false);
+  }, []);
+
+  // 手動撮影
+  const manualCapture = useCallback(() => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const landmarker = poseLandmarkerRef.current;
+    const mp = mpModulesRef.current;
+    if (!video || !canvas || !landmarker || !mp) return;
+
+    if (guideLoopRef.current) cancelAnimationFrame(guideLoopRef.current);
+    if (countdownRef.current) clearInterval(countdownRef.current);
+    guideLoopRef.current = null;
+    countdownRef.current = null;
+
+    setLoading(true);
+    setCaptured(true);
+    setGuideMode(false);
+    setCountdown(null);
+    setDiagnosis([]);
+    setSaved(false);
+    setPhotoSaved(false);
+
+    const ctx = canvas.getContext("2d")!;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0);
+
+    // IMAGE modeで再検出
+    try {
+      // detectForVideoを最新フレームで使用
+      const result = landmarker.detectForVideo(video, performance.now());
+      if (result.landmarks.length > 0) {
+        const lm: Landmark[] = result.landmarks[0];
+        setLandmarks(lm);
+        const drawingUtils = new mp.DrawingUtils(ctx);
+        drawingUtils.drawConnectors(lm, POSE_CONNECTIONS.map(([s, e]) => ({ start: s, end: e })), { color: "#00FF00", lineWidth: 2 });
+        drawingUtils.drawLandmarks(lm, { color: "#FF0000", fillColor: "#FF0000", radius: 4 });
+        drawDiagnosisOverlay(ctx, lm, canvas.width, canvas.height);
+        setDiagnosis(analyzePosture(lm));
+      } else {
+        setError("人物が検出されませんでした。全身が映るように撮影してください。");
+      }
+    } catch (e) {
+      console.error("Detection error:", e);
+      setError(`解析エラー: ${e instanceof Error ? e.message : String(e)}`);
+    }
+    setLoading(false);
+  }, []);
+
+  const handleSave = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || landmarks.length === 0) return;
+    addRecord(SELF_ID, landmarks, diagnosis, canvas.toDataURL("image/jpeg", 0.7));
+    setSaved(true);
+  }, [landmarks, diagnosis]);
+
+  const handleSavePhoto = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const link = document.createElement("a");
+    link.download = `posture-check-${new Date().toISOString().slice(0, 10)}.jpg`;
+    link.href = canvas.toDataURL("image/jpeg", 0.9);
+    link.click();
+    setPhotoSaved(true);
+  }, []);
+
+  const reset = useCallback(() => {
+    setCaptured(false);
+    setDiagnosis([]);
+    setLandmarks([]);
+    setError(null);
+    setSaved(false);
+    setPhotoSaved(false);
+    setGuideMode(false);
+    setCountdown(null);
+    setGuideText("スマホを立てかけて、スタートを押してください");
+    setGuideBorderColor("border-gray-700");
+    readyCountRef.current = 0;
+    if (guideLoopRef.current) cancelAnimationFrame(guideLoopRef.current);
+    if (countdownRef.current) clearInterval(countdownRef.current);
+    guideLoopRef.current = null;
+    countdownRef.current = null;
+  }, []);
+
+  const levelBg = (l: string) => l === "good" ? "bg-green-900/50 border-green-500" : l === "caution" ? "bg-yellow-900/50 border-yellow-500" : "bg-red-900/50 border-red-500";
+  const levelEmoji = (l: string) => l === "good" ? "○" : l === "caution" ? "△" : "✕";
+
+  return (
+    <main className="fixed inset-0 bg-gray-950 overflow-y-auto text-white flex flex-col items-center p-4 pb-20">
+      <div className="flex items-center gap-3 mb-4 w-full max-w-md">
+        <button onClick={() => { reset(); onNavigate("home"); }} className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm">← 戻る</button>
+        <h1 className="text-lg font-bold">全身の姿勢チェック</h1>
+      </div>
+
+      {initStatus && (
+        <div className="bg-blue-900/50 border border-blue-500 text-blue-200 px-4 py-3 rounded mb-4 w-full max-w-md text-center text-sm">{initStatus}</div>
+      )}
+      {error && (
+        <div className="bg-red-900/50 border border-red-500 text-red-200 px-4 py-3 rounded mb-4 w-full max-w-md text-center text-sm">{error}</div>
+      )}
+
+      {/* AIガイドメッセージ */}
+      {!captured && cameraReady && (
+        <div className={`w-full max-w-md mb-3 px-4 py-3 rounded-lg border-2 ${guideBorderColor} bg-gray-900 text-center`}>
+          {countdown !== null ? (
+            <p className="text-4xl font-bold text-green-400">{countdown}</p>
+          ) : (
+            <p className="text-base font-semibold">{guideText}</p>
+          )}
+        </div>
+      )}
+
+      {/* カメラビュー */}
+      <div className={`relative w-full max-w-md aspect-[3/4] bg-black rounded-lg overflow-hidden border-2 ${!captured ? guideBorderColor : "border-transparent"}`}>
+        <video ref={videoRef} autoPlay playsInline muted className={`w-full h-full object-cover ${captured ? "hidden" : ""}`} />
+        <canvas ref={guideCanvasRef} className={`absolute inset-0 w-full h-full ${captured || !guideMode ? "hidden" : ""}`} style={{ pointerEvents: "none" }} />
+        <canvas ref={canvasRef} className={`w-full h-full object-cover ${captured ? "" : "hidden"}`} />
+        {!cameraReady && !error && (
+          <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-sm">カメラを起動中...</div>
+        )}
+      </div>
+
+      {/* ボタン */}
+      <div className="flex gap-3 mt-4 w-full max-w-md">
+        {!captured ? (
+          <>
+            {!guideMode ? (
+              <>
+                <button onClick={startGuide} disabled={!cameraReady || !modelReady} className="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 rounded-lg font-semibold">
+                  AIガイドで撮影
+                </button>
+                <button onClick={manualCapture} disabled={!cameraReady || !modelReady || loading} className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 rounded-lg font-semibold text-sm">
+                  手動で撮影
+                </button>
+              </>
+            ) : (
+              <button onClick={manualCapture} disabled={loading} className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold">
+                今すぐ撮影
+              </button>
+            )}
+          </>
+        ) : (
+          <>
+            <button onClick={reset} className="flex-1 px-4 py-3 bg-gray-600 hover:bg-gray-700 rounded-lg font-semibold text-sm">もう一度</button>
+            {diagnosis.length > 0 && !saved && (
+              <button onClick={handleSave} className="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 rounded-lg font-semibold text-sm">アプリに保存</button>
+            )}
+            {diagnosis.length > 0 && (
+              <button onClick={handleSavePhoto} className="flex-1 px-4 py-3 bg-orange-600 hover:bg-orange-700 rounded-lg font-semibold text-sm">
+                {photoSaved ? "保存済み" : "写真に保存"}
+              </button>
+            )}
+          </>
+        )}
+      </div>
+
+      {saved && <p className="text-green-400 mt-2 text-sm">アプリに保存しました</p>}
+      {photoSaved && <p className="text-orange-400 mt-1 text-sm">写真をダウンロードしました</p>}
+
+      {saved && (
+        <button onClick={() => onNavigate("history")} className="mt-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg font-semibold text-sm">
+          履歴を見る
+        </button>
+      )}
+
+      {diagnosis.length > 0 && (
+        <div className="w-full max-w-md mt-4 space-y-2">
+          <h2 className="text-lg font-bold mb-2">診断結果</h2>
+          {diagnosis.map((item, i) => (
+            <div key={i} className={`border rounded-lg px-4 py-3 ${levelBg(item.level)}`}>
+              <div className="flex items-center justify-between mb-1">
+                <span className="font-semibold">{item.label}</span>
+                <span className="text-sm">{levelEmoji(item.level)} {item.value}{item.unit}</span>
+              </div>
+              <p className="text-sm opacity-80 mb-1">{item.message}</p>
+              <p className="text-xs opacity-60">{item.advice}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </main>
+  );
+}
+
+// ==================== 履歴画面 ====================
+function HistoryScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
+  const [records, setRecords] = useState<PostureRecord[]>([]);
+  const [compareIds, setCompareIds] = useState<[string | null, string | null]>([null, null]);
+  const [comparing, setComparing] = useState(false);
+
+  useEffect(() => {
+    setRecords(getRecords(SELF_ID));
+  }, []);
+
+  const toggleSelect = (id: string) => {
+    if (compareIds[0] === id) setCompareIds([compareIds[1], null]);
+    else if (compareIds[1] === id) setCompareIds([compareIds[0], null]);
+    else if (!compareIds[0]) setCompareIds([id, compareIds[1]]);
+    else if (!compareIds[1]) setCompareIds([compareIds[0], id]);
+  };
+
+  const handleDelete = (id: string) => {
+    deleteRecord(id);
+    setRecords(records.filter((r) => r.id !== id));
+    if (compareIds[0] === id) setCompareIds([compareIds[1], null]);
+    if (compareIds[1] === id) setCompareIds([compareIds[0], null]);
+  };
+
+  const record1 = records.find((r) => r.id === compareIds[0]);
+  const record2 = records.find((r) => r.id === compareIds[1]);
+
+  const formatDate = (d: string) => {
+    const dt = new Date(d);
+    return `${dt.getMonth() + 1}/${dt.getDate()} ${dt.getHours()}:${String(dt.getMinutes()).padStart(2, "0")}`;
+  };
+
+  const levelColor = (l: string) => l === "good" ? "text-green-400" : l === "caution" ? "text-yellow-400" : "text-red-400";
+
+  return (
+    <main className="fixed inset-0 bg-gray-950 overflow-y-auto text-white flex flex-col items-center p-4 pb-20">
+      <div className="flex items-center gap-3 mb-4 w-full max-w-lg">
+        <button onClick={() => onNavigate("home")} className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm">← 戻る</button>
+        <h1 className="text-lg font-bold">過去の記録</h1>
+      </div>
+
+      {records.length === 0 ? (
+        <p className="text-gray-500 text-center py-8">まだ記録がありません</p>
+      ) : !comparing ? (
+        <>
+          <p className="text-gray-400 text-sm mb-3">ビフォーアフターを比較するには2つの記録を選んでください</p>
+          <div className="w-full max-w-lg space-y-3">
+            {records.map((record) => {
+              const isSelected = compareIds.includes(record.id);
+              return (
+                <div key={record.id} className={`border rounded-lg overflow-hidden ${isSelected ? "border-blue-500" : "border-gray-700"}`}>
+                  <button onClick={() => toggleSelect(record.id)} className="w-full flex items-center gap-3 p-3 bg-gray-800">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={record.imageDataUrl} alt="撮影写真" className="w-16 h-20 object-cover rounded" />
+                    <div className="flex-1 text-left">
+                      <p className="font-semibold">{formatDate(record.date)}</p>
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {record.diagnosis.map((d, i) => (
+                          <span key={i} className={`text-xs ${levelColor(d.level)}`}>{d.label}: {d.value}{d.unit}</span>
+                        ))}
+                      </div>
+                    </div>
+                    {isSelected && <span className="text-blue-400 text-xs">選択中</span>}
+                  </button>
+                  <div className="flex border-t border-gray-700">
+                    <button onClick={() => handleDelete(record.id)} className="flex-1 py-1 text-red-400 text-xs hover:bg-red-900/30">削除</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {compareIds[0] && compareIds[1] && (
+            <button onClick={() => setComparing(true)} className="mt-4 px-6 py-3 bg-purple-600 hover:bg-purple-700 rounded-lg font-semibold">
+              ビフォーアフター比較
+            </button>
+          )}
+        </>
+      ) : (
+        <div className="w-full max-w-lg">
+          <button onClick={() => setComparing(false)} className="mb-4 px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm">← 一覧に戻る</button>
+          <div className="flex gap-2 mb-4">
+            <div className="flex-1">
+              <p className="text-center text-sm text-gray-400 mb-1">Before ({record1 && formatDate(record1.date)})</p>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              {record1 && <img src={record1.imageDataUrl} alt="Before" className="w-full rounded-lg" />}
+            </div>
+            <div className="flex-1">
+              <p className="text-center text-sm text-gray-400 mb-1">After ({record2 && formatDate(record2.date)})</p>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              {record2 && <img src={record2.imageDataUrl} alt="After" className="w-full rounded-lg" />}
+            </div>
+          </div>
+          {record1 && record2 && (
+            <div className="space-y-2">
+              <h2 className="text-lg font-bold">変化の比較</h2>
+              {record1.diagnosis.map((before, i) => {
+                const after = record2.diagnosis[i];
+                if (!after) return null;
+                const diff = after.value - before.value;
+                const improved = Math.abs(after.value) < Math.abs(before.value);
+                return (
+                  <div key={i} className="bg-gray-800 rounded-lg px-4 py-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-semibold">{before.label}</span>
+                      <span className={improved ? "text-green-400 text-sm" : diff === 0 ? "text-gray-400 text-sm" : "text-red-400 text-sm"}>
+                        {improved ? "改善" : diff === 0 ? "変化なし" : "悪化"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className={levelColor(before.level)}>{before.value}{before.unit}</span>
+                      <span className="text-gray-500">→</span>
+                      <span className={levelColor(after.level)}>{after.value}{after.unit}</span>
+                      <span className="text-gray-500 ml-auto">({diff > 0 ? "+" : ""}{diff.toFixed(1)}{before.unit})</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      <button onClick={() => onNavigate("check")} className="mt-6 px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold">
+        新しく撮影する
+      </button>
+    </main>
   );
 }
