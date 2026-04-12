@@ -27,32 +27,24 @@ type Screen = "home" | "ai-counsel" | "selfcare" | "check" | "history";
 const SYMPTOMS = [
   {
     id: "neck",
-    label: "首が痛い",
-    icon: "🦴",
+    label: "首こり",
+    icon: "/icon-neck.jpg",
     videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-    videoTitle: "首の痛みを解消するセルフケア",
+    videoTitle: "首こり解消セルフケア",
     description: "首周りの筋肉をほぐし、痛みを和らげるストレッチです。",
   },
   {
     id: "shoulder_stiff",
-    label: "肩が凝っている",
-    icon: "💆",
+    label: "肩凝り",
+    icon: "/icon-shoulder.jpg",
     videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-    videoTitle: "肩こり解消セルフケア",
-    description: "デスクワークなどで固まった肩周りをほぐすストレッチです。",
-  },
-  {
-    id: "shoulder_pain",
-    label: "肩が痛い",
-    icon: "🤕",
-    videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-    videoTitle: "肩の痛みを改善するセルフケア",
-    description: "肩関節の可動域を広げ、痛みを緩和するエクササイズです。",
+    videoTitle: "肩凝り解消セルフケア",
+    description: "固まった肩周りをほぐすストレッチです。",
   },
   {
     id: "back",
-    label: "腰が痛い",
-    icon: "🏋️",
+    label: "腰痛",
+    icon: "/icon-back.jpg",
     videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
     videoTitle: "腰痛改善セルフケア",
     description: "腰回りの筋肉を緩め、腰痛を予防・改善するストレッチです。",
@@ -60,18 +52,10 @@ const SYMPTOMS = [
   {
     id: "eye_fatigue",
     label: "眼精疲労",
-    icon: "😫",
+    icon: "/icon-eye.jpg",
     videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-    videoTitle: "眼精疲労を解消するセルフケア",
+    videoTitle: "眼精疲労解消セルフケア",
     description: "目の疲れを取り、スッキリさせるツボ押し＆エクササイズです。",
-  },
-  {
-    id: "eye_recovery",
-    label: "視力回復",
-    icon: "👁️",
-    videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-    videoTitle: "視力回復トレーニング",
-    description: "目の筋肉を鍛え、視力の維持・回復を目指すトレーニングです。",
   },
 ];
 
@@ -163,15 +147,16 @@ function HomeScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Screen) =
         {/* 症状選択 */}
         <div>
           <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">セルフケアメニュー</h2>
-          <div className="grid grid-cols-3 gap-2.5">
+          <div className="grid grid-cols-2 gap-3">
             {SYMPTOMS.map((symptom) => (
               <button
                 key={symptom.id}
                 onClick={() => onSelectSymptom(symptom.id)}
-                className="px-2 py-4 bg-gray-900 hover:bg-gray-800 active:bg-gray-700 border border-gray-800 rounded-2xl font-semibold transition-all active:scale-95"
+                className="bg-gray-900 hover:bg-gray-800 active:bg-gray-700 border border-gray-800 rounded-2xl font-semibold transition-all active:scale-95 overflow-hidden"
               >
-                <span className="text-2xl block mb-1.5">{symptom.icon}</span>
-                <span className="text-[11px] leading-tight text-gray-300">{symptom.label}</span>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={symptom.icon} alt={symptom.label} className="w-full aspect-square object-cover rounded-t-2xl" />
+                <p className="text-base font-bold py-3 text-center">{symptom.label}</p>
               </button>
             ))}
           </div>
@@ -403,14 +388,15 @@ function SelfcareScreen({ onNavigate, initialSymptomId }: { onNavigate: (s: Scre
           <button
             key={symptom.id}
             onClick={() => setSelectedId(selectedId === symptom.id ? null : symptom.id)}
-            className={`px-4 py-4 rounded-xl font-semibold transition-colors border ${
+            className={`rounded-2xl font-semibold transition-all active:scale-95 overflow-hidden border-2 ${
               selectedId === symptom.id
-                ? "bg-blue-600 border-blue-400 text-white"
-                : "bg-gray-800 border-gray-700 hover:bg-gray-700 text-gray-200"
+                ? "border-blue-400"
+                : "border-gray-800 hover:border-gray-600"
             }`}
           >
-            <span className="text-2xl block mb-1">{symptom.icon}</span>
-            <span className="text-sm">{symptom.label}</span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={symptom.icon} alt={symptom.label} className="w-full aspect-square object-cover" />
+            <p className={`text-base font-bold py-3 text-center ${selectedId === symptom.id ? "bg-blue-600" : "bg-gray-900"}`}>{symptom.label}</p>
           </button>
         ))}
       </div>
