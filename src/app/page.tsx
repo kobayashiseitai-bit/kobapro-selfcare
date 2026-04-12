@@ -152,11 +152,11 @@ function HomeScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Screen) =
               <button
                 key={symptom.id}
                 onClick={() => onSelectSymptom(symptom.id)}
-                className="bg-gray-900 hover:bg-gray-800 active:bg-gray-700 border border-gray-800 rounded-2xl font-semibold transition-all active:scale-95 overflow-hidden"
+                className="bg-gray-950 hover:bg-gray-800 active:bg-gray-700 rounded-2xl font-semibold transition-all active:scale-95"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={symptom.icon} alt={symptom.label} className="w-full aspect-square object-cover rounded-t-2xl" />
-                <p className="text-base font-bold py-3 text-center">{symptom.label}</p>
+                <img src={symptom.icon} alt={symptom.label} className="w-full aspect-square object-cover rounded-2xl" />
+                <p className="text-base font-bold py-2 text-center">{symptom.label}</p>
               </button>
             ))}
           </div>
@@ -388,15 +388,15 @@ function SelfcareScreen({ onNavigate, initialSymptomId }: { onNavigate: (s: Scre
           <button
             key={symptom.id}
             onClick={() => setSelectedId(selectedId === symptom.id ? null : symptom.id)}
-            className={`rounded-2xl font-semibold transition-all active:scale-95 overflow-hidden border-2 ${
+            className={`rounded-2xl font-semibold transition-all active:scale-95 ${
               selectedId === symptom.id
-                ? "border-blue-400"
-                : "border-gray-800 hover:border-gray-600"
+                ? "ring-2 ring-blue-400"
+                : ""
             }`}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={symptom.icon} alt={symptom.label} className="w-full aspect-square object-cover" />
-            <p className={`text-base font-bold py-3 text-center ${selectedId === symptom.id ? "bg-blue-600" : "bg-gray-900"}`}>{symptom.label}</p>
+            <img src={symptom.icon} alt={symptom.label} className="w-full aspect-square object-cover rounded-2xl" />
+            <p className={`text-base font-bold py-2 text-center ${selectedId === symptom.id ? "text-blue-400" : ""}`}>{symptom.label}</p>
           </button>
         ))}
       </div>
