@@ -28,7 +28,7 @@ const SYMPTOMS = [
   {
     id: "neck",
     label: "首こり",
-    icon: "/icon-neck.jpg",
+    icon: "/icon-neck.png",
     videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
     videoTitle: "首こり解消セルフケア",
     description: "首周りの筋肉をほぐし、痛みを和らげるストレッチです。",
@@ -36,7 +36,7 @@ const SYMPTOMS = [
   {
     id: "shoulder_stiff",
     label: "肩凝り",
-    icon: "/icon-shoulder.jpg",
+    icon: "/icon-shoulder.png",
     videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
     videoTitle: "肩凝り解消セルフケア",
     description: "固まった肩周りをほぐすストレッチです。",
@@ -44,7 +44,7 @@ const SYMPTOMS = [
   {
     id: "back",
     label: "腰痛",
-    icon: "/icon-back.jpg",
+    icon: "/icon-back.png",
     videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
     videoTitle: "腰痛改善セルフケア",
     description: "腰回りの筋肉を緩め、腰痛を予防・改善するストレッチです。",
@@ -52,7 +52,7 @@ const SYMPTOMS = [
   {
     id: "eye_fatigue",
     label: "眼精疲労",
-    icon: "/icon-eye.jpg",
+    icon: "/icon-eye.png",
     videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
     videoTitle: "眼精疲労解消セルフケア",
     description: "目の疲れを取り、スッキリさせるツボ押し＆エクササイズです。",
@@ -155,7 +155,7 @@ function HomeScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Screen) =
                 className="font-semibold transition-all active:scale-95"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={symptom.icon} alt={symptom.label} className="w-full aspect-square object-cover" style={{ borderRadius: "15%" }} />
+                <img src={symptom.icon} alt={symptom.label} className="w-full aspect-square object-cover"  />
                 <p className="text-sm font-bold pt-2 pb-1 text-center bg-gray-800 rounded-b-xl mt-[-4px] text-white">{symptom.label}</p>
               </button>
             ))}
@@ -395,7 +395,7 @@ function SelfcareScreen({ onNavigate, initialSymptomId }: { onNavigate: (s: Scre
             }`}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={symptom.icon} alt={symptom.label} className="w-full aspect-square object-cover" style={{ borderRadius: "15%" }} />
+            <img src={symptom.icon} alt={symptom.label} className="w-full aspect-square object-cover"  />
             <p className={`text-sm font-bold pt-2 pb-1 text-center bg-gray-800 rounded-b-xl mt-[-4px] ${selectedId === symptom.id ? "text-blue-400" : "text-white"}`}>{symptom.label}</p>
           </button>
         ))}
