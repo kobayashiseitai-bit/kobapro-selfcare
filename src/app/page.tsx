@@ -155,8 +155,8 @@ function HomeScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Screen) =
                 className="font-semibold transition-all active:scale-95"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={symptom.icon} alt={symptom.label} className="w-full aspect-square object-cover"  />
-                <p className="text-sm font-bold pt-2 pb-1 text-center bg-gray-800 rounded-b-xl mt-[-4px] text-white">{symptom.label}</p>
+                <img src={symptom.icon} alt={symptom.label} className="w-full aspect-square object-cover rounded-2xl" />
+                <p className="text-sm font-bold py-2 text-center text-white">{symptom.label}</p>
               </button>
             ))}
           </div>
@@ -395,8 +395,8 @@ function SelfcareScreen({ onNavigate, initialSymptomId }: { onNavigate: (s: Scre
             }`}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={symptom.icon} alt={symptom.label} className="w-full aspect-square object-cover"  />
-            <p className={`text-sm font-bold pt-2 pb-1 text-center bg-gray-800 rounded-b-xl mt-[-4px] ${selectedId === symptom.id ? "text-blue-400" : "text-white"}`}>{symptom.label}</p>
+            <img src={symptom.icon} alt={symptom.label} className="w-full aspect-square object-cover rounded-2xl" />
+            <p className={`text-sm font-bold py-2 text-center ${selectedId === symptom.id ? "text-blue-400" : "text-white"}`}>{symptom.label}</p>
           </button>
         ))}
       </div>
