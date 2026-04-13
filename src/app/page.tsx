@@ -468,7 +468,9 @@ function speak(text: string, force = false) {
     let file: string | null = null;
 
     // カウントダウンの数字
-    if (text === "3") file = "/voice-3.mp3";
+    if (text === "5") file = "/voice-5.mp3";
+    else if (text === "4") file = "/voice-4.mp3";
+    else if (text === "3") file = "/voice-3.mp3";
     else if (text === "2") file = "/voice-2.mp3";
     else if (text === "1") file = "/voice-1.mp3";
     else {
@@ -714,26 +716,25 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
     setGuideBorderColor("border-green-500");
     setGuideText("そのまま動かないでください...");
 
-    let count = 5;
-    countdownRef.current = window.setInterval(() => {
-      count--;
-      if (count === 3) {
-        speak("3", true);
-        setCountdown(3);
-      } else if (count === 2) {
-        speak("2", true);
-        setCountdown(2);
-      } else if (count === 1) {
-        speak("1", true);
-        setCountdown(1);
-      } else if (count <= 0) {
-        if (countdownRef.current) clearInterval(countdownRef.current);
-        countdownRef.current = null;
-        setCountdown(null);
-        speak("撮影しました");
-        doCapture(detectedLm);
-      }
-    }, 1000);
+    // ストップ音声の後にカウントダウン開始
+    setTimeout(() => {
+      let count = 5;
+      speak("5", true);
+
+      countdownRef.current = window.setInterval(() => {
+        count--;
+        if (count > 0) {
+          setCountdown(count);
+          speak(String(count), true);
+        } else {
+          if (countdownRef.current) clearInterval(countdownRef.current);
+          countdownRef.current = null;
+          setCountdown(null);
+          speak("撮影しました", true);
+          doCapture(detectedLm);
+        }
+      }, 1000);
+    }, 2000);
   }, []);
 
   // 実際の撮影処理
