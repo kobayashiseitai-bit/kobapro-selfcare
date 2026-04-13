@@ -4,7 +4,22 @@ import { useRef, useState, useEffect, useCallback } from "react";
 import { addRecord, getRecords, deleteRecord, Landmark, PostureRecord } from "./lib/storage";
 import { analyzePosture, drawDiagnosisOverlay } from "./lib/postureAnalysis";
 import type { DiagnosisItem } from "./lib/storage";
-import { getOrCreateUser, savePostureRecord, saveChatLog, saveSymptomSelection } from "./lib/supabase";
+// Supabase保存はAPI経由
+function getDeviceId(): string {
+  if (typeof window === "undefined") return "";
+  let id = localStorage.getItem("zero_pain_device_id");
+  if (!id) { id = crypto.randomUUID(); localStorage.setItem("zero_pain_device_id", id); }
+  return id;
+}
+function saveToDb(data: Record<string, unknown>) {
+  const deviceId = getDeviceId();
+  if (!deviceId) return;
+  fetch("/api/save", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...data, deviceId }),
+  }).catch(() => {});
+}
 
 const SELF_ID = "self";
 
@@ -63,26 +78,19 @@ const SYMPTOMS = [
 export default function Home() {
   const [screen, setScreen] = useState<Screen>("home");
   const [selectedSymptomId, setSelectedSymptomId] = useState<string | null>(null);
-  const [userId, setUserId] = useState<string>("");
-
-  // Supabaseユーザーを初期化
-  useEffect(() => {
-    getOrCreateUser().then((id) => setUserId(id)).catch(() => {});
-  }, []);
 
   const goToSelfcare = (symptomId: string) => {
     setSelectedSymptomId(symptomId);
     setScreen("selfcare");
-    // 症状選択をDBに記録
-    if (userId) saveSymptomSelection(userId, symptomId).catch(() => {});
+    saveToDb({ type: "symptom", symptomId });
   };
 
   return (
     <>
       {screen === "home" && <HomeScreen onNavigate={setScreen} onSelectSymptom={goToSelfcare} />}
-      {screen === "ai-counsel" && <AiCounselScreen onNavigate={setScreen} onSelectSymptom={goToSelfcare} userId={userId} />}
+      {screen === "ai-counsel" && <AiCounselScreen onNavigate={setScreen} onSelectSymptom={goToSelfcare} />}
       {screen === "selfcare" && <SelfcareScreen onNavigate={setScreen} initialSymptomId={selectedSymptomId} />}
-      {screen === "check" && <CheckScreen onNavigate={setScreen} userId={userId} />}
+      {screen === "check" && <CheckScreen onNavigate={setScreen} />}
       {screen === "history" && <HistoryScreen onNavigate={setScreen} />}
     </>
   );
@@ -222,7 +230,7 @@ function HomeScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Screen) =
 // ==================== AIカウンセリング画面 ====================
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
-function AiCounselScreen({ onNavigate, onSelectSymptom, userId }: { onNavigate: (s: Screen) => void; onSelectSymptom: (id: string) => void; userId: string }) {
+function AiCounselScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Screen) => void; onSelectSymptom: (id: string) => void }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -276,10 +284,8 @@ function AiCounselScreen({ onNavigate, onSelectSymptom, userId }: { onNavigate: 
       if (data.message) {
         setMessages([...newMessages, { role: "assistant", content: data.message }]);
         // DBに保存
-        if (userId) {
-          saveChatLog(userId, "user", userMsg.content).catch(() => {});
-          saveChatLog(userId, "assistant", data.message, data.recommendedSymptomId).catch(() => {});
-        }
+        saveToDb({ type: "chat", role: "user", content: userMsg.content });
+        saveToDb({ type: "chat", role: "assistant", content: data.message, recommendedSymptom: data.recommendedSymptomId });
       }
       if (data.recommendedSymptomId) {
         setRecommendedId(data.recommendedSymptomId);
@@ -556,7 +562,7 @@ function checkFullBody(lm: Landmark[]): { ok: boolean; guide: string } {
 }
 
 // ==================== 撮影＋診断画面（AIガイド付き） ====================
-function CheckScreen({ onNavigate, userId }: { onNavigate: (s: Screen) => void; userId: string }) {
+function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const guideCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -853,9 +859,9 @@ function CheckScreen({ onNavigate, userId }: { onNavigate: (s: Screen) => void; 
     const imageData = canvas.toDataURL("image/jpeg", 0.7);
     addRecord(SELF_ID, landmarks, diagnosis, imageData);
     // Supabaseにも保存
-    if (userId) savePostureRecord(userId, landmarks, diagnosis, imageData).catch(() => {});
+    saveToDb({ type: "posture", landmarks, diagnosis, imageUrl: imageData });
     setSaved(true);
-  }, [landmarks, diagnosis, userId]);
+  }, [landmarks, diagnosis]);
 
   const handleSavePhoto = useCallback(() => {
     const canvas = canvasRef.current;
