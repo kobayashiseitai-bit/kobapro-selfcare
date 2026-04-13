@@ -34,7 +34,7 @@ export default function PosturePage() {
 
   useEffect(() => {
     const load = () =>
-      fetch(`/api/admin/posture?page=${page}&limit=${limit}`, { credentials: "include" })
+      fetch(`/api/admin/posture?page=${page}&limit=${limit}`, { credentials: "include", cache: "no-store" })
         .then((r) => { setDebugMsg(`status=${r.status}`); return r.json(); })
         .then((d) => {
           setDebugMsg((p) => `${p} records=${(d.records||[]).length} total=${d.total} err=${d.error||"none"}`);
@@ -43,7 +43,7 @@ export default function PosturePage() {
         })
         .catch((e) => setDebugMsg(`error: ${e}`));
     load();
-    const id = setInterval(load, 30000);
+    const id = setInterval(load, 10000);
     return () => clearInterval(id);
   }, [page]);
 

@@ -36,7 +36,7 @@ export default function ChatsPage() {
   const limit = 50;
 
   useEffect(() => {
-    fetch("/api/admin/users?limit=100", { credentials: "include" })
+    fetch("/api/admin/users?limit=100", { credentials: "include", cache: "no-store" })
       .then((r) => r.json())
       .then((d) => setUsers(d.users || []));
   }, []);
@@ -45,7 +45,7 @@ export default function ChatsPage() {
     const load = () => {
       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
       if (userId) params.set("userId", userId);
-      fetch(`/api/admin/chats?${params}`, { credentials: "include" })
+      fetch(`/api/admin/chats?${params}`, { credentials: "include", cache: "no-store" })
         .then((r) => {
           setDebugMsg(`status=${r.status}`);
           return r.json();
@@ -58,7 +58,7 @@ export default function ChatsPage() {
         .catch((e) => setDebugMsg(`fetch error: ${e}`));
     };
     load();
-    const id = setInterval(load, 30000);
+    const id = setInterval(load, 10000);
     return () => clearInterval(id);
   }, [page, userId]);
 

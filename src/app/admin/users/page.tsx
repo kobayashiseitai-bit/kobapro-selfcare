@@ -24,7 +24,7 @@ export default function UsersPage() {
   const limit = 20;
 
   const loadUsers = () =>
-    fetch(`/api/admin/users?page=${page}&limit=${limit}`, { credentials: "include" })
+    fetch(`/api/admin/users?page=${page}&limit=${limit}`, { credentials: "include", cache: "no-store" })
       .then((r) => r.json())
       .then((d) => {
         setUsers(d.users || []);

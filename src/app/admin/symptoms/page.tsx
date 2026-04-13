@@ -36,7 +36,7 @@ export default function SymptomsPage() {
 
   useEffect(() => {
     const load = () =>
-      fetch("/api/admin/symptoms", { credentials: "include" })
+      fetch("/api/admin/symptoms", { credentials: "include", cache: "no-store" })
         .then((r) => { setDebugMsg(`status=${r.status}`); return r.json(); })
         .then((d) => {
           const syms = d.symptoms || [];
@@ -46,7 +46,7 @@ export default function SymptomsPage() {
         })
         .catch((e) => setDebugMsg(`error: ${e}`));
     load();
-    const id = setInterval(load, 30000);
+    const id = setInterval(load, 10000);
     return () => clearInterval(id);
   }, []);
 
