@@ -135,11 +135,11 @@ function HomeScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Screen) =
         {/* AIカウンセリング */}
         <button
           onClick={() => onNavigate("ai-counsel")}
-          className="w-full px-5 py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 active:from-blue-800 active:to-purple-800 rounded-2xl font-bold transition-colors text-left flex items-center gap-4 shadow-lg shadow-blue-900/30"
+          className="w-full px-5 py-4 bg-gradient-to-b from-blue-500 to-purple-700 rounded-2xl font-bold text-left flex items-center gap-4 shadow-[0_6px_20px_rgba(79,70,229,0.4),inset_0_1px_0_rgba(255,255,255,0.2)] active:shadow-[0_2px_8px_rgba(79,70,229,0.3)] active:translate-y-[2px] transition-all duration-150"
         >
-          <span className="text-3xl">🤖</span>
+          <span className="text-3xl drop-shadow-lg">🤖</span>
           <div>
-            <p className="text-base font-bold">KOBAPRO AIに相談する</p>
+            <p className="text-base font-bold drop-shadow-sm">KOBAPRO AIに相談する</p>
             <p className="text-xs font-normal opacity-80">症状を聞き取り、最適なケアを提案します</p>
           </div>
         </button>
@@ -152,38 +152,38 @@ function HomeScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Screen) =
               <button
                 key={symptom.id}
                 onClick={() => onSelectSymptom(symptom.id)}
-                className="font-semibold transition-all active:scale-95"
+                className="font-semibold transition-all duration-150 active:translate-y-[2px] active:shadow-none rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.1)] bg-gray-900"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={symptom.icon} alt={symptom.label} className="w-full aspect-square object-cover rounded-2xl" />
-                <p className="text-sm font-bold py-2 text-center text-white">{symptom.label}</p>
+                <img src={symptom.icon} alt={symptom.label} className="w-full aspect-square object-cover rounded-t-2xl" />
+                <p className="text-sm font-bold py-2.5 text-center text-white bg-gradient-to-b from-gray-800 to-gray-900 rounded-b-2xl">{symptom.label}</p>
               </button>
             ))}
           </div>
         </div>
 
         {/* 全身チェック */}
-        <div className="space-y-2.5">
+        <div className="space-y-3">
           <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">姿勢チェック</h2>
           <button
             onClick={() => onNavigate("check")}
-            className="w-full px-5 py-5 bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-700 hover:to-amber-600 active:from-orange-800 active:to-amber-700 rounded-2xl font-semibold transition-all flex items-center gap-4 active:scale-[0.98] shadow-lg shadow-orange-900/30"
+            className="w-full px-5 py-5 bg-gradient-to-b from-orange-500 to-amber-700 rounded-2xl font-semibold flex items-center gap-4 shadow-[0_6px_20px_rgba(234,88,12,0.4),inset_0_1px_0_rgba(255,255,255,0.2)] active:shadow-[0_2px_8px_rgba(234,88,12,0.3)] active:translate-y-[2px] transition-all duration-150"
           >
-            <span className="text-4xl">🧍</span>
+            <span className="text-4xl drop-shadow-lg">🧍</span>
             <div className="text-left">
-              <p className="text-base font-bold">KOBAPRO AIで姿勢スキャン</p>
+              <p className="text-base font-bold drop-shadow-sm">KOBAPRO AIで姿勢スキャン</p>
               <p className="text-xs font-normal opacity-80">スマホを置いて全身撮影 → 歪みを自動診断</p>
             </div>
           </button>
           <button
             onClick={() => onNavigate("history")}
             disabled={records.length === 0}
-            className="w-full px-5 py-3.5 bg-indigo-900/60 hover:bg-indigo-800/60 active:bg-indigo-700/60 disabled:bg-gray-900 disabled:opacity-40 rounded-2xl font-semibold transition-all border border-indigo-700/50 flex items-center gap-3 active:scale-[0.98]"
+            className="w-full px-5 py-3.5 bg-gradient-to-b from-indigo-700 to-indigo-900 disabled:from-gray-800 disabled:to-gray-900 disabled:opacity-40 rounded-2xl font-semibold flex items-center gap-3 shadow-[0_6px_16px_rgba(67,56,202,0.3),inset_0_1px_0_rgba(255,255,255,0.15)] active:shadow-[0_2px_6px_rgba(67,56,202,0.2)] active:translate-y-[2px] transition-all duration-150"
           >
-            <span className="text-xl">📊</span>
+            <span className="text-xl drop-shadow-lg">📊</span>
             <div className="text-left">
               <p className="text-sm font-semibold">過去の記録を見る</p>
-              <p className="text-[11px] text-gray-500">
+              <p className="text-[11px] text-indigo-300">
                 {records.length > 0 ? `${records.length}件の記録` : "まだ記録がありません"}
               </p>
             </div>
@@ -195,7 +195,7 @@ function HomeScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Screen) =
           href="https://lin.ee/TKHXNpJn"
           target="_blank"
           rel="noopener noreferrer"
-          className="w-full px-5 py-4 bg-[#06C755] hover:bg-[#05b04c] active:bg-[#04a044] rounded-2xl font-semibold transition-all flex items-center gap-4 active:scale-[0.98] shadow-lg shadow-green-900/30"
+          className="w-full px-5 py-4 bg-gradient-to-b from-[#09D65E] to-[#06A847] rounded-2xl font-semibold flex items-center gap-4 shadow-[0_6px_20px_rgba(6,199,85,0.4),inset_0_1px_0_rgba(255,255,255,0.2)] active:shadow-[0_2px_8px_rgba(6,199,85,0.3)] active:translate-y-[2px] transition-all duration-150"
         >
           <svg viewBox="0 0 120 120" className="w-10 h-10 flex-shrink-0" fill="white">
             <path d="M60 0C26.86 0 0 22.39 0 50c0 24.72 21.94 45.43 51.58 49.33 2.01.43 4.74 1.33 5.43 3.05.62 1.56.41 4.01.2 5.59l-.88 5.27c-.27 1.56-1.24 6.11 5.35 3.33s35.6-20.96 48.57-35.89h-.01C118.24 71.67 120 61.27 120 50 120 22.39 93.14 0 60 0zm-26.99 64.64h-9.93c-1.82 0-3.3-1.48-3.3-3.3V34.56c0-1.82 1.48-3.3 3.3-3.3s3.3 1.48 3.3 3.3v23.48h6.63c1.82 0 3.3 1.48 3.3 3.3s-1.48 3.3-3.3 3.3zm12.18-3.3c0 1.82-1.48 3.3-3.3 3.3s-3.3-1.48-3.3-3.3V34.56c0-1.82 1.48-3.3 3.3-3.3s3.3 1.48 3.3 3.3v26.78zm27.94 0c0 1.37-.85 2.6-2.13 3.09-.39.15-.79.22-1.18.22-.98 0-1.93-.44-2.56-1.23l-13.02-17.74v15.66c0 1.82-1.48 3.3-3.3 3.3s-3.3-1.48-3.3-3.3V34.56c0-1.37.85-2.6 2.13-3.09.39-.15.79-.22 1.18-.22.98 0 1.93.44 2.56 1.23l13.02 17.74V34.56c0-1.82 1.48-3.3 3.3-3.3s3.3 1.48 3.3 3.3v26.78zm18.18-17.55c1.82 0 3.3 1.48 3.3 3.3s-1.48 3.3-3.3 3.3h-6.63v6.63h6.63c1.82 0 3.3 1.48 3.3 3.3s-1.48 3.3-3.3 3.3h-9.93c-1.82 0-3.3-1.48-3.3-3.3V34.56c0-1.82 1.48-3.3 3.3-3.3h9.93c1.82 0 3.3 1.48 3.3 3.3s-1.48 3.3-3.3 3.3h-6.63v6.63h6.63z"/>
