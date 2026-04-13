@@ -85,40 +85,46 @@ export default function ChatsPage() {
         </select>
       </div>
 
-      {debugMsg && <p className="text-xs text-yellow-400 mb-2 font-mono">{debugMsg}</p>}
-      <div className="space-y-2 max-w-2xl">
-        {chats.map((c) => (
-          <div
-            key={c.id}
-            className={`flex ${c.role === "user" ? "justify-end" : "justify-start"}`}
-          >
-            <div
-              className={`max-w-[85%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${
-                c.role === "user"
-                  ? "bg-blue-600 rounded-br-md"
-                  : "bg-gray-800 rounded-bl-md"
-              }`}
-            >
-              <div className="text-xs text-gray-400 mb-1">
-                {new Date(c.created_at).toLocaleString("ja-JP")}
-                {c.role === "user" && (
-                  <span className="ml-2 text-gray-500 font-mono">
-                    {c.user_id.slice(0, 6)}
+      <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-800 text-gray-400">
+              <th className="text-left px-4 py-3 w-40">日時</th>
+              <th className="text-left px-4 py-3 w-20">役割</th>
+              <th className="text-left px-4 py-3">内容</th>
+              <th className="text-left px-4 py-3 w-24">推奨</th>
+            </tr>
+          </thead>
+          <tbody>
+            {chats.map((c) => (
+              <tr key={c.id} className="border-b border-gray-800/50 hover:bg-gray-800/30">
+                <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
+                  {new Date(c.created_at).toLocaleString("ja-JP")}
+                </td>
+                <td className="px-4 py-3">
+                  <span className={`px-2 py-0.5 rounded text-xs ${
+                    c.role === "user" ? "bg-blue-600/30 text-blue-300" : "bg-gray-700 text-gray-300"
+                  }`}>
+                    {c.role === "user" ? "ユーザー" : "AI"}
                   </span>
-                )}
-              </div>
-              <p className="whitespace-pre-wrap">{c.content}</p>
-              {c.recommended_symptom && (
-                <span className="inline-block mt-2 px-2 py-0.5 bg-purple-600/30 text-purple-300 rounded text-xs">
-                  推奨: {SYMPTOM_LABELS[c.recommended_symptom] || c.recommended_symptom}
-                </span>
-              )}
-            </div>
-          </div>
-        ))}
-        {chats.length === 0 && (
-          <p className="text-gray-500 text-center py-8">データがありません</p>
-        )}
+                </td>
+                <td className="px-4 py-3 text-white whitespace-pre-wrap">{c.content}</td>
+                <td className="px-4 py-3">
+                  {c.recommended_symptom && (
+                    <span className="px-2 py-0.5 bg-purple-600/30 text-purple-300 rounded text-xs">
+                      {SYMPTOM_LABELS[c.recommended_symptom] || c.recommended_symptom}
+                    </span>
+                  )}
+                </td>
+              </tr>
+            ))}
+            {chats.length === 0 && (
+              <tr>
+                <td colSpan={4} className="px-4 py-8 text-center text-gray-500">データがありません</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
 
       {totalPages > 1 && (
