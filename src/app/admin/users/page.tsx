@@ -5,6 +5,8 @@ interface User {
   id: string;
   device_id: string;
   name: string;
+  prefecture: string;
+  age: number | null;
   created_at: string;
   chatCount: number;
   postureCount: number;
@@ -82,7 +84,11 @@ export default function UsersPage() {
                   <p className="text-gray-500 text-xs font-mono">{u.device_id.slice(0, 12)}...</p>
                 </button>
               )}
-              <p className="text-gray-400 text-xs mt-1 ml-2">{new Date(u.created_at).toLocaleDateString("ja-JP")} 登録</p>
+              <div className="flex items-center gap-3 mt-1 ml-2">
+                {u.prefecture && <span className="text-xs text-gray-400">{u.prefecture}</span>}
+                {u.age && <span className="text-xs text-gray-400">{u.age}歳</span>}
+                <span className="text-xs text-gray-500">{new Date(u.created_at).toLocaleDateString("ja-JP")} 登録</span>
+              </div>
             </div>
             <div className="flex gap-4 text-sm">
               <div className="text-center">

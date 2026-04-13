@@ -37,7 +37,18 @@ const POSE_CONNECTIONS: [number, number][] = [
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type MediaPipeModules = { PoseLandmarker: any; FilesetResolver: any; DrawingUtils: any };
 
-type Screen = "home" | "ai-counsel" | "selfcare" | "check" | "history";
+type Screen = "loading" | "register" | "home" | "ai-counsel" | "selfcare" | "check" | "history";
+
+const PREFECTURES = [
+  "北海道","青森県","岩手県","宮城県","秋田県","山形県","福島県",
+  "茨城県","栃木県","群馬県","埼玉県","千葉県","東京都","神奈川県",
+  "新潟県","富山県","石川県","福井県","山梨県","長野県",
+  "岐阜県","静岡県","愛知県","三重県",
+  "滋賀県","京都府","大阪府","兵庫県","奈良県","和歌山県",
+  "鳥取県","島根県","岡山県","広島県","山口県",
+  "徳島県","香川県","愛媛県","高知県",
+  "福岡県","佐賀県","長崎県","熊本県","大分県","宮崎県","鹿児島県","沖縄県",
+];
 
 // 症状データ（後からYouTubeのURLに差し替え可能）
 const SYMPTOMS = [
@@ -76,8 +87,22 @@ const SYMPTOMS = [
 ];
 
 export default function Home() {
-  const [screen, setScreen] = useState<Screen>("home");
+  const [screen, setScreen] = useState<Screen>("loading");
   const [selectedSymptomId, setSelectedSymptomId] = useState<string | null>(null);
+
+  // 初回チェック: ユーザー登録済みかどうか
+  useEffect(() => {
+    const deviceId = getDeviceId();
+    if (!deviceId) { setScreen("register"); return; }
+    fetch("/api/user-profile", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ deviceId }),
+    })
+      .then((r) => r.json())
+      .then((d) => setScreen(d.registered ? "home" : "register"))
+      .catch(() => setScreen("register"));
+  }, []);
 
   const goToSelfcare = (symptomId: string) => {
     setSelectedSymptomId(symptomId);
@@ -85,14 +110,131 @@ export default function Home() {
     saveToDb({ type: "symptom", symptomId });
   };
 
+  if (screen === "loading") {
+    return (
+      <main className="fixed inset-0 bg-gray-950 flex items-center justify-center">
+        <p className="text-gray-400 text-lg animate-pulse">読み込み中...</p>
+      </main>
+    );
+  }
+
   return (
     <>
+      {screen === "register" && <RegisterScreen onComplete={() => setScreen("home")} />}
       {screen === "home" && <HomeScreen onNavigate={setScreen} onSelectSymptom={goToSelfcare} />}
       {screen === "ai-counsel" && <AiCounselScreen onNavigate={setScreen} onSelectSymptom={goToSelfcare} />}
       {screen === "selfcare" && <SelfcareScreen onNavigate={setScreen} initialSymptomId={selectedSymptomId} />}
       {screen === "check" && <CheckScreen onNavigate={setScreen} />}
       {screen === "history" && <HistoryScreen onNavigate={setScreen} />}
     </>
+  );
+}
+
+// ==================== 初回登録画面 ====================
+function RegisterScreen({ onComplete }: { onComplete: () => void }) {
+  const [name, setName] = useState("");
+  const [prefecture, setPrefecture] = useState("");
+  const [age, setAge] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) { setError("お名前を入力してください"); return; }
+    setSaving(true);
+    setError("");
+    try {
+      const res = await fetch("/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          deviceId: getDeviceId(),
+          name: name.trim(),
+          prefecture,
+          age: age ? parseInt(age) : null,
+        }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        onComplete();
+      } else {
+        setError("登録に失敗しました。もう一度お試しください。");
+      }
+    } catch {
+      setError("通信エラーが発生しました。");
+    }
+    setSaving(false);
+  };
+
+  return (
+    <main className="fixed inset-0 bg-gray-950 text-white flex flex-col overflow-y-auto">
+      <div className="flex-1 flex items-center justify-center px-4 py-8">
+        <form onSubmit={handleSubmit} className="w-full max-w-md space-y-6">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold bg-gradient-to-b from-blue-400 to-purple-600 bg-clip-text text-transparent">
+              ZERO-PAIN
+            </h1>
+            <p className="text-gray-400 mt-2 text-sm">セルフケアアプリへようこそ</p>
+            <p className="text-gray-500 mt-1 text-xs">はじめに基本情報をご入力ください</p>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">お名前 <span className="text-red-400">*</span></label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="例: 山田太郎"
+                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-blue-500 text-sm"
+                autoFocus
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">お住まいの都道府県</label>
+              <select
+                value={prefecture}
+                onChange={(e) => setPrefecture(e.target.value)}
+                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-blue-500 text-sm"
+              >
+                <option value="">選択してください</option>
+                {PREFECTURES.map((p) => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">年齢</label>
+              <input
+                type="number"
+                value={age}
+                onChange={(e) => setAge(e.target.value)}
+                placeholder="例: 35"
+                min="1"
+                max="120"
+                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-blue-500 text-sm"
+              />
+            </div>
+          </div>
+
+          {error && <p className="text-red-400 text-sm text-center">{error}</p>}
+
+          <button
+            type="submit"
+            disabled={saving}
+            className="btn-3d w-full py-4 bg-gradient-to-b from-blue-400 via-blue-600 to-purple-800 rounded-2xl font-bold text-lg shadow-[0_10px_30px_rgba(79,70,229,0.5)] disabled:opacity-50"
+          >
+            {saving ? "登録中..." : "はじめる"}
+          </button>
+
+          <p className="text-center text-gray-600 text-xs">
+            入力された情報はセルフケアの改善に活用されます
+          </p>
+        </form>
+      </div>
+    </main>
   );
 }
 
