@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
 
   const { data, count } = await supabase
     .from("posture_records")
-    .select("id, user_id, diagnosis, created_at", { count: "exact" })
+    .select("id, user_id, diagnosis, image_url, created_at", { count: "exact" })
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 

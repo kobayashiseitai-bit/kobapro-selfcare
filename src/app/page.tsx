@@ -245,7 +245,7 @@ function AiCounselScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Scre
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: [] }),
+          body: JSON.stringify({ messages: [], deviceId: getDeviceId() }),
         });
         const data = await res.json();
         if (data.message) {
@@ -278,6 +278,7 @@ function AiCounselScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Scre
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
+          deviceId: getDeviceId(),
         }),
       });
       const data = await res.json();
@@ -853,13 +854,25 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
     setLoading(false);
   }, []);
 
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
     const canvas = canvasRef.current;
     if (!canvas || landmarks.length === 0) return;
     const imageData = canvas.toDataURL("image/jpeg", 0.7);
     addRecord(SELF_ID, landmarks, diagnosis, imageData);
-    // Supabaseにも保存
-    saveToDb({ type: "posture", landmarks, diagnosis, imageUrl: "" });
+
+    // Supabase Storageに画像をアップロード
+    let imageUrl = "";
+    try {
+      const uploadRes = await fetch("/api/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageData, deviceId: getDeviceId() }),
+      });
+      const uploadData = await uploadRes.json();
+      if (uploadData.url) imageUrl = uploadData.url;
+    } catch { /* アップロード失敗時は空文字で続行 */ }
+
+    saveToDb({ type: "posture", landmarks, diagnosis, imageUrl });
     setSaved(true);
   }, [landmarks, diagnosis]);
 

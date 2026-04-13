@@ -13,6 +13,7 @@ interface PostureRecord {
   id: string;
   user_id: string;
   diagnosis: DiagnosisItem[];
+  image_url: string | null;
   created_at: string;
 }
 
@@ -60,6 +61,10 @@ export default function PosturePage() {
                 className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-gray-800/30"
               >
                 <div className="flex items-center gap-4">
+                  {r.image_url && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={r.image_url} alt="" className="w-10 h-12 object-cover rounded" />
+                  )}
                   <span className="text-sm text-gray-400">
                     {new Date(r.created_at).toLocaleString("ja-JP")}
                   </span>
