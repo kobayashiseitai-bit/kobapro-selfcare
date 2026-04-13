@@ -1,12 +1,15 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || "",
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
+  );
+}
 
 async function getOrCreateUser(deviceId: string): Promise<string> {
+  const supabase = getSupabase();
   const { data } = await supabase
     .from("users")
     .select("id")
@@ -24,8 +27,11 @@ async function getOrCreateUser(deviceId: string): Promise<string> {
   return newUser?.id || "";
 }
 
+export const dynamic = "force-dynamic";
+
 export async function POST(req: NextRequest) {
   try {
+    const supabase = getSupabase();
     const body = await req.json();
     const { type, deviceId, ...payload } = body;
 

@@ -1,9 +1,11 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
 
-const client = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+function getClient() {
+  return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+}
+
+export const dynamic = "force-dynamic";
 
 const SYSTEM_PROMPT = `あなたはZERO-PAINセルフケアアプリの専属AIカウンセラーです。整体・ボディケアの専門知識を持っています。
 
@@ -43,7 +45,7 @@ export async function POST(req: NextRequest) {
       ? [{ role: "user" as const, content: "こんにちは、相談したいです。" }]
       : messages;
 
-    const response = await client.messages.create({
+    const response = await getClient().messages.create({
       model: "claude-sonnet-4-20250514",
       max_tokens: 500,
       system: SYSTEM_PROMPT,
