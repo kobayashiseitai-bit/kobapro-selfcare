@@ -30,6 +30,7 @@ export default function ChatsPage() {
   const [page, setPage] = useState(0);
   const [userId, setUserId] = useState("");
   const [users, setUsers] = useState<UserOption[]>([]);
+  const [debugMsg, setDebugMsg] = useState("");
   const limit = 50;
 
   useEffect(() => {
@@ -43,11 +44,16 @@ export default function ChatsPage() {
       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
       if (userId) params.set("userId", userId);
       fetch(`/api/admin/chats?${params}`, { credentials: "include" })
-        .then((r) => r.json())
+        .then((r) => {
+          setDebugMsg(`status=${r.status}`);
+          return r.json();
+        })
         .then((d) => {
+          setDebugMsg((prev) => `${prev} total=${d.total} chats=${(d.chats||[]).length} err=${d.error||"none"}`);
           setChats(d.chats || []);
           setTotal(d.total || 0);
-        });
+        })
+        .catch((e) => setDebugMsg(`fetch error: ${e}`));
     };
     load();
     const id = setInterval(load, 30000);
@@ -79,6 +85,7 @@ export default function ChatsPage() {
         </select>
       </div>
 
+      {debugMsg && <p className="text-xs text-yellow-400 mb-2 font-mono">{debugMsg}</p>}
       <div className="space-y-2 max-w-2xl">
         {chats.map((c) => (
           <div
