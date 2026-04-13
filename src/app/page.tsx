@@ -451,10 +451,14 @@ const VOICE_KEYWORDS: { keyword: string; file: string }[] = [
 ];
 
 let currentAudio: HTMLAudioElement | null = null;
+let isSpeaking = false;
 
-function speak(text: string) {
+function speak(text: string, force = false) {
   try {
     if (typeof window === "undefined") return;
+    // 再生中は新しい音声を開始しない（forceの場合を除く）
+    if (isSpeaking && !force) return;
+
     // 前の音声を停止
     if (currentAudio) {
       currentAudio.pause();
@@ -474,10 +478,13 @@ function speak(text: string) {
     }
 
     if (file) {
+      isSpeaking = true;
       currentAudio = new Audio(file);
-      currentAudio.play().catch(() => {});
+      currentAudio.onended = () => { isSpeaking = false; };
+      currentAudio.onerror = () => { isSpeaking = false; };
+      currentAudio.play().catch(() => { isSpeaking = false; });
     }
-  } catch { /* ignore */ }
+  } catch { isSpeaking = false; }
 }
 
 // 全身が映っているか判定
@@ -660,19 +667,26 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
           setGuideText(check.guide);
           setGuideBorderColor(check.ok ? "border-green-500" : "border-yellow-500");
 
-          // 音声ガイド（同じ内容は繰り返さない）
-          if (!check.ok && check.guide !== lastSpokenRef.current) {
-            speak(check.guide);
-            lastSpokenRef.current = check.guide;
+          // 音声ガイド（同じ内容は繰り返さない & 再生中は新しい案内を出さない）
+          if (!check.ok) {
+            if (check.guide !== lastSpokenRef.current && !isSpeaking) {
+              speak(check.guide);
+              lastSpokenRef.current = check.guide;
+            }
             readyCountRef.current = 0;
           }
 
           if (check.ok) {
             readyCountRef.current++;
-            // 1.5秒間（約45フレーム）安定したらカウントダウン開始
-            if (readyCountRef.current > 45) {
-              startCountdown(lm);
-              return; // ループ停止
+            // 3秒間（約90フレーム）安定したらカウントダウン開始
+            if (readyCountRef.current > 90) {
+              // 音声再生中なら待つ
+              if (isSpeaking) {
+                readyCountRef.current = 80; // 少し待ってリトライ
+              } else {
+                startCountdown(lm);
+                return; // ループ停止
+              }
             }
           } else {
             readyCountRef.current = 0;
@@ -695,17 +709,24 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
     if (guideLoopRef.current) cancelAnimationFrame(guideLoopRef.current);
     guideLoopRef.current = null;
 
-    speak("そのままの位置でストップ。撮影します。3");
-    setCountdown(3);
+    speak("ストップ", true);
+    setCountdown(5);
     setGuideBorderColor("border-green-500");
+    setGuideText("そのまま動かないでください...");
 
-    let count = 3;
+    let count = 5;
     countdownRef.current = window.setInterval(() => {
       count--;
-      if (count > 0) {
-        setCountdown(count);
-        speak(String(count));
-      } else {
+      if (count === 3) {
+        speak("3", true);
+        setCountdown(3);
+      } else if (count === 2) {
+        speak("2", true);
+        setCountdown(2);
+      } else if (count === 1) {
+        speak("1", true);
+        setCountdown(1);
+      } else if (count <= 0) {
         if (countdownRef.current) clearInterval(countdownRef.current);
         countdownRef.current = null;
         setCountdown(null);
