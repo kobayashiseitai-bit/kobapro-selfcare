@@ -14,16 +14,19 @@ export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
+  const [debugMsg, setDebugMsg] = useState("loading...");
   const limit = 20;
 
   useEffect(() => {
     const load = () =>
       fetch(`/api/admin/users?page=${page}&limit=${limit}`, { credentials: "include" })
-        .then((r) => r.json())
+        .then((r) => { setDebugMsg(`status=${r.status}`); return r.json(); })
         .then((d) => {
+          setDebugMsg((p) => `${p} users=${(d.users||[]).length} total=${d.total} err=${d.error||"none"}`);
           setUsers(d.users || []);
           setTotal(d.total || 0);
-        });
+        })
+        .catch((e) => setDebugMsg(`error: ${e}`));
     load();
     const id = setInterval(load, 30000);
     return () => clearInterval(id);
@@ -33,66 +36,46 @@ export default function UsersPage() {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-6">
+      <h2 className="text-2xl font-bold mb-4">
         ユーザー一覧 <span className="text-gray-500 text-base font-normal">({total}件)</span>
       </h2>
-      <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-800 text-gray-400">
-              <th className="text-left px-4 py-3">Device ID</th>
-              <th className="text-left px-4 py-3">登録日</th>
-              <th className="text-right px-4 py-3">チャット</th>
-              <th className="text-right px-4 py-3">姿勢記録</th>
-              <th className="text-right px-4 py-3">症状選択</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((u) => (
-              <tr
-                key={u.id}
-                className="border-b border-gray-800/50 hover:bg-gray-800/30"
-              >
-                <td className="px-4 py-3 font-mono text-xs text-gray-300">
-                  {u.device_id.slice(0, 8)}...
-                </td>
-                <td className="px-4 py-3 text-gray-400">
-                  {new Date(u.created_at).toLocaleDateString("ja-JP")}
-                </td>
-                <td className="px-4 py-3 text-right">{u.chatCount}</td>
-                <td className="px-4 py-3 text-right">{u.postureCount}</td>
-                <td className="px-4 py-3 text-right">{u.symptomCount}</td>
-              </tr>
-            ))}
-            {users.length === 0 && (
-              <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
-                  データがありません
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+      <p className="text-xs text-yellow-400 mb-4 font-mono bg-gray-900 p-2 rounded">{debugMsg}</p>
+
+      <div className="space-y-2">
+        {users.map((u) => (
+          <div key={u.id} className="bg-gray-900 border border-gray-800 rounded-lg p-4 flex items-center justify-between">
+            <div>
+              <p className="text-white font-mono text-sm">{u.device_id.slice(0, 12)}...</p>
+              <p className="text-gray-400 text-xs mt-1">{new Date(u.created_at).toLocaleDateString("ja-JP")} 登録</p>
+            </div>
+            <div className="flex gap-4 text-sm">
+              <div className="text-center">
+                <p className="text-blue-400 font-bold">{u.chatCount}</p>
+                <p className="text-gray-500 text-xs">チャット</p>
+              </div>
+              <div className="text-center">
+                <p className="text-emerald-400 font-bold">{u.postureCount}</p>
+                <p className="text-gray-500 text-xs">姿勢</p>
+              </div>
+              <div className="text-center">
+                <p className="text-orange-400 font-bold">{u.symptomCount}</p>
+                <p className="text-gray-500 text-xs">症状</p>
+              </div>
+            </div>
+          </div>
+        ))}
+        {users.length === 0 && (
+          <p className="text-gray-500 text-center py-8">データがありません</p>
+        )}
       </div>
+
       {totalPages > 1 && (
         <div className="flex justify-center gap-2 mt-4">
-          <button
-            onClick={() => setPage((p) => Math.max(0, p - 1))}
-            disabled={page === 0}
-            className="px-3 py-1 bg-gray-800 rounded-lg text-sm disabled:opacity-30"
-          >
-            前へ
-          </button>
-          <span className="px-3 py-1 text-sm text-gray-400">
-            {page + 1} / {totalPages}
-          </span>
-          <button
-            onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-            disabled={page >= totalPages - 1}
-            className="px-3 py-1 bg-gray-800 rounded-lg text-sm disabled:opacity-30"
-          >
-            次へ
-          </button>
+          <button onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0}
+            className="px-3 py-1 bg-gray-800 rounded-lg text-sm disabled:opacity-30">前へ</button>
+          <span className="px-3 py-1 text-sm text-gray-400">{page + 1} / {totalPages}</span>
+          <button onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1}
+            className="px-3 py-1 bg-gray-800 rounded-lg text-sm disabled:opacity-30">次へ</button>
         </div>
       )}
     </div>
