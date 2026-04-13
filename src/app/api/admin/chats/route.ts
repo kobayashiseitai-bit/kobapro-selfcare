@@ -24,23 +24,28 @@ export async function GET(req: NextRequest) {
 
     const { data, error } = await query;
 
-    // 総数を別途取得
+    // 総数
     let totalQuery = supabase.from("chat_logs").select("id");
-    if (userId) {
-      totalQuery = totalQuery.eq("user_id", userId);
-    }
+    if (userId) totalQuery = totalQuery.eq("user_id", userId);
     const { data: allData } = await totalQuery;
 
+    // ユーザー名マッピング
+    const { data: usersData } = await supabase.from("users").select("id, name");
+    const nameMap: Record<string, string> = {};
+    (usersData || []).forEach((u: { id: string; name: string }) => {
+      nameMap[u.id] = u.name || "";
+    });
+
+    const chats = (data || []).map((c) => ({
+      ...c,
+      user_name: nameMap[c.user_id] || "",
+    }));
+
     return NextResponse.json({
-      chats: data || [],
+      chats,
       total: allData?.length || 0,
-      debug: { error: error?.message || null, dataLen: data?.length || 0 },
     });
   } catch (e) {
-    return NextResponse.json({
-      chats: [],
-      total: 0,
-      debug: { error: String(e) },
-    });
+    return NextResponse.json({ chats: [], total: 0, error: String(e) });
   }
 }

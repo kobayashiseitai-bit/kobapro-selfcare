@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 interface Chat {
   id: string;
   user_id: string;
+  user_name: string;
   role: string;
   content: string;
   recommended_symptom: string | null;
@@ -13,6 +14,7 @@ interface Chat {
 interface UserOption {
   id: string;
   device_id: string;
+  name: string;
 }
 
 const SYMPTOM_LABELS: Record<string, string> = {
@@ -79,7 +81,7 @@ export default function ChatsPage() {
           <option value="">全ユーザー</option>
           {users.map((u) => (
             <option key={u.id} value={u.id}>
-              {u.device_id.slice(0, 8)}...
+              {u.name || u.device_id.slice(0, 8) + "..."}
             </option>
           ))}
         </select>
@@ -105,7 +107,7 @@ export default function ChatsPage() {
               <span className="text-xs text-gray-400">
                 {new Date(c.created_at).toLocaleString("ja-JP")}
               </span>
-              <span className="text-xs text-gray-600 font-mono">{c.user_id?.slice(0, 8)}</span>
+              <span className="text-xs text-blue-300 font-semibold">{c.user_name || c.user_id?.slice(0, 8)}</span>
             </div>
             <p className="text-white text-sm whitespace-pre-wrap">{c.content}</p>
             {c.recommended_symptom && (

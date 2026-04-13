@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 interface User {
   id: string;
   device_id: string;
+  name: string;
   created_at: string;
   chatCount: number;
   postureCount: number;
@@ -14,23 +15,34 @@ export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
-  const [debugMsg, setDebugMsg] = useState("loading...");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
   const limit = 20;
 
+  const loadUsers = () =>
+    fetch(`/api/admin/users?page=${page}&limit=${limit}`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((d) => {
+        setUsers(d.users || []);
+        setTotal(d.total || 0);
+      });
+
   useEffect(() => {
-    const load = () =>
-      fetch(`/api/admin/users?page=${page}&limit=${limit}`, { credentials: "include" })
-        .then((r) => { setDebugMsg(`status=${r.status}`); return r.json(); })
-        .then((d) => {
-          setDebugMsg((p) => `${p} users=${(d.users||[]).length} total=${d.total} err=${d.error||"none"}`);
-          setUsers(d.users || []);
-          setTotal(d.total || 0);
-        })
-        .catch((e) => setDebugMsg(`error: ${e}`));
-    load();
-    const id = setInterval(load, 30000);
+    loadUsers();
+    const id = setInterval(loadUsers, 30000);
     return () => clearInterval(id);
   }, [page]);
+
+  const saveName = async (userId: string) => {
+    await fetch("/api/admin/users-update", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, name: editName }),
+      credentials: "include",
+    });
+    setEditingId(null);
+    loadUsers();
+  };
 
   const totalPages = Math.ceil(total / limit);
 
@@ -39,14 +51,38 @@ export default function UsersPage() {
       <h2 className="text-2xl font-bold mb-4">
         ユーザー一覧 <span className="text-gray-500 text-base font-normal">({total}件)</span>
       </h2>
-      <p className="text-xs text-yellow-400 mb-4 font-mono bg-gray-900 p-2 rounded">{debugMsg}</p>
+      <p className="text-xs text-gray-500 mb-4">名前をクリックして編集できます</p>
 
       <div className="space-y-2">
         {users.map((u) => (
           <div key={u.id} className="bg-gray-900 border border-gray-800 rounded-lg p-4 flex items-center justify-between">
-            <div>
-              <p className="text-white font-mono text-sm">{u.device_id.slice(0, 12)}...</p>
-              <p className="text-gray-400 text-xs mt-1">{new Date(u.created_at).toLocaleDateString("ja-JP")} 登録</p>
+            <div className="flex-1">
+              {editingId === u.id ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    className="px-3 py-1 bg-gray-800 border border-gray-600 rounded text-white text-sm w-40"
+                    placeholder="名前を入力"
+                    autoFocus
+                    onKeyDown={(e) => e.key === "Enter" && saveName(u.id)}
+                  />
+                  <button onClick={() => saveName(u.id)} className="px-3 py-1 bg-blue-600 rounded text-xs text-white">保存</button>
+                  <button onClick={() => setEditingId(null)} className="px-3 py-1 bg-gray-700 rounded text-xs text-white">取消</button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => { setEditingId(u.id); setEditName(u.name || ""); }}
+                  className="text-left hover:bg-gray-800 rounded px-2 py-1 -ml-2"
+                >
+                  <p className="text-white font-semibold">
+                    {u.name || <span className="text-gray-500 italic">名前未設定</span>}
+                  </p>
+                  <p className="text-gray-500 text-xs font-mono">{u.device_id.slice(0, 12)}...</p>
+                </button>
+              )}
+              <p className="text-gray-400 text-xs mt-1 ml-2">{new Date(u.created_at).toLocaleDateString("ja-JP")} 登録</p>
             </div>
             <div className="flex gap-4 text-sm">
               <div className="text-center">

@@ -12,6 +12,7 @@ interface DiagnosisItem {
 interface PostureRecord {
   id: string;
   user_id: string;
+  user_name: string;
   diagnosis: DiagnosisItem[];
   image_url: string | null;
   created_at: string;
@@ -71,7 +72,7 @@ export default function PosturePage() {
                 )}
                 <div className="flex-1">
                   <p className="text-sm text-white">{new Date(r.created_at).toLocaleString("ja-JP")}</p>
-                  <p className="text-xs text-gray-500 font-mono">{r.user_id?.slice(0, 8)}</p>
+                  <p className="text-xs text-blue-300 font-semibold">{r.user_name || r.user_id?.slice(0, 8)}</p>
                 </div>
                 <div className="flex gap-1 flex-wrap">
                   {diag.map((d, i) => (
