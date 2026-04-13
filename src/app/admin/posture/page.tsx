@@ -31,12 +31,16 @@ export default function PosturePage() {
   const limit = 20;
 
   useEffect(() => {
-    fetch(`/api/admin/posture?page=${page}&limit=${limit}`)
-      .then((r) => r.json())
-      .then((d) => {
-        setRecords(d.records || []);
-        setTotal(d.total || 0);
-      });
+    const load = () =>
+      fetch(`/api/admin/posture?page=${page}&limit=${limit}`)
+        .then((r) => r.json())
+        .then((d) => {
+          setRecords(d.records || []);
+          setTotal(d.total || 0);
+        });
+    load();
+    const id = setInterval(load, 30000);
+    return () => clearInterval(id);
   }, [page]);
 
   const totalPages = Math.ceil(total / limit);

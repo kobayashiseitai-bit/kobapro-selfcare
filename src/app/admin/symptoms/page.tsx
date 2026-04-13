@@ -34,9 +34,13 @@ export default function SymptomsPage() {
   const [data, setData] = useState<SymptomData | null>(null);
 
   useEffect(() => {
-    fetch("/api/admin/symptoms")
-      .then((r) => r.json())
-      .then(setData);
+    const load = () =>
+      fetch("/api/admin/symptoms")
+        .then((r) => r.json())
+        .then(setData);
+    load();
+    const id = setInterval(load, 30000);
+    return () => clearInterval(id);
   }, []);
 
   if (!data) {

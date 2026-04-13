@@ -17,12 +17,16 @@ export default function UsersPage() {
   const limit = 20;
 
   useEffect(() => {
-    fetch(`/api/admin/users?page=${page}&limit=${limit}`)
-      .then((r) => r.json())
-      .then((d) => {
-        setUsers(d.users || []);
-        setTotal(d.total || 0);
-      });
+    const load = () =>
+      fetch(`/api/admin/users?page=${page}&limit=${limit}`)
+        .then((r) => r.json())
+        .then((d) => {
+          setUsers(d.users || []);
+          setTotal(d.total || 0);
+        });
+    load();
+    const id = setInterval(load, 30000);
+    return () => clearInterval(id);
   }, [page]);
 
   const totalPages = Math.ceil(total / limit);

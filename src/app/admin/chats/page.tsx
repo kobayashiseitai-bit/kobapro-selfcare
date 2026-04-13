@@ -39,14 +39,19 @@ export default function ChatsPage() {
   }, []);
 
   useEffect(() => {
-    const params = new URLSearchParams({ page: String(page), limit: String(limit) });
-    if (userId) params.set("userId", userId);
-    fetch(`/api/admin/chats?${params}`)
-      .then((r) => r.json())
-      .then((d) => {
-        setChats(d.chats || []);
-        setTotal(d.total || 0);
-      });
+    const load = () => {
+      const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+      if (userId) params.set("userId", userId);
+      fetch(`/api/admin/chats?${params}`)
+        .then((r) => r.json())
+        .then((d) => {
+          setChats(d.chats || []);
+          setTotal(d.total || 0);
+        });
+    };
+    load();
+    const id = setInterval(load, 30000);
+    return () => clearInterval(id);
   }, [page, userId]);
 
   const totalPages = Math.ceil(total / limit);

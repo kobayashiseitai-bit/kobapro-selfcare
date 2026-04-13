@@ -19,9 +19,13 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
 
   useEffect(() => {
-    fetch("/api/admin/stats")
-      .then((r) => r.json())
-      .then(setStats);
+    const load = () =>
+      fetch("/api/admin/stats")
+        .then((r) => r.json())
+        .then(setStats);
+    load();
+    const id = setInterval(load, 30000);
+    return () => clearInterval(id);
   }, []);
 
   return (
