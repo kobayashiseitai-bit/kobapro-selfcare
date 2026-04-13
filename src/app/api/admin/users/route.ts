@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
 
   const { data: users, count } = await supabase
     .from("users")
-    .select("id, device_id, name, prefecture, age, created_at", { count: "exact" })
+    .select("id, device_id, name, prefecture, age, pain_areas, concerns, created_at", { count: "exact" })
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 

@@ -12,7 +12,7 @@ function getSupabase() {
 
 export async function POST(req: NextRequest) {
   try {
-    const { deviceId, name, prefecture, age } = await req.json();
+    const { deviceId, name, prefecture, age, painAreas, concerns } = await req.json();
 
     if (!deviceId || !name) {
       return NextResponse.json({ error: "deviceId and name required" }, { status: 400 });
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
       // 既存ユーザーを更新
       await supabase
         .from("users")
-        .update({ name, prefecture: prefecture || "", age: age || null })
+        .update({ name, prefecture: prefecture || "", age: age || null, pain_areas: painAreas || "", concerns: concerns || "" })
         .eq("id", existing[0].id);
 
       return NextResponse.json({ ok: true, userId: existing[0].id });
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
       // 新規作成
       const { data: newUser, error } = await supabase
         .from("users")
-        .insert({ device_id: deviceId, name, prefecture: prefecture || "", age: age || null })
+        .insert({ device_id: deviceId, name, prefecture: prefecture || "", age: age || null, pain_areas: painAreas || "", concerns: concerns || "" })
         .select("id")
         .single();
 

@@ -131,12 +131,31 @@ export default function Home() {
 }
 
 // ==================== 初回登録画面 ====================
+const PAIN_AREAS = [
+  { id: "neck", label: "首" },
+  { id: "shoulder", label: "肩" },
+  { id: "back", label: "腰" },
+  { id: "head", label: "頭" },
+  { id: "knee", label: "膝" },
+  { id: "eye", label: "目" },
+  { id: "arm", label: "腕・手" },
+  { id: "leg", label: "脚・足" },
+];
+
 function RegisterScreen({ onComplete }: { onComplete: () => void }) {
   const [name, setName] = useState("");
   const [prefecture, setPrefecture] = useState("");
   const [age, setAge] = useState("");
+  const [painAreas, setPainAreas] = useState<string[]>([]);
+  const [concerns, setConcerns] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  const togglePain = (id: string) => {
+    setPainAreas((prev) =>
+      prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -152,6 +171,8 @@ function RegisterScreen({ onComplete }: { onComplete: () => void }) {
           name: name.trim(),
           prefecture,
           age: age ? parseInt(age) : null,
+          painAreas: painAreas.join(","),
+          concerns: concerns.trim(),
         }),
       });
       const data = await res.json();
@@ -215,6 +236,37 @@ function RegisterScreen({ onComplete }: { onComplete: () => void }) {
                 min="1"
                 max="120"
                 className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-blue-500 text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">痛みのある部位（複数選択可）</label>
+              <div className="grid grid-cols-4 gap-2">
+                {PAIN_AREAS.map((area) => (
+                  <button
+                    key={area.id}
+                    type="button"
+                    onClick={() => togglePain(area.id)}
+                    className={`py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+                      painAreas.includes(area.id)
+                        ? "bg-blue-600 text-white border-2 border-blue-400"
+                        : "bg-gray-800 text-gray-400 border-2 border-gray-700"
+                    }`}
+                  >
+                    {area.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">お悩み・気になること</label>
+              <textarea
+                value={concerns}
+                onChange={(e) => setConcerns(e.target.value)}
+                placeholder="例: デスクワークで肩こりがひどい、朝起きると腰が痛い など"
+                rows={3}
+                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-blue-500 text-sm resize-none"
               />
             </div>
           </div>

@@ -7,6 +7,8 @@ interface User {
   name: string;
   prefecture: string;
   age: number | null;
+  pain_areas: string;
+  concerns: string;
   created_at: string;
   chatCount: number;
   postureCount: number;
@@ -84,11 +86,21 @@ export default function UsersPage() {
                   <p className="text-gray-500 text-xs font-mono">{u.device_id.slice(0, 12)}...</p>
                 </button>
               )}
-              <div className="flex items-center gap-3 mt-1 ml-2">
+              <div className="flex items-center gap-3 mt-1 ml-2 flex-wrap">
                 {u.prefecture && <span className="text-xs text-gray-400">{u.prefecture}</span>}
                 {u.age && <span className="text-xs text-gray-400">{u.age}歳</span>}
                 <span className="text-xs text-gray-500">{new Date(u.created_at).toLocaleDateString("ja-JP")} 登録</span>
               </div>
+              {u.pain_areas && (
+                <div className="flex gap-1 mt-1 ml-2 flex-wrap">
+                  {u.pain_areas.split(",").map((p) => (
+                    <span key={p} className="px-2 py-0.5 bg-red-600/20 text-red-300 rounded text-xs">{p}</span>
+                  ))}
+                </div>
+              )}
+              {u.concerns && (
+                <p className="text-xs text-gray-400 mt-1 ml-2">💬 {u.concerns}</p>
+              )}
             </div>
             <div className="flex gap-4 text-sm">
               <div className="text-center">
