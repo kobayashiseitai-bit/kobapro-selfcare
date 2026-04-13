@@ -1,38 +1,14 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
-// Supabase client - initialized per request
+export const dynamic = "force-dynamic";
+
 function getSupabase() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL || "",
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
   );
 }
-
-async function getOrCreateUser(deviceId: string): Promise<string> {
-  const supabase = getSupabase();
-  const { data, error } = await supabase
-    .from("users")
-    .select("id")
-    .eq("device_id", deviceId)
-    .single();
-
-  if (data) return data.id;
-
-  const { data: newUser, error: insertError } = await supabase
-    .from("users")
-    .insert({ device_id: deviceId })
-    .select("id")
-    .single();
-
-  if (insertError) {
-    console.error("User insert error:", insertError, "select error:", error);
-  }
-
-  return newUser?.id || "";
-}
-
-export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
@@ -44,17 +20,30 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "deviceId required" }, { status: 400 });
     }
 
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    if (!url || !key) {
-      return NextResponse.json({ error: "env vars missing", hasUrl: !!url, hasKey: !!key }, { status: 500 });
+    // ユーザーを検索
+    const { data: existingUsers } = await supabase
+      .from("users")
+      .select("id")
+      .eq("device_id", deviceId);
+
+    let userId: string;
+
+    if (existingUsers && existingUsers.length > 0) {
+      userId = existingUsers[0].id;
+    } else {
+      // 新規作成
+      const { data: newUsers, error: insertErr } = await supabase
+        .from("users")
+        .insert({ device_id: deviceId })
+        .select("id");
+
+      if (insertErr || !newUsers || newUsers.length === 0) {
+        return NextResponse.json({ error: "user creation failed", detail: insertErr?.message }, { status: 500 });
+      }
+      userId = newUsers[0].id;
     }
 
-    const userId = await getOrCreateUser(deviceId);
-    if (!userId) {
-      return NextResponse.json({ error: "user creation failed" }, { status: 500 });
-    }
-
+    // データ保存
     if (type === "chat") {
       await supabase.from("chat_logs").insert({
         user_id: userId,
@@ -76,9 +65,9 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, userId });
   } catch (e) {
-    console.error("Save API error:", e);
-    return NextResponse.json({ error: "save failed" }, { status: 500 });
+    const msg = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ error: "save failed", detail: msg }, { status: 500 });
   }
 }
