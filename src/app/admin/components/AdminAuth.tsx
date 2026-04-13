@@ -8,7 +8,7 @@ export default function AdminAuth({ children }: { children: ReactNode }) {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch("/api/admin/auth")
+    fetch("/api/admin/auth", { credentials: "include" })
       .then((r) => r.json())
       .then((d) => {
         if (d.authenticated) setAuthenticated(true);
@@ -23,6 +23,7 @@ export default function AdminAuth({ children }: { children: ReactNode }) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ password }),
+      credentials: "include",
     });
     if (res.ok) {
       setAuthenticated(true);

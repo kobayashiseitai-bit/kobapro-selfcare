@@ -35,7 +35,7 @@ export default function SymptomsPage() {
 
   useEffect(() => {
     const load = () =>
-      fetch("/api/admin/symptoms")
+      fetch("/api/admin/symptoms", { credentials: "include" })
         .then((r) => r.json())
         .then(setData);
     load();

@@ -18,7 +18,7 @@ export default function UsersPage() {
 
   useEffect(() => {
     const load = () =>
-      fetch(`/api/admin/users?page=${page}&limit=${limit}`)
+      fetch(`/api/admin/users?page=${page}&limit=${limit}`, { credentials: "include" })
         .then((r) => r.json())
         .then((d) => {
           setUsers(d.users || []);

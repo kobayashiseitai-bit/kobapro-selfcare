@@ -33,7 +33,7 @@ export default function ChatsPage() {
   const limit = 50;
 
   useEffect(() => {
-    fetch("/api/admin/users?limit=100")
+    fetch("/api/admin/users?limit=100", { credentials: "include" })
       .then((r) => r.json())
       .then((d) => setUsers(d.users || []));
   }, []);
@@ -42,7 +42,7 @@ export default function ChatsPage() {
     const load = () => {
       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
       if (userId) params.set("userId", userId);
-      fetch(`/api/admin/chats?${params}`)
+      fetch(`/api/admin/chats?${params}`, { credentials: "include" })
         .then((r) => r.json())
         .then((d) => {
           setChats(d.chats || []);

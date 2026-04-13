@@ -20,7 +20,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     const load = () =>
-      fetch("/api/admin/stats")
+      fetch("/api/admin/stats", { credentials: "include" })
         .then((r) => r.json())
         .then(setStats);
     load();

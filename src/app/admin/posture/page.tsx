@@ -32,7 +32,7 @@ export default function PosturePage() {
 
   useEffect(() => {
     const load = () =>
-      fetch(`/api/admin/posture?page=${page}&limit=${limit}`)
+      fetch(`/api/admin/posture?page=${page}&limit=${limit}`, { credentials: "include" })
         .then((r) => r.json())
         .then((d) => {
           setRecords(d.records || []);
