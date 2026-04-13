@@ -437,22 +437,18 @@ function SelfcareScreen({ onNavigate, initialSymptomId }: { onNavigate: (s: Scre
 }
 
 // ==================== 音声ガイド ====================
-// テキストに対応する音声ファイルのマッピング
-const VOICE_MAP: Record<string, string> = {
-  "カメラの前に立ってください。全身が映る位置まで下がってください。": "/voice-stand.mp3",
-  "カメラの前に立ってください": "/voice-stand.mp3",
-  "もう少し離れてください。足元が映るように": "/voice-back.mp3",
-  "もう少し離れてください": "/voice-back.mp3",
-  "もう少し近づいてください": "/voice-closer.mp3",
-  "もう少し右に移動してください": "/voice-right.mp3",
-  "もう少し左に移動してください": "/voice-left.mp3",
-  "そのままの位置でストップ。撮影します。3": "/voice-stop.mp3",
-  "そのままの位置でストップ！": "/voice-stop.mp3",
-  "3": "/voice-3.mp3",
-  "2": "/voice-2.mp3",
-  "1": "/voice-1.mp3",
-  "撮影しました": "/voice-done.mp3",
-};
+// テキストのキーワードに対応する音声ファイル
+const VOICE_KEYWORDS: { keyword: string; file: string }[] = [
+  { keyword: "全身が映る", file: "/voice-stand.mp3" },
+  { keyword: "カメラの前に立って", file: "/voice-stand.mp3" },
+  { keyword: "足元が映る", file: "/voice-back.mp3" },
+  { keyword: "離れて", file: "/voice-back.mp3" },
+  { keyword: "近づいて", file: "/voice-closer.mp3" },
+  { keyword: "右に移動", file: "/voice-right.mp3" },
+  { keyword: "左に移動", file: "/voice-left.mp3" },
+  { keyword: "ストップ", file: "/voice-stop.mp3" },
+  { keyword: "撮影しました", file: "/voice-done.mp3" },
+];
 
 let currentAudio: HTMLAudioElement | null = null;
 
@@ -464,8 +460,19 @@ function speak(text: string) {
       currentAudio.pause();
       currentAudio = null;
     }
-    // テキストに対応する音声ファイルを探す
-    const file = VOICE_MAP[text] || Object.entries(VOICE_MAP).find(([key]) => text.includes(key))?.[1];
+
+    let file: string | null = null;
+
+    // カウントダウンの数字
+    if (text === "3") file = "/voice-3.mp3";
+    else if (text === "2") file = "/voice-2.mp3";
+    else if (text === "1") file = "/voice-1.mp3";
+    else {
+      // キーワードマッチ
+      const match = VOICE_KEYWORDS.find((v) => text.includes(v.keyword));
+      if (match) file = match.file;
+    }
+
     if (file) {
       currentAudio = new Audio(file);
       currentAudio.play().catch(() => {});
