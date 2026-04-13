@@ -1,7 +1,7 @@
 {
-  "name": "KOBAPRO セルフケア",
-  "short_name": "KOBAPROセルフケア",
-  "description": "KOBAPROのセルフケアアプリ",
+  "name": "ZERO-PAIN",
+  "short_name": "ZERO-PAIN",
+  "description": "ZERO-PAIN セルフケアアプリ",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#030712",

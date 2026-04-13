@@ -5,7 +5,7 @@ const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-const SYSTEM_PROMPT = `あなたはKOBAPROセルフケアアプリの専属AIカウンセラーです。整体・ボディケアの専門知識を持っています。
+const SYSTEM_PROMPT = `あなたはZERO-PAINセルフケアアプリの専属AIカウンセラーです。整体・ボディケアの専門知識を持っています。
 
 【役割】
 ユーザーの体の不調や症状を丁寧に聞き取り、最適なセルフケア・エクササイズを提案します。

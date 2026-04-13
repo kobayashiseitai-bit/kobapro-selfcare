@@ -126,7 +126,7 @@ function HomeScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Screen) =
     <main className="fixed inset-0 bg-gray-950 text-white flex flex-col overflow-y-auto">
       {/* ヘッダー */}
       <header className="sticky top-0 z-10 bg-gray-950/95 backdrop-blur-sm border-b border-gray-800/50 px-4 py-3">
-        <h1 className="text-lg font-bold text-center">KOBAPRO セルフケア</h1>
+        <h1 className="text-lg font-bold text-center">ZERO-PAIN</h1>
       </header>
 
       <div className="flex-1 px-4 py-5 space-y-5 max-w-md w-full mx-auto">
@@ -139,7 +139,7 @@ function HomeScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Screen) =
         >
           <span className="text-3xl drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)]">🤖</span>
           <div>
-            <p className="text-base font-bold drop-shadow-sm">KOBAPRO AIに相談する</p>
+            <p className="text-base font-bold drop-shadow-sm">ZERO-PAIN AIに相談する</p>
             <p className="text-xs font-normal opacity-80">症状を聞き取り、最適なケアを提案します</p>
           </div>
         </button>
@@ -171,7 +171,7 @@ function HomeScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Screen) =
           >
             <span className="text-4xl drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)]">🧍</span>
             <div className="text-left">
-              <p className="text-base font-bold drop-shadow-sm">KOBAPRO AIで姿勢スキャン</p>
+              <p className="text-base font-bold drop-shadow-sm">ZERO-PAIN AIで姿勢スキャン</p>
               <p className="text-xs font-normal opacity-80">スマホを置いて全身撮影 → 歪みを自動診断</p>
             </div>
           </button>
@@ -282,7 +282,7 @@ function AiCounselScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Scre
     <main className="fixed inset-0 bg-gray-950 text-white flex flex-col">
       <header className="sticky top-0 z-10 bg-gray-950/95 backdrop-blur-sm border-b border-gray-800/50 px-4 py-3 flex items-center gap-3">
         <button onClick={() => onNavigate("home")} className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm">← 戻る</button>
-        <h1 className="text-base font-bold">KOBAPRO AIカウンセリング</h1>
+        <h1 className="text-base font-bold">ZERO-PAIN AIカウンセリング</h1>
       </header>
 
       {/* チャットエリア */}
@@ -294,7 +294,7 @@ function AiCounselScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Scre
                 ? "bg-blue-600 rounded-br-md"
                 : "bg-gray-800 rounded-bl-md"
             }`}>
-              {msg.role === "assistant" && <p className="text-xs text-gray-400 mb-1">🤖 KOBAPRO AI</p>}
+              {msg.role === "assistant" && <p className="text-xs text-gray-400 mb-1">🤖 ZERO-PAIN AI</p>}
               <p className="whitespace-pre-wrap">{msg.content}</p>
             </div>
           </div>
@@ -302,7 +302,7 @@ function AiCounselScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Scre
         {loading && (
           <div className="flex justify-start">
             <div className="bg-gray-800 px-4 py-3 rounded-2xl rounded-bl-md">
-              <p className="text-xs text-gray-400 mb-1">🤖 KOBAPRO AI</p>
+              <p className="text-xs text-gray-400 mb-1">🤖 ZERO-PAIN AI</p>
               <p className="text-sm animate-pulse">考え中...</p>
             </div>
           </div>

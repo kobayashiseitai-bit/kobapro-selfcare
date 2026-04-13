@@ -21,8 +21,8 @@ export const viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "KOBAPRO セルフケア",
-  description: "KOBAPROのセルフケアアプリ",
+  title: "ZERO-PAIN",
+  description: "ZERO-PAIN セルフケアアプリ",
   icons: {
     apple: [
       { url: "/app-icon-180.png?v=3", sizes: "180x180", type: "image/png" },
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "KOBAPRO セルフケア",
+    title: "ZERO-PAIN",
   },
   other: {
     "mobile-web-app-capable": "yes",
