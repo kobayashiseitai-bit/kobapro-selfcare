@@ -85,47 +85,39 @@ export default function ChatsPage() {
         </select>
       </div>
 
-      {debugMsg && <p className="text-xs text-yellow-400 mb-2 font-mono bg-gray-900 p-2 rounded">{debugMsg}</p>}
-      <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-800 text-gray-400">
-              <th className="text-left px-4 py-3 w-40">日時</th>
-              <th className="text-left px-4 py-3 w-20">役割</th>
-              <th className="text-left px-4 py-3">内容</th>
-              <th className="text-left px-4 py-3 w-24">推奨</th>
-            </tr>
-          </thead>
-          <tbody>
-            {chats.map((c) => (
-              <tr key={c.id} className="border-b border-gray-800/50 hover:bg-gray-800/30">
-                <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
-                  {new Date(c.created_at).toLocaleString("ja-JP")}
-                </td>
-                <td className="px-4 py-3">
-                  <span className={`px-2 py-0.5 rounded text-xs ${
-                    c.role === "user" ? "bg-blue-600/30 text-blue-300" : "bg-gray-700 text-gray-300"
-                  }`}>
-                    {c.role === "user" ? "ユーザー" : "AI"}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-white whitespace-pre-wrap">{c.content}</td>
-                <td className="px-4 py-3">
-                  {c.recommended_symptom && (
-                    <span className="px-2 py-0.5 bg-purple-600/30 text-purple-300 rounded text-xs">
-                      {SYMPTOM_LABELS[c.recommended_symptom] || c.recommended_symptom}
-                    </span>
-                  )}
-                </td>
-              </tr>
-            ))}
-            {chats.length === 0 && (
-              <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-gray-500">データがありません</td>
-              </tr>
+      <p className="text-xs text-yellow-400 mb-2 font-mono bg-gray-900 p-2 rounded">{debugMsg || "loading..."}</p>
+      <p className="text-green-400 mb-2">表示件数: {chats.length}件</p>
+      {chats.length > 0 && (
+        <p className="text-green-300 mb-4 text-xs bg-gray-800 p-2 rounded">
+          最新: {chats[0]?.role} - {chats[0]?.content?.slice(0, 50)}
+        </p>
+      )}
+
+      <div className="space-y-2">
+        {chats.map((c) => (
+          <div key={c.id} className="bg-gray-900 border border-gray-800 rounded-lg p-4">
+            <div className="flex items-center gap-3 mb-2">
+              <span className={`px-2 py-1 rounded text-xs font-bold ${
+                c.role === "user" ? "bg-blue-600 text-white" : "bg-gray-700 text-white"
+              }`}>
+                {c.role === "user" ? "ユーザー" : "AI"}
+              </span>
+              <span className="text-xs text-gray-400">
+                {new Date(c.created_at).toLocaleString("ja-JP")}
+              </span>
+              <span className="text-xs text-gray-600 font-mono">{c.user_id?.slice(0, 8)}</span>
+            </div>
+            <p className="text-white text-sm whitespace-pre-wrap">{c.content}</p>
+            {c.recommended_symptom && (
+              <span className="inline-block mt-2 px-2 py-0.5 bg-purple-600/30 text-purple-300 rounded text-xs">
+                推奨: {SYMPTOM_LABELS[c.recommended_symptom] || c.recommended_symptom}
+              </span>
             )}
-          </tbody>
-        </table>
+          </div>
+        ))}
+        {chats.length === 0 && (
+          <p className="text-gray-500 text-center py-8">データがありません</p>
+        )}
       </div>
 
       {totalPages > 1 && (
