@@ -11,7 +11,7 @@ function getSupabase() {
 
 async function getOrCreateUser(deviceId: string): Promise<string> {
   const supabase = getSupabase();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("users")
     .select("id")
     .eq("device_id", deviceId)
@@ -19,11 +19,15 @@ async function getOrCreateUser(deviceId: string): Promise<string> {
 
   if (data) return data.id;
 
-  const { data: newUser } = await supabase
+  const { data: newUser, error: insertError } = await supabase
     .from("users")
     .insert({ device_id: deviceId })
     .select("id")
     .single();
+
+  if (insertError) {
+    console.error("User insert error:", insertError, "select error:", error);
+  }
 
   return newUser?.id || "";
 }
@@ -38,6 +42,12 @@ export async function POST(req: NextRequest) {
 
     if (!deviceId) {
       return NextResponse.json({ error: "deviceId required" }, { status: 400 });
+    }
+
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!url || !key) {
+      return NextResponse.json({ error: "env vars missing", hasUrl: !!url, hasKey: !!key }, { status: 500 });
     }
 
     const userId = await getOrCreateUser(deviceId);
