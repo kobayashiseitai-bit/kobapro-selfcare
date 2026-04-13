@@ -450,41 +450,62 @@ const VOICE_KEYWORDS: { keyword: string; file: string }[] = [
   { keyword: "撮影しました", file: "/voice-done.mp3" },
 ];
 
-let currentAudio: HTMLAudioElement | null = null;
+// 全音声ファイルをプリロード
+const ALL_VOICE_FILES = [
+  "/voice-stand.mp3", "/voice-back.mp3", "/voice-closer.mp3",
+  "/voice-right.mp3", "/voice-left.mp3", "/voice-stop.mp3",
+  "/voice-5.mp3", "/voice-4.mp3", "/voice-3.mp3",
+  "/voice-2.mp3", "/voice-1.mp3", "/voice-done.mp3",
+];
+const audioCache: Record<string, HTMLAudioElement> = {};
+let audioUnlocked = false;
 let isSpeaking = false;
+
+// iOSオーディオのロック解除 + プリロード（ユーザータップ時に呼ぶ）
+function unlockAudio() {
+  if (audioUnlocked) return;
+  audioUnlocked = true;
+  ALL_VOICE_FILES.forEach((file) => {
+    const a = new Audio(file);
+    a.preload = "auto";
+    a.volume = 1;
+    // iOSでは一度playしないとロック解除されない
+    a.play().then(() => { a.pause(); a.currentTime = 0; }).catch(() => {});
+    audioCache[file] = a;
+  });
+}
 
 function speak(text: string, force = false) {
   try {
     if (typeof window === "undefined") return;
-    // 再生中は新しい音声を開始しない（forceの場合を除く）
     if (isSpeaking && !force) return;
-
-    // 前の音声を停止
-    if (currentAudio) {
-      currentAudio.pause();
-      currentAudio = null;
-    }
 
     let file: string | null = null;
 
-    // カウントダウンの数字
     if (text === "5") file = "/voice-5.mp3";
     else if (text === "4") file = "/voice-4.mp3";
     else if (text === "3") file = "/voice-3.mp3";
     else if (text === "2") file = "/voice-2.mp3";
     else if (text === "1") file = "/voice-1.mp3";
     else {
-      // キーワードマッチ
       const match = VOICE_KEYWORDS.find((v) => text.includes(v.keyword));
       if (match) file = match.file;
     }
 
     if (file) {
+      // 前の音声を停止
+      Object.values(audioCache).forEach((a) => { a.pause(); a.currentTime = 0; });
+
       isSpeaking = true;
-      currentAudio = new Audio(file);
-      currentAudio.onended = () => { isSpeaking = false; };
-      currentAudio.onerror = () => { isSpeaking = false; };
-      currentAudio.play().catch(() => { isSpeaking = false; });
+      let audio = audioCache[file];
+      if (!audio) {
+        audio = new Audio(file);
+        audioCache[file] = audio;
+      }
+      audio.currentTime = 0;
+      audio.onended = () => { isSpeaking = false; };
+      audio.onerror = () => { isSpeaking = false; };
+      audio.play().catch(() => { isSpeaking = false; });
     }
   } catch { isSpeaking = false; }
 }
@@ -628,6 +649,7 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
 
   // AIガイドモード開始
   const startGuide = useCallback(() => {
+    unlockAudio();
     setGuideMode(true);
     setGuideText("カメラの前に全身が映る位置に立ってください");
     speak("カメラの前に立ってください。全身が映る位置まで下がってください。");
@@ -764,6 +786,7 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
 
   // 手動撮影
   const manualCapture = useCallback(() => {
+    unlockAudio();
     const video = videoRef.current;
     const canvas = canvasRef.current;
     const landmarker = poseLandmarkerRef.current;
