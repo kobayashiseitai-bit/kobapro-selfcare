@@ -4,9 +4,6 @@ import { validateAdmin, getSupabase } from "../_helpers";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
-  if (!validateAdmin(req)) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
 
   const supabase = getSupabase();
   const url = new URL(req.url);

@@ -85,6 +85,7 @@ export default function ChatsPage() {
         </select>
       </div>
 
+      {debugMsg && <p className="text-xs text-yellow-400 mb-2 font-mono bg-gray-900 p-2 rounded">{debugMsg}</p>}
       <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
         <table className="w-full text-sm">
           <thead>
