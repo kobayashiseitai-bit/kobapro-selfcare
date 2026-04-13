@@ -51,3 +51,32 @@ img, video, canvas {
   -webkit-touch-callout: none;
   user-select: none;
 }
+
+/* 3Dボタン共通 */
+.btn-3d {
+  transform: translateY(0) perspective(800px) rotateX(2deg);
+  transition: all 0.15s ease;
+  border-top: 1px solid rgba(255,255,255,0.3);
+  border-bottom: 3px solid rgba(0,0,0,0.4);
+}
+.btn-3d:active {
+  transform: translateY(3px) perspective(800px) rotateX(0deg);
+  border-bottom-width: 1px;
+}
+
+/* 3Dカード（症状アイコン用） */
+.card-3d {
+  transform: perspective(600px) rotateX(2deg);
+  transition: all 0.15s ease;
+  box-shadow:
+    0 8px 24px rgba(0,0,0,0.6),
+    0 2px 4px rgba(0,0,0,0.4),
+    inset 0 1px 0 rgba(255,255,255,0.15),
+    inset 0 -2px 6px rgba(0,0,0,0.3);
+}
+.card-3d:active {
+  transform: perspective(600px) rotateX(0deg) translateY(4px);
+  box-shadow:
+    0 2px 8px rgba(0,0,0,0.5),
+    inset 0 1px 0 rgba(255,255,255,0.1);
+}
