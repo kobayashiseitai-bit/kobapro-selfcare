@@ -437,49 +437,40 @@ function SelfcareScreen({ onNavigate, initialSymptomId }: { onNavigate: (s: Scre
 }
 
 // ==================== 音声ガイド ====================
+// テキストに対応する音声ファイルのマッピング
+const VOICE_MAP: Record<string, string> = {
+  "カメラの前に立ってください。全身が映る位置まで下がってください。": "/voice-stand.mp3",
+  "カメラの前に立ってください": "/voice-stand.mp3",
+  "もう少し離れてください。足元が映るように": "/voice-back.mp3",
+  "もう少し離れてください": "/voice-back.mp3",
+  "もう少し近づいてください": "/voice-closer.mp3",
+  "もう少し右に移動してください": "/voice-right.mp3",
+  "もう少し左に移動してください": "/voice-left.mp3",
+  "そのままの位置でストップ。撮影します。3": "/voice-stop.mp3",
+  "そのままの位置でストップ！": "/voice-stop.mp3",
+  "3": "/voice-3.mp3",
+  "2": "/voice-2.mp3",
+  "1": "/voice-1.mp3",
+  "撮影しました": "/voice-done.mp3",
+};
+
+let currentAudio: HTMLAudioElement | null = null;
+
 function speak(text: string) {
   try {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = "ja-JP";
-    u.rate = 0.95;
-    u.pitch = 1.15;
-
-    // 日本語の女性音声を優先的に選択
-    const voices = window.speechSynthesis.getVoices();
-    const preferred = [
-      "O-Ren",        // iOS の自然な日本語女性
-      "Kyoko",        // iOS 日本語女性
-      "Otoya",        // fallback
-      "Google 日本語", // Android
-    ];
-    let selected: SpeechSynthesisVoice | null = null;
-
-    // 優先リストから探す
-    for (const name of preferred) {
-      const v = voices.find((v) => v.name.includes(name) && v.lang.startsWith("ja"));
-      if (v) { selected = v; break; }
+    if (typeof window === "undefined") return;
+    // 前の音声を停止
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio = null;
     }
-
-    // 見つからなければ日本語の女性っぽい声を探す（名前にfemale/女が含まれるもの）
-    if (!selected) {
-      selected = voices.find((v) => v.lang.startsWith("ja") && !v.name.includes("Male")) || null;
+    // テキストに対応する音声ファイルを探す
+    const file = VOICE_MAP[text] || Object.entries(VOICE_MAP).find(([key]) => text.includes(key))?.[1];
+    if (file) {
+      currentAudio = new Audio(file);
+      currentAudio.play().catch(() => {});
     }
-    // それでもなければ日本語ならなんでも
-    if (!selected) {
-      selected = voices.find((v) => v.lang.startsWith("ja")) || null;
-    }
-
-    if (selected) u.voice = selected;
-    window.speechSynthesis.speak(u);
   } catch { /* ignore */ }
-}
-
-// 音声リストの読み込みを事前にトリガー
-if (typeof window !== "undefined" && "speechSynthesis" in window) {
-  window.speechSynthesis.getVoices();
-  window.speechSynthesis.onvoiceschanged = () => { window.speechSynthesis.getVoices(); };
 }
 
 // 全身が映っているか判定
