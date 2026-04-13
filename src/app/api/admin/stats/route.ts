@@ -20,3 +20,4 @@ export async function GET(req: NextRequest) {
     totalSymptoms: symptoms.data?.length || 0,
   });
 }
+// force redeploy 1776123988
