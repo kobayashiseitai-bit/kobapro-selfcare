@@ -859,7 +859,7 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
     const imageData = canvas.toDataURL("image/jpeg", 0.7);
     addRecord(SELF_ID, landmarks, diagnosis, imageData);
     // Supabaseにも保存
-    saveToDb({ type: "posture", landmarks, diagnosis, imageUrl: imageData });
+    saveToDb({ type: "posture", landmarks, diagnosis, imageUrl: "" });
     setSaved(true);
   }, [landmarks, diagnosis]);
 
