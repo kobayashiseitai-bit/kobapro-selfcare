@@ -439,15 +439,47 @@ function SelfcareScreen({ onNavigate, initialSymptomId }: { onNavigate: (s: Scre
 // ==================== 音声ガイド ====================
 function speak(text: string) {
   try {
-    if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = "ja-JP";
-      u.rate = 0.9;
-      u.pitch = 1.1;
-      window.speechSynthesis.speak(u);
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "ja-JP";
+    u.rate = 0.95;
+    u.pitch = 1.15;
+
+    // 日本語の女性音声を優先的に選択
+    const voices = window.speechSynthesis.getVoices();
+    const preferred = [
+      "O-Ren",        // iOS の自然な日本語女性
+      "Kyoko",        // iOS 日本語女性
+      "Otoya",        // fallback
+      "Google 日本語", // Android
+    ];
+    let selected: SpeechSynthesisVoice | null = null;
+
+    // 優先リストから探す
+    for (const name of preferred) {
+      const v = voices.find((v) => v.name.includes(name) && v.lang.startsWith("ja"));
+      if (v) { selected = v; break; }
     }
+
+    // 見つからなければ日本語の女性っぽい声を探す（名前にfemale/女が含まれるもの）
+    if (!selected) {
+      selected = voices.find((v) => v.lang.startsWith("ja") && !v.name.includes("Male")) || null;
+    }
+    // それでもなければ日本語ならなんでも
+    if (!selected) {
+      selected = voices.find((v) => v.lang.startsWith("ja")) || null;
+    }
+
+    if (selected) u.voice = selected;
+    window.speechSynthesis.speak(u);
   } catch { /* ignore */ }
+}
+
+// 音声リストの読み込みを事前にトリガー
+if (typeof window !== "undefined" && "speechSynthesis" in window) {
+  window.speechSynthesis.getVoices();
+  window.speechSynthesis.onvoiceschanged = () => { window.speechSynthesis.getVoices(); };
 }
 
 // 全身が映っているか判定
