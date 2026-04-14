@@ -1,6 +1,8 @@
 import { Landmark, DiagnosisItem } from "./storage";
 
 const NOSE = 0;
+const LEFT_EAR = 7;
+const RIGHT_EAR = 8;
 const LEFT_SHOULDER = 11;
 const RIGHT_SHOULDER = 12;
 const LEFT_HIP = 23;
@@ -9,17 +11,22 @@ const LEFT_KNEE = 25;
 const RIGHT_KNEE = 26;
 const LEFT_ANKLE = 27;
 const RIGHT_ANKLE = 28;
-const LEFT_EAR = 7;
-const RIGHT_EAR = 8;
 
-// 部位別しきい値（統一しきい値より正確）
+// ===== 厳格化されたしきい値 =====
 const THRESHOLDS = {
-  shoulder: { good: 0.012, caution: 0.030 },  // 肩: 敏感
-  hip:      { good: 0.012, caution: 0.030 },  // 骨盤: 敏感
-  head:     { good: 0.018, caution: 0.040 },  // 頭: やや余裕
-  knee:     { good: 0.015, caution: 0.035 },  // 膝: 標準
-  balance:  { good: 0.012, caution: 0.028 },  // 重心: 敏感
-  forward:  { good: 0.02,  caution: 0.05  },  // 前傾: Z座標用
+  shoulder: { good: 0.008, caution: 0.020 },
+  hip:      { good: 0.008, caution: 0.020 },
+  head:     { good: 0.012, caution: 0.028 },
+  knee:     { good: 0.010, caution: 0.025 },
+  balance:  { good: 0.008, caution: 0.020 },
+};
+
+// 横向き用しきい値（角度ベース）
+const SIDE_THRESHOLDS = {
+  kyphosis:      { good: 15, caution: 25 },    // 猫背（度）
+  roundShoulder: { good: 0.02, caution: 0.05 }, // 巻き肩
+  pelvicTilt:    { good: 10, caution: 20 },      // 骨盤後傾（度）
+  straightNeck:  { good: 0.02, caution: 0.04 },  // ストレートネック
 };
 
 function getLevel(diff: number, threshold: { good: number; caution: number }): "good" | "caution" | "bad" {
@@ -31,14 +38,12 @@ function getLevel(diff: number, threshold: { good: number; caution: number }): "
 
 function diffToMessage(diff: number, threshold: { good: number }, leftLabel: string, rightLabel: string): string {
   if (Math.abs(diff) <= threshold.good) return "左右バランス良好です";
-  const direction = diff > 0 ? rightLabel : leftLabel;
-  return `${direction}が下がっています`;
+  return diff > 0 ? `${rightLabel}が下がっています` : `${leftLabel}が下がっています`;
 }
 
 function tiltToMessage(diff: number, threshold: { good: number }, label: string): string {
   if (Math.abs(diff) <= threshold.good) return `${label}は正常です`;
-  const direction = diff > 0 ? "右" : "左";
-  return `${label}が${direction}に傾いています`;
+  return `${label}が${diff > 0 ? "右" : "左"}に傾いています`;
 }
 
 function diffToDegree(diff: number): number {
@@ -51,9 +56,7 @@ let landmarkBuffer: Landmark[][] = [];
 
 export function addLandmarkFrame(landmarks: Landmark[]): void {
   landmarkBuffer.push(landmarks.map(l => ({ ...l })));
-  if (landmarkBuffer.length > FRAME_BUFFER_SIZE) {
-    landmarkBuffer.shift();
-  }
+  if (landmarkBuffer.length > FRAME_BUFFER_SIZE) landmarkBuffer.shift();
 }
 
 export function clearLandmarkBuffer(): void {
@@ -62,36 +65,25 @@ export function clearLandmarkBuffer(): void {
 
 function getAveragedLandmarks(): Landmark[] | null {
   if (landmarkBuffer.length < 3) return null;
-  const numLandmarks = landmarkBuffer[0].length;
+  const numLm = landmarkBuffer[0].length;
   const averaged: Landmark[] = [];
-  for (let i = 0; i < numLandmarks; i++) {
-    let sumX = 0, sumY = 0, sumZ = 0, sumVis = 0;
-    const count = landmarkBuffer.length;
+  for (let i = 0; i < numLm; i++) {
+    let sX = 0, sY = 0, sZ = 0, sV = 0;
+    const c = landmarkBuffer.length;
     for (const frame of landmarkBuffer) {
-      if (i < frame.length) {
-        sumX += frame[i].x;
-        sumY += frame[i].y;
-        sumZ += frame[i].z || 0;
-        sumVis += frame[i].visibility || 0;
-      }
+      if (i < frame.length) { sX += frame[i].x; sY += frame[i].y; sZ += frame[i].z || 0; sV += frame[i].visibility || 0; }
     }
-    averaged.push({
-      x: sumX / count,
-      y: sumY / count,
-      z: sumZ / count,
-      visibility: sumVis / count,
-    });
+    averaged.push({ x: sX / c, y: sY / c, z: sZ / c, visibility: sV / c });
   }
   return averaged;
 }
 
-// ===== アドバイス生成 =====
+// ===== アドバイス =====
 function shoulderAdvice(level: "good" | "caution" | "bad", diff: number): string {
   if (level === "good") return "肩のバランスが取れています。この状態をキープしましょう。";
-  const side = diff > 0 ? "右" : "左";
-  const opposite = diff > 0 ? "左" : "右";
-  if (level === "caution") return `${side}肩がやや下がっています。${opposite}側にカバンを持つ癖がないか確認してみましょう。`;
-  return `${side}肩が大きく下がっています。僧帽筋のストレッチや、${opposite}側の肩甲骨を意識したエクササイズがおすすめです。`;
+  const side = diff > 0 ? "右" : "左"; const opp = diff > 0 ? "左" : "右";
+  if (level === "caution") return `${side}肩がやや下がっています。${opp}側にカバンを持つ癖がないか確認してみましょう。`;
+  return `${side}肩が大きく下がっています。僧帽筋のストレッチや、${opp}側の肩甲骨を意識したエクササイズがおすすめです。`;
 }
 
 function hipAdvice(level: "good" | "caution" | "bad", diff: number): string {
@@ -121,100 +113,149 @@ function balanceAdvice(level: "good" | "caution" | "bad", diff: number): string 
   return `重心の偏りが大きいです。体幹トレーニング（プランク等）で体の軸を安定させましょう。`;
 }
 
-function forwardAdvice(level: "good" | "caution" | "bad"): string {
-  if (level === "good") return "前後バランスが良好です。正しい姿勢が保てています。";
-  if (level === "caution") return "やや前傾姿勢（猫背）気味です。胸を張り、肩を後ろに引くことを意識しましょう。";
-  return "前傾姿勢（猫背）が目立ちます。背筋を伸ばすストレッチや、胸椎の可動性を高めるエクササイズをおすすめします。";
-}
-
-// ===== メイン解析関数 =====
-export function analyzePosture(landmarks: Landmark[]): DiagnosisItem[] {
+// ===== 正面撮影の解析（5項目） =====
+export function analyzeFrontPosture(landmarks: Landmark[]): DiagnosisItem[] {
   if (landmarks.length < 33) return [];
-
-  // フレーム平均化されたランドマークを使用（あれば）
   const lm = getAveragedLandmarks() || landmarks;
   const results: DiagnosisItem[] = [];
 
-  // 1. 肩の傾き
   const shoulderDiff = lm[LEFT_SHOULDER].y - lm[RIGHT_SHOULDER].y;
   const sLevel = getLevel(shoulderDiff, THRESHOLDS.shoulder);
   results.push({
-    label: "肩の傾き",
-    value: diffToDegree(shoulderDiff),
-    unit: "°",
-    level: sLevel,
+    label: "肩の傾き", value: diffToDegree(shoulderDiff), unit: "°", level: sLevel,
     message: diffToMessage(shoulderDiff, THRESHOLDS.shoulder, "左肩", "右肩"),
     advice: shoulderAdvice(sLevel, shoulderDiff),
   });
 
-  // 2. 骨盤の傾き
   const hipDiff = lm[LEFT_HIP].y - lm[RIGHT_HIP].y;
   const hLevel = getLevel(hipDiff, THRESHOLDS.hip);
   results.push({
-    label: "骨盤の傾き",
-    value: diffToDegree(hipDiff),
-    unit: "°",
-    level: hLevel,
+    label: "骨盤の傾き", value: diffToDegree(hipDiff), unit: "°", level: hLevel,
     message: diffToMessage(hipDiff, THRESHOLDS.hip, "左腰", "右腰"),
     advice: hipAdvice(hLevel, hipDiff),
   });
 
-  // 3. 頭の傾き
   const shoulderCenterX = (lm[LEFT_SHOULDER].x + lm[RIGHT_SHOULDER].x) / 2;
   const headTilt = lm[NOSE].x - shoulderCenterX;
   const headLevel = getLevel(headTilt, THRESHOLDS.head);
   results.push({
-    label: "頭の傾き",
-    value: diffToDegree(headTilt),
-    unit: "°",
-    level: headLevel,
+    label: "頭の傾き", value: diffToDegree(headTilt), unit: "°", level: headLevel,
     message: tiltToMessage(headTilt, THRESHOLDS.head, "頭"),
     advice: headAdvice(headLevel, headTilt),
   });
 
-  // 4. 膝の高さの差
   const kneeDiff = lm[LEFT_KNEE].y - lm[RIGHT_KNEE].y;
   const kLevel = getLevel(kneeDiff, THRESHOLDS.knee);
   results.push({
-    label: "膝の高さの差",
-    value: diffToDegree(kneeDiff),
-    unit: "°",
-    level: kLevel,
+    label: "膝の高さの差", value: diffToDegree(kneeDiff), unit: "°", level: kLevel,
     message: diffToMessage(kneeDiff, THRESHOLDS.knee, "左膝", "右膝"),
     advice: kneeAdvice(kLevel),
   });
 
-  // 5. 重心バランス
   const hipCenterX = (lm[LEFT_HIP].x + lm[RIGHT_HIP].x) / 2;
   const balanceDiff = shoulderCenterX - hipCenterX;
   const bLevel = getLevel(balanceDiff, THRESHOLDS.balance);
   results.push({
-    label: "重心バランス",
-    value: diffToDegree(balanceDiff),
-    unit: "°",
-    level: bLevel,
+    label: "重心バランス", value: diffToDegree(balanceDiff), unit: "°", level: bLevel,
     message: tiltToMessage(balanceDiff, THRESHOLDS.balance, "重心"),
     advice: balanceAdvice(bLevel, balanceDiff),
-  });
-
-  // 6. 前傾姿勢（猫背）検出 — Z座標活用
-  const noseZ = lm[NOSE].z || 0;
-  const shoulderCenterZ = ((lm[LEFT_SHOULDER].z || 0) + (lm[RIGHT_SHOULDER].z || 0)) / 2;
-  const forwardLean = noseZ - shoulderCenterZ;
-  const fLevel = getLevel(forwardLean, THRESHOLDS.forward);
-  results.push({
-    label: "前傾姿勢（猫背）",
-    value: Math.round(Math.abs(forwardLean) * 100) / 10,
-    unit: "cm",
-    level: fLevel,
-    message: fLevel === "good" ? "前後バランス良好です" : "前傾（猫背）傾向があります",
-    advice: forwardAdvice(fLevel),
   });
 
   return results;
 }
 
-// ===== 描画関数 =====
+// ===== 横向き撮影の解析（4項目） =====
+export function analyzeSidePosture(landmarks: Landmark[]): DiagnosisItem[] {
+  if (landmarks.length < 33) return [];
+  const lm = getAveragedLandmarks() || landmarks;
+  const results: DiagnosisItem[] = [];
+
+  // 横向き: X座標が前後方向、Y座標が上下方向になる
+  const earX = ((lm[LEFT_EAR].x || 0) + (lm[RIGHT_EAR].x || 0)) / 2;
+  const earY = ((lm[LEFT_EAR].y || 0) + (lm[RIGHT_EAR].y || 0)) / 2;
+  const shoulderX = (lm[LEFT_SHOULDER].x + lm[RIGHT_SHOULDER].x) / 2;
+  const shoulderY = (lm[LEFT_SHOULDER].y + lm[RIGHT_SHOULDER].y) / 2;
+  const hipX = (lm[LEFT_HIP].x + lm[RIGHT_HIP].x) / 2;
+  const hipY = (lm[LEFT_HIP].y + lm[RIGHT_HIP].y) / 2;
+  const kneeX = (lm[LEFT_KNEE].x + lm[RIGHT_KNEE].x) / 2;
+  const kneeY = (lm[LEFT_KNEE].y + lm[RIGHT_KNEE].y) / 2;
+
+  // 1. 猫背角度: 耳-肩-腰のライン角度
+  const earShoulderAngle = Math.atan2(shoulderY - earY, shoulderX - earX) * (180 / Math.PI);
+  const shoulderHipAngle = Math.atan2(hipY - shoulderY, hipX - shoulderX) * (180 / Math.PI);
+  const kyphosisAngle = Math.abs(earShoulderAngle - shoulderHipAngle);
+  const kLevel = getLevel(kyphosisAngle, SIDE_THRESHOLDS.kyphosis);
+  results.push({
+    label: "猫背（背中の丸み）",
+    value: Math.round(kyphosisAngle * 10) / 10,
+    unit: "°",
+    level: kLevel,
+    message: kLevel === "good" ? "背筋がまっすぐです" : kLevel === "caution" ? "やや猫背傾向があります" : "猫背が目立ちます",
+    advice: kLevel === "good"
+      ? "背筋がしっかり伸びています。この姿勢を維持しましょう。"
+      : kLevel === "caution"
+      ? "背中がやや丸まっています。胸を張り、肩甲骨を寄せる意識をしましょう。"
+      : "背中の丸みが大きいです。胸椎ストレッチや、キャット&カウのエクササイズがおすすめです。",
+  });
+
+  // 2. 巻き肩: 肩が耳より前にあるか
+  const roundShoulderDiff = shoulderX - earX;
+  const rsLevel = getLevel(roundShoulderDiff, SIDE_THRESHOLDS.roundShoulder);
+  results.push({
+    label: "巻き肩",
+    value: Math.round(Math.abs(roundShoulderDiff) * 100) / 10,
+    unit: "cm",
+    level: rsLevel,
+    message: rsLevel === "good" ? "肩の位置は正常です" : rsLevel === "caution" ? "やや巻き肩の傾向があります" : "巻き肩が見られます",
+    advice: rsLevel === "good"
+      ? "肩が自然な位置にあります。良い姿勢です。"
+      : rsLevel === "caution"
+      ? "肩がやや前に出ています。肩を後ろに引き、胸を開く意識をしましょう。"
+      : "肩が前方に巻き込んでいます。大胸筋のストレッチと、背中の筋力強化がおすすめです。",
+  });
+
+  // 3. 骨盤後傾: 腰-膝のライン角度
+  const hipKneeAngle = Math.atan2(kneeY - hipY, kneeX - hipX) * (180 / Math.PI);
+  const pelvicTilt = Math.abs(hipKneeAngle - 90);
+  const pLevel = getLevel(pelvicTilt, SIDE_THRESHOLDS.pelvicTilt);
+  results.push({
+    label: "骨盤の前後傾き",
+    value: Math.round(pelvicTilt * 10) / 10,
+    unit: "°",
+    level: pLevel,
+    message: pLevel === "good" ? "骨盤の角度は正常です" : pLevel === "caution" ? "骨盤がやや傾いています" : "骨盤の傾きが大きいです",
+    advice: pLevel === "good"
+      ? "骨盤が正しい角度で保たれています。"
+      : pLevel === "caution"
+      ? "骨盤がやや後傾しています。腸腰筋のストレッチと、ハムストリングスの柔軟性を高めましょう。"
+      : "骨盤の後傾が目立ちます。骨盤前傾を意識したエクササイズや、座り姿勢の改善が必要です。",
+  });
+
+  // 4. ストレートネック: 耳と肩のX座標差（横から見て耳が前に出ているか）
+  const neckForward = earX - shoulderX;
+  const nLevel = getLevel(Math.abs(neckForward), SIDE_THRESHOLDS.straightNeck);
+  results.push({
+    label: "ストレートネック",
+    value: Math.round(Math.abs(neckForward) * 100) / 10,
+    unit: "cm",
+    level: nLevel,
+    message: nLevel === "good" ? "首の位置は正常です" : nLevel === "caution" ? "首がやや前に出ています" : "首が大きく前に出ています",
+    advice: nLevel === "good"
+      ? "首が肩の真上にあり、正しい位置です。"
+      : nLevel === "caution"
+      ? "首が前方に出がちです。スマホやPCの画面を目の高さに合わせましょう。"
+      : "ストレートネックの傾向が強いです。首の後屈ストレッチ、あご引き体操を毎日行いましょう。",
+  });
+
+  return results;
+}
+
+// ===== 後方互換: 正面のみ（旧API） =====
+export function analyzePosture(landmarks: Landmark[]): DiagnosisItem[] {
+  return analyzeFrontPosture(landmarks);
+}
+
+// ===== 描画 =====
 export function drawDiagnosisOverlay(
   ctx: CanvasRenderingContext2D,
   landmarks: Landmark[],
@@ -222,13 +263,9 @@ export function drawDiagnosisOverlay(
   canvasHeight: number
 ): void {
   if (landmarks.length < 33) return;
-
   const lm = getAveragedLandmarks() || landmarks;
 
-  const toPixel = (l: Landmark) => ({
-    x: l.x * canvasWidth,
-    y: l.y * canvasHeight,
-  });
+  const toPixel = (l: Landmark) => ({ x: l.x * canvasWidth, y: l.y * canvasHeight });
 
   const lShoulder = toPixel(lm[LEFT_SHOULDER]);
   const rShoulder = toPixel(lm[RIGHT_SHOULDER]);
@@ -249,16 +286,9 @@ export function drawDiagnosisOverlay(
   const hipDiff = Math.abs(lm[LEFT_HIP].y - lm[RIGHT_HIP].y);
   drawHorizontalLine(ctx, lHip, rHip, hipDiff, THRESHOLDS.hip, "骨盤");
 
-  const shoulderCenter = {
-    x: (lShoulder.x + rShoulder.x) / 2,
-    y: (lShoulder.y + rShoulder.y) / 2,
-  };
-  const hipCenter = {
-    x: (lHip.x + rHip.x) / 2,
-    y: (lHip.y + rHip.y) / 2,
-  };
+  const shoulderCenter = { x: (lShoulder.x + rShoulder.x) / 2, y: (lShoulder.y + rShoulder.y) / 2 };
+  const hipCenter = { x: (lHip.x + rHip.x) / 2, y: (lHip.y + rHip.y) / 2 };
 
-  // 中心線（点線）
   ctx.setLineDash([8, 6]);
   ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
   ctx.beginPath();
@@ -267,7 +297,6 @@ export function drawDiagnosisOverlay(
   ctx.stroke();
   ctx.setLineDash([]);
 
-  // 重心ライン
   const balanceDiff = Math.abs(shoulderCenter.x - hipCenter.x);
   const balanceLevel = getLevel(balanceDiff / canvasWidth, THRESHOLDS.balance);
   ctx.strokeStyle = levelColor(balanceLevel);
@@ -280,44 +309,79 @@ export function drawDiagnosisOverlay(
   ctx.stroke();
 }
 
-function drawHorizontalLine(
+// 横向き用の描画
+export function drawSideDiagnosisOverlay(
   ctx: CanvasRenderingContext2D,
-  left: { x: number; y: number },
-  right: { x: number; y: number },
-  diff: number,
-  threshold: { good: number; caution: number },
-  label: string
+  landmarks: Landmark[],
+  canvasWidth: number,
+  canvasHeight: number
 ): void {
-  const level = getLevel(diff, threshold);
-  const color = levelColor(level);
+  if (landmarks.length < 33) return;
+  const lm = getAveragedLandmarks() || landmarks;
+  const toPixel = (l: Landmark) => ({ x: l.x * canvasWidth, y: l.y * canvasHeight });
 
-  ctx.strokeStyle = color;
+  const ear = toPixel({ x: (lm[LEFT_EAR].x + lm[RIGHT_EAR].x) / 2, y: (lm[LEFT_EAR].y + lm[RIGHT_EAR].y) / 2, z: 0 });
+  const shoulder = toPixel({ x: (lm[LEFT_SHOULDER].x + lm[RIGHT_SHOULDER].x) / 2, y: (lm[LEFT_SHOULDER].y + lm[RIGHT_SHOULDER].y) / 2, z: 0 });
+  const hip = toPixel({ x: (lm[LEFT_HIP].x + lm[RIGHT_HIP].x) / 2, y: (lm[LEFT_HIP].y + lm[RIGHT_HIP].y) / 2, z: 0 });
+  const knee = toPixel({ x: (lm[LEFT_KNEE].x + lm[RIGHT_KNEE].x) / 2, y: (lm[LEFT_KNEE].y + lm[RIGHT_KNEE].y) / 2, z: 0 });
+  const ankle = toPixel({ x: (lm[LEFT_ANKLE].x + lm[RIGHT_ANKLE].x) / 2, y: (lm[LEFT_ANKLE].y + lm[RIGHT_ANKLE].y) / 2, z: 0 });
+
+  // 姿勢ライン（耳→肩→腰→膝→足首）
+  ctx.strokeStyle = "#60a5fa";
   ctx.lineWidth = 3;
   ctx.beginPath();
-  ctx.moveTo(left.x, left.y);
-  ctx.lineTo(right.x, right.y);
+  ctx.moveTo(ear.x, ear.y);
+  ctx.lineTo(shoulder.x, shoulder.y);
+  ctx.lineTo(hip.x, hip.y);
+  ctx.lineTo(knee.x, knee.y);
+  ctx.lineTo(ankle.x, ankle.y);
   ctx.stroke();
 
-  const avgY = (left.y + right.y) / 2;
-  ctx.setLineDash([5, 5]);
+  // 理想的な垂直線
+  ctx.setLineDash([8, 6]);
   ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(left.x - 20, avgY);
-  ctx.lineTo(right.x + 20, avgY);
+  ctx.moveTo(ankle.x, ear.y - 20);
+  ctx.lineTo(ankle.x, ankle.y + 10);
   ctx.stroke();
   ctx.setLineDash([]);
 
-  if (level !== "good") {
-    ctx.fillStyle = color;
-    ctx.fillText(label, right.x + 10, right.y);
-  }
+  // ポイントを描画
+  [ear, shoulder, hip, knee, ankle].forEach((p) => {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
+    ctx.fillStyle = "#60a5fa";
+    ctx.fill();
+    ctx.strokeStyle = "#fff";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  });
+
+  // ラベル
+  ctx.font = "bold 12px sans-serif";
+  ctx.fillStyle = "#fff";
+  ctx.fillText("耳", ear.x + 10, ear.y);
+  ctx.fillText("肩", shoulder.x + 10, shoulder.y);
+  ctx.fillText("腰", hip.x + 10, hip.y);
+  ctx.fillText("膝", knee.x + 10, knee.y);
+}
+
+function drawHorizontalLine(
+  ctx: CanvasRenderingContext2D, left: { x: number; y: number }, right: { x: number; y: number },
+  diff: number, threshold: { good: number; caution: number }, label: string
+): void {
+  const level = getLevel(diff, threshold);
+  const color = levelColor(level);
+  ctx.strokeStyle = color; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(left.x, left.y); ctx.lineTo(right.x, right.y); ctx.stroke();
+  const avgY = (left.y + right.y) / 2;
+  ctx.setLineDash([5, 5]); ctx.strokeStyle = "rgba(255, 255, 255, 0.3)"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(left.x - 20, avgY); ctx.lineTo(right.x + 20, avgY); ctx.stroke();
+  ctx.setLineDash([]);
+  if (level !== "good") { ctx.fillStyle = color; ctx.fillText(label, right.x + 10, right.y); }
 }
 
 function levelColor(level: "good" | "caution" | "bad"): string {
-  switch (level) {
-    case "good": return "#22c55e";
-    case "caution": return "#eab308";
-    case "bad": return "#ef4444";
-  }
+  switch (level) { case "good": return "#22c55e"; case "caution": return "#eab308"; case "bad": return "#ef4444"; }
 }

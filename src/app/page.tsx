@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect, useCallback } from "react";
 import { addRecord, getRecords, deleteRecord, Landmark, PostureRecord } from "./lib/storage";
-import { analyzePosture, drawDiagnosisOverlay, addLandmarkFrame, clearLandmarkBuffer } from "./lib/postureAnalysis";
+import { analyzeFrontPosture, analyzeSidePosture, drawDiagnosisOverlay, drawSideDiagnosisOverlay, addLandmarkFrame, clearLandmarkBuffer } from "./lib/postureAnalysis";
 import type { DiagnosisItem } from "./lib/storage";
 // Supabase保存はAPI経由
 function getDeviceId(): string {
@@ -780,6 +780,9 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   const [landmarks, setLandmarks] = useState<Landmark[]>([]);
   const [saved, setSaved] = useState(false);
   const [photoSaved, setPhotoSaved] = useState(false);
+  const [captureStep, setCaptureStep] = useState<"front" | "side" | "done">("front");
+  const [frontDiagnosis, setFrontDiagnosis] = useState<DiagnosisItem[]>([]);
+  const [frontImageData, setFrontImageData] = useState<string>("");
   const [guideText, setGuideText] = useState("スマホを立てかけて、スタートを押してください");
   const [guideMode, setGuideMode] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
@@ -991,7 +994,7 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
     }, 2000);
   }, []);
 
-  // 実際の撮影処理
+  // 実際の撮影処理（2段階対応）
   const doCapture = useCallback((lm: Landmark[]) => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -999,7 +1002,6 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
     if (!video || !canvas || !mp) return;
 
     setLoading(true);
-    setCaptured(true);
     setGuideMode(false);
 
     const ctx = canvas.getContext("2d")!;
@@ -1011,10 +1013,39 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
     const drawingUtils = new mp.DrawingUtils(ctx);
     drawingUtils.drawConnectors(lm, POSE_CONNECTIONS.map(([s, e]) => ({ start: s, end: e })), { color: "#00FF00", lineWidth: 2 });
     drawingUtils.drawLandmarks(lm, { color: "#FF0000", fillColor: "#FF0000", radius: 4 });
-    drawDiagnosisOverlay(ctx, lm, canvas.width, canvas.height);
-    setDiagnosis(analyzePosture(lm));
-    setLoading(false);
-  }, []);
+
+    if (captureStep === "front") {
+      // 正面撮影完了
+      drawDiagnosisOverlay(ctx, lm, canvas.width, canvas.height);
+      const frontResults = analyzeFrontPosture(lm);
+      setFrontDiagnosis(frontResults);
+      setFrontImageData(canvas.toDataURL("image/jpeg", 0.7));
+      clearLandmarkBuffer();
+      setCaptureStep("side");
+      setLoading(false);
+      // 横向き撮影へのガイド表示
+      setGuideText("正面撮影完了！次は体を横向きにしてください");
+      speak("正面の撮影が完了しました。次は体を横向きにしてください。");
+      setGuideBorderColor("border-blue-500");
+      // 横向きガイドを自動開始するために少し待つ
+      setTimeout(() => {
+        setCaptured(false);
+        setGuideMode(true);
+        setGuideText("体を横向きにして、カメラの前に立ってください");
+        readyCountRef.current = 0;
+        lastSpokenRef.current = "";
+      }, 3000);
+    } else if (captureStep === "side") {
+      // 横向き撮影完了
+      drawSideDiagnosisOverlay(ctx, lm, canvas.width, canvas.height);
+      const sideResults = analyzeSidePosture(lm);
+      // 正面＋横向きの結果を統合
+      setDiagnosis([...frontDiagnosis, ...sideResults]);
+      setCaptureStep("done");
+      setCaptured(true);
+      setLoading(false);
+    }
+  }, [captureStep, frontDiagnosis]);
 
   // 手動撮影
   const manualCapture = useCallback(() => {
@@ -1053,8 +1084,27 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
         const drawingUtils = new mp.DrawingUtils(ctx);
         drawingUtils.drawConnectors(lm, POSE_CONNECTIONS.map(([s, e]) => ({ start: s, end: e })), { color: "#00FF00", lineWidth: 2 });
         drawingUtils.drawLandmarks(lm, { color: "#FF0000", fillColor: "#FF0000", radius: 4 });
-        drawDiagnosisOverlay(ctx, lm, canvas.width, canvas.height);
-        setDiagnosis(analyzePosture(lm));
+        if (captureStep === "front") {
+          drawDiagnosisOverlay(ctx, lm, canvas.width, canvas.height);
+          const frontResults = analyzeFrontPosture(lm);
+          setFrontDiagnosis(frontResults);
+          setFrontImageData(canvas.toDataURL("image/jpeg", 0.7));
+          clearLandmarkBuffer();
+          setCaptureStep("side");
+          setLoading(false);
+          setGuideText("正面撮影完了！次は体を横向きにしてください");
+          speak("正面の撮影が完了しました。次は体を横向きにしてください。");
+          setTimeout(() => {
+            setCaptured(false);
+            setGuideText("体を横向きにして撮影してください");
+          }, 3000);
+          return;
+        } else if (captureStep === "side") {
+          drawSideDiagnosisOverlay(ctx, lm, canvas.width, canvas.height);
+          const sideResults = analyzeSidePosture(lm);
+          setDiagnosis([...frontDiagnosis, ...sideResults]);
+          setCaptureStep("done");
+        }
       } else {
         setError("人物が検出されませんでした。全身が映るように撮影してください。");
       }
@@ -1108,6 +1158,10 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
     setCountdown(null);
     setGuideText("スマホを立てかけて、スタートを押してください");
     setGuideBorderColor("border-gray-700");
+    setCaptureStep("front");
+    setFrontDiagnosis([]);
+    setFrontImageData("");
+    clearLandmarkBuffer();
     readyCountRef.current = 0;
     if (guideLoopRef.current) cancelAnimationFrame(guideLoopRef.current);
     if (countdownRef.current) clearInterval(countdownRef.current);
@@ -1120,9 +1174,15 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
 
   return (
     <main className="fixed inset-0 bg-gray-950 overflow-y-auto text-white flex flex-col items-center p-4 pb-20">
-      <div className="flex items-center gap-3 mb-4 w-full max-w-md">
+      <div className="flex items-center gap-3 mb-2 w-full max-w-md">
         <button onClick={() => { reset(); onNavigate("home"); }} className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm">← 戻る</button>
         <h1 className="text-lg font-bold">全身の姿勢チェック</h1>
+      </div>
+      {/* ステップ表示 */}
+      <div className="flex items-center gap-2 mb-4 w-full max-w-md">
+        <div className={`flex-1 h-1.5 rounded-full ${captureStep === "front" ? "bg-blue-500" : "bg-green-500"}`} />
+        <span className="text-xs text-gray-400">{captureStep === "front" ? "Step 1: 正面" : captureStep === "side" ? "Step 2: 横向き" : "完了"}</span>
+        <div className={`flex-1 h-1.5 rounded-full ${captureStep === "done" ? "bg-green-500" : captureStep === "side" ? "bg-blue-500" : "bg-gray-700"}`} />
       </div>
 
       {initStatus && (
