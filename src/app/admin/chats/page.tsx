@@ -18,12 +18,8 @@ interface UserOption {
 }
 
 const SYMPTOM_LABELS: Record<string, string> = {
-  neck: "首こり",
-  shoulder_stiff: "肩こり",
-  shoulder_pain: "肩の痛み",
-  back: "腰痛",
-  eye_fatigue: "眼精疲労",
-  eye_recovery: "目の回復",
+  neck: "首こり", shoulder_stiff: "肩こり", shoulder_pain: "肩の痛み",
+  back: "腰痛", eye_fatigue: "眼精疲労", eye_recovery: "目の回復",
 };
 
 export default function ChatsPage() {
@@ -32,7 +28,6 @@ export default function ChatsPage() {
   const [page, setPage] = useState(0);
   const [userId, setUserId] = useState("");
   const [users, setUsers] = useState<UserOption[]>([]);
-  const [debugMsg, setDebugMsg] = useState("");
   const limit = 50;
 
   useEffect(() => {
@@ -46,16 +41,11 @@ export default function ChatsPage() {
       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
       if (userId) params.set("userId", userId);
       fetch(`/api/admin/chats?${params}`, { credentials: "include", cache: "no-store" })
-        .then((r) => {
-          setDebugMsg(`status=${r.status}`);
-          return r.json();
-        })
+        .then((r) => r.json())
         .then((d) => {
-          setDebugMsg((prev) => `${prev} total=${d.total} chats=${(d.chats||[]).length} err=${d.error||"none"}`);
           setChats(d.chats || []);
           setTotal(d.total || 0);
-        })
-        .catch((e) => setDebugMsg(`fetch error: ${e}`));
+        });
     };
     load();
     const id = setInterval(load, 10000);
@@ -65,20 +55,18 @@ export default function ChatsPage() {
   const totalPages = Math.ceil(total / limit);
 
   return (
-    <div>
-      <div className="flex items-center gap-4 mb-6">
-        <h2 className="text-2xl font-bold">
-          チャットログ <span className="text-gray-500 text-base font-normal">({total}件)</span>
-        </h2>
+    <div className="max-w-4xl">
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h2 className="text-3xl font-extrabold">チャットログ</h2>
+          <p className="text-gray-500 text-sm mt-1">{total}件の会話を記録</p>
+        </div>
         <select
           value={userId}
-          onChange={(e) => {
-            setUserId(e.target.value);
-            setPage(0);
-          }}
-          className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white"
+          onChange={(e) => { setUserId(e.target.value); setPage(0); }}
+          className="px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-sm text-white hover:border-gray-600 transition-colors"
         >
-          <option value="">全ユーザー</option>
+          <option value="">👥 全ユーザー</option>
           {users.map((u) => (
             <option key={u.id} value={u.id}>
               {u.name || u.device_id.slice(0, 8) + "..."}
@@ -87,60 +75,51 @@ export default function ChatsPage() {
         </select>
       </div>
 
-      <p className="text-xs text-yellow-400 mb-2 font-mono bg-gray-900 p-2 rounded">{debugMsg || "loading..."}</p>
-      <p className="text-green-400 mb-2">表示件数: {chats.length}件</p>
-      {chats.length > 0 && (
-        <p className="text-green-300 mb-4 text-xs bg-gray-800 p-2 rounded">
-          最新: {chats[0]?.role} - {chats[0]?.content?.slice(0, 50)}
-        </p>
-      )}
-
-      <div className="space-y-2">
+      <div className="space-y-3">
         {chats.map((c) => (
-          <div key={c.id} className="bg-gray-900 border border-gray-800 rounded-lg p-4">
-            <div className="flex items-center gap-3 mb-2">
-              <span className={`px-2 py-1 rounded text-xs font-bold ${
-                c.role === "user" ? "bg-blue-600 text-white" : "bg-gray-700 text-white"
+          <div key={c.id} className={`rounded-2xl p-4 border ${
+            c.role === "user"
+              ? "bg-blue-500/10 border-blue-500/20 ml-8"
+              : "bg-gray-800/50 border-gray-700/50 mr-8"
+          }`}>
+            <div className="flex items-center gap-2 mb-2">
+              <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
+                c.role === "user"
+                  ? "bg-blue-500 text-white"
+                  : "bg-gradient-to-r from-purple-500 to-pink-500 text-white"
               }`}>
-                {c.role === "user" ? "ユーザー" : "AI"}
+                {c.role === "user" ? "👤 ユーザー" : "🤖 AI"}
               </span>
-              <span className="text-xs text-gray-400">
+              {c.role === "user" && c.user_name && (
+                <span className="text-sm text-blue-300 font-semibold">{c.user_name}</span>
+              )}
+              <span className="text-xs text-gray-500 ml-auto">
                 {new Date(c.created_at).toLocaleString("ja-JP")}
               </span>
-              <span className="text-xs text-blue-300 font-semibold">{c.user_name || c.user_id?.slice(0, 8)}</span>
             </div>
-            <p className="text-white text-sm whitespace-pre-wrap">{c.content}</p>
+            <p className="text-white text-sm whitespace-pre-wrap leading-relaxed">{c.content}</p>
             {c.recommended_symptom && (
-              <span className="inline-block mt-2 px-2 py-0.5 bg-purple-600/30 text-purple-300 rounded text-xs">
-                推奨: {SYMPTOM_LABELS[c.recommended_symptom] || c.recommended_symptom}
+              <span className="inline-block mt-2 px-3 py-1 bg-amber-500/15 text-amber-300 rounded-lg text-xs font-semibold">
+                ✨ 推奨: {SYMPTOM_LABELS[c.recommended_symptom] || c.recommended_symptom}
               </span>
             )}
           </div>
         ))}
         {chats.length === 0 && (
-          <p className="text-gray-500 text-center py-8">データがありません</p>
+          <div className="text-center py-16">
+            <p className="text-4xl mb-3">💬</p>
+            <p className="text-gray-500">チャットデータがありません</p>
+          </div>
         )}
       </div>
 
       {totalPages > 1 && (
-        <div className="flex justify-center gap-2 mt-4">
-          <button
-            onClick={() => setPage((p) => Math.max(0, p - 1))}
-            disabled={page === 0}
-            className="px-3 py-1 bg-gray-800 rounded-lg text-sm disabled:opacity-30"
-          >
-            前へ
-          </button>
-          <span className="px-3 py-1 text-sm text-gray-400">
-            {page + 1} / {totalPages}
-          </span>
-          <button
-            onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-            disabled={page >= totalPages - 1}
-            className="px-3 py-1 bg-gray-800 rounded-lg text-sm disabled:opacity-30"
-          >
-            次へ
-          </button>
+        <div className="flex justify-center gap-2 mt-6">
+          <button onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0}
+            className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-xl text-sm disabled:opacity-30 transition-colors">← 前へ</button>
+          <span className="px-4 py-2 text-sm text-gray-400 bg-gray-900 rounded-xl">{page + 1} / {totalPages}</span>
+          <button onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1}
+            className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-xl text-sm disabled:opacity-30 transition-colors">次へ →</button>
         </div>
       )}
     </div>
