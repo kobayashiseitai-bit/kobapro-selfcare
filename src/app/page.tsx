@@ -111,6 +111,13 @@ const SYMPTOMS = [
 export default function Home() {
   const [screen, setScreen] = useState<Screen>("loading");
   const [selectedSymptomId, setSelectedSymptomId] = useState<string | null>(null);
+  const [splashFinished, setSplashFinished] = useState(false);
+
+  // スプラッシュ画面を最低2.5秒表示
+  useEffect(() => {
+    const timer = setTimeout(() => setSplashFinished(true), 2500);
+    return () => clearTimeout(timer);
+  }, []);
 
   // 初回チェック: ユーザー登録済みかどうか
   useEffect(() => {
@@ -132,12 +139,31 @@ export default function Home() {
     saveToDb({ type: "symptom", symptomId });
   };
 
-  if (screen === "loading") {
+  // スプラッシュ画面（最低2.5秒表示 + ユーザー判定が終わるまで）
+  if (screen === "loading" || !splashFinished) {
     return (
-      <main className="fixed inset-0 bg-gray-950 flex flex-col items-center justify-center">
+      <main className="fixed inset-0 bg-gradient-to-b from-gray-950 via-gray-900 to-black flex flex-col items-center justify-center">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/splash-logo.png" alt="ZERO-PAIN" className="w-72 h-72 object-contain animate-pulse" />
-        <p className="text-gray-500 text-sm mt-4 tracking-widest">WELLNESS &amp; CARE SOLUTIONS</p>
+        <img
+          src="/splash-logo.png"
+          alt="ZERO-PAIN"
+          className="w-80 h-80 object-contain drop-shadow-[0_20px_40px_rgba(251,191,36,0.3)]"
+          style={{ animation: "fadeInScale 0.8s ease-out" }}
+        />
+        <p className="text-amber-200/60 text-xs mt-6 tracking-[0.4em] font-light">
+          WELLNESS &amp; CARE SOLUTIONS
+        </p>
+        <div className="mt-8 flex gap-1.5">
+          <div className="w-2 h-2 bg-amber-400/60 rounded-full animate-pulse" style={{ animationDelay: "0ms" }} />
+          <div className="w-2 h-2 bg-amber-400/60 rounded-full animate-pulse" style={{ animationDelay: "200ms" }} />
+          <div className="w-2 h-2 bg-amber-400/60 rounded-full animate-pulse" style={{ animationDelay: "400ms" }} />
+        </div>
+        <style jsx>{`
+          @keyframes fadeInScale {
+            from { opacity: 0; transform: scale(0.85); }
+            to { opacity: 1; transform: scale(1); }
+          }
+        `}</style>
       </main>
     );
   }
