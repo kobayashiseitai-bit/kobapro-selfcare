@@ -565,7 +565,7 @@ function HomeScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Screen) =
               <button
                 key={symptom.id}
                 onClick={() => onSelectSymptom(symptom.id)}
-                className="rounded-2xl overflow-hidden aspect-[16/5] flex items-center justify-center active:scale-95 transition-transform"
+                className="btn-3d bg-sky-50 rounded-2xl overflow-hidden border border-sky-200 aspect-[16/5] flex items-center justify-center"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={symptom.icon} alt={symptom.label} className="w-full h-full object-contain" />
