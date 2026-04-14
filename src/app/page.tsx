@@ -376,6 +376,58 @@ function HomeScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Screen) =
       .catch(() => {});
   }, []);
 
+  // Capacitor環境検出
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const isNativePlatform = () => {
+    if (typeof window === "undefined") return false;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cap = (window as any).Capacitor;
+    return cap?.isNativePlatform?.() === true;
+  };
+
+  // ネイティブ通知をスケジュール
+  const scheduleNativeNotification = async (hours: number) => {
+    if (!isNativePlatform()) return;
+    try {
+      const { LocalNotifications } = await import("@capacitor/local-notifications");
+      // 既存通知をキャンセル
+      await LocalNotifications.cancel({ notifications: [{ id: 1 }] });
+      // 権限取得
+      const perm = await LocalNotifications.requestPermissions();
+      if (perm.display !== "granted") return;
+      // 新しい通知をスケジュール
+      const intervalMs = hours * 60 * 60 * 1000;
+      await LocalNotifications.schedule({
+        notifications: [
+          {
+            id: 1,
+            title: "ZERO-PAIN リマインダー",
+            body: `${hours}時間経ちました。体を動かしましょう！簡単なストレッチで体をリセット💪`,
+            schedule: {
+              at: new Date(Date.now() + intervalMs),
+              repeats: true,
+              every: "hour",
+            },
+            sound: "default",
+          },
+        ],
+      });
+    } catch (e) {
+      console.error("Native notification schedule error:", e);
+    }
+  };
+
+  // ネイティブ通知をキャンセル
+  const cancelNativeNotification = async () => {
+    if (!isNativePlatform()) return;
+    try {
+      const { LocalNotifications } = await import("@capacitor/local-notifications");
+      await LocalNotifications.cancel({ notifications: [{ id: 1 }] });
+    } catch (e) {
+      console.error("Native notification cancel error:", e);
+    }
+  };
+
   // リマインダーチェック
   useEffect(() => {
     const saved = localStorage.getItem("zero_pain_reminder_hours");
@@ -387,16 +439,28 @@ function HomeScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Screen) =
       const elapsed = (Date.now() - parseInt(lastActive)) / (1000 * 60 * 60);
       if (elapsed >= hours) {
         setReminderAlert(`前回のアクセスから${Math.floor(elapsed)}時間経過しています。簡単なストレッチをしましょう！`);
-        // ブラウザ通知
-        if ("Notification" in window && Notification.permission === "granted") {
-          new Notification("ZERO-PAIN リマインダー", {
-            body: `${Math.floor(elapsed)}時間座りっぱなしではありませんか？ストレッチをしましょう！`,
-            icon: "/app-icon-192.png",
-          });
-        }
       }
     }
     localStorage.setItem("zero_pain_last_active", String(Date.now()));
+
+    // ネイティブ環境: ローカル通知をセットアップ
+    if (isNativePlatform()) {
+      if (hours) {
+        scheduleNativeNotification(hours);
+      }
+      return;
+    }
+
+    // Web環境: 既存のブラウザ通知ロジック
+    if (lastActive && hours) {
+      const elapsed = (Date.now() - parseInt(lastActive)) / (1000 * 60 * 60);
+      if (elapsed >= hours && "Notification" in window && Notification.permission === "granted") {
+        new Notification("ZERO-PAIN リマインダー", {
+          body: `${Math.floor(elapsed)}時間座りっぱなしではありませんか？ストレッチをしましょう！`,
+          icon: "/app-icon-192.png",
+        });
+      }
+    }
 
     // ブラウザ通知許可を要求（初回のみ）
     if ("Notification" in window && Notification.permission === "default") {
@@ -425,6 +489,8 @@ function HomeScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Screen) =
     localStorage.setItem("zero_pain_last_active", String(Date.now()));
     setShowReminderSetting(false);
     setReminderAlert(null);
+    // ネイティブ環境ではローカル通知を再スケジュール
+    scheduleNativeNotification(hours);
   };
 
   const riskColors: Record<string, string> = {
@@ -500,7 +566,7 @@ function HomeScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Screen) =
                 </button>
               ))}
               <button
-                onClick={() => { setReminderHours(null); localStorage.removeItem("zero_pain_reminder_hours"); setShowReminderSetting(false); }}
+                onClick={() => { setReminderHours(null); localStorage.removeItem("zero_pain_reminder_hours"); setShowReminderSetting(false); cancelNativeNotification(); }}
                 className="flex-1 py-2 rounded-lg text-sm bg-gray-800 text-gray-400"
               >
                 OFF
