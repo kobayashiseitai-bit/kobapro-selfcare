@@ -691,48 +691,32 @@ function unlockAudio() {
   });
 }
 
+// すべての音声を停止する共通関数
+function stopAllAudio() {
+  Object.values(audioCache).forEach((a) => { a.pause(); a.currentTime = 0; });
+  if (typeof window !== "undefined" && "speechSynthesis" in window) {
+    window.speechSynthesis.cancel();
+  }
+  isSpeaking = false;
+}
+
 function speak(text: string, force = false) {
   try {
     if (typeof window === "undefined") return;
     if (isSpeaking && !force) return;
 
-    let file: string | null = null;
+    // まず全ての音声を停止
+    stopAllAudio();
 
-    if (text === "5") file = "/voice-5.mp3";
-    else if (text === "4") file = "/voice-4.mp3";
-    else if (text === "3") file = "/voice-3.mp3";
-    else if (text === "2") file = "/voice-2.mp3";
-    else if (text === "1") file = "/voice-1.mp3";
-    else {
-      const match = VOICE_KEYWORDS.find((v) => text.includes(v.keyword));
-      if (match) file = match.file;
-    }
-
-    if (file) {
-      // 音声ファイルで再生
-      Object.values(audioCache).forEach((a) => { a.pause(); a.currentTime = 0; });
+    // Web Speech APIのみで統一（自然な日本語音声）
+    if ("speechSynthesis" in window) {
       isSpeaking = true;
-      let audio = audioCache[file];
-      if (!audio) {
-        audio = new Audio(file);
-        audioCache[file] = audio;
-      }
-      audio.currentTime = 0;
-      audio.onended = () => { isSpeaking = false; };
-      audio.onerror = () => { isSpeaking = false; };
-      audio.play().catch(() => { isSpeaking = false; });
-    } else {
-      // 音声ファイルにマッチしない場合 → Web Speech APIで読み上げ
-      if ("speechSynthesis" in window) {
-        window.speechSynthesis.cancel();
-        isSpeaking = true;
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = "ja-JP";
-        utterance.rate = 1.0;
-        utterance.onend = () => { isSpeaking = false; };
-        utterance.onerror = () => { isSpeaking = false; };
-        window.speechSynthesis.speak(utterance);
-      }
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = "ja-JP";
+      utterance.rate = 1.1;
+      utterance.onend = () => { isSpeaking = false; };
+      utterance.onerror = () => { isSpeaking = false; };
+      window.speechSynthesis.speak(utterance);
     }
   } catch { isSpeaking = false; }
 }
