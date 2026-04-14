@@ -882,16 +882,21 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
 
   // AIガイドモード開始（正面・横向き共通）
   const startGuideForStep = useRef<"front" | "side">("front");
+  const initialSpokenRef = useRef(false); // 初回案内済みフラグ
   const startGuide = useCallback(() => {
     unlockAudio();
     setGuideMode(true);
     setCaptured(false);
+    initialSpokenRef.current = false;
+
     if (startGuideForStep.current === "side") {
       setGuideText("体を横向きにして、カメラの前に立ってください");
-      speak("体を横向きにしてください。全身が映る位置に立ってください。");
+      speak("体を横向きにしてください。全身が映る位置に立ってください。", true);
+      initialSpokenRef.current = true; // この1回で案内完了
     } else {
       setGuideText("カメラの前に全身が映る位置に立ってください");
-      speak("カメラの前に立ってください。全身が映る位置まで下がってください。");
+      speak("カメラの前に立ってください。全身が映る位置まで下がってください。", true);
+      initialSpokenRef.current = true;
     }
     readyCountRef.current = 0;
     lastSpokenRef.current = "";
@@ -933,12 +938,8 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
           setGuideText(check.guide);
           setGuideBorderColor(check.ok ? "border-green-500" : "border-yellow-500");
 
-          // 音声ガイド（同じ内容は繰り返さない & 再生中は新しい案内を出さない）
+          // 位置が合っていない場合はテキスト表示のみ（音声は繰り返さない）
           if (!check.ok) {
-            if (check.guide !== lastSpokenRef.current && !isSpeaking) {
-              speak(check.guide);
-              lastSpokenRef.current = check.guide;
-            }
             readyCountRef.current = 0;
           }
 
