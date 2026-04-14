@@ -654,15 +654,20 @@ function SelfcareScreen({ onNavigate, initialSymptomId }: { onNavigate: (s: Scre
 // ==================== 音声ガイド ====================
 // テキストのキーワードに対応する音声ファイル
 const VOICE_KEYWORDS: { keyword: string; file: string }[] = [
+  { keyword: "側面の写真撮影", file: "/voice-side-guide.mp3" },
+  { keyword: "横向きのままカメラの前", file: "/voice-side-stand.mp3" },
+  { keyword: "横向きでストップ", file: "/voice-side-stop.mp3" },
+  { keyword: "横向きの撮影が完了", file: "/voice-side-done.mp3" },
+  { keyword: "上半身が映るように位置", file: "/voice-adjust.mp3" },
+  { keyword: "上半身全体が映るように", file: "/voice-adjust.mp3" },
   { keyword: "全身が映る", file: "/voice-stand.mp3" },
   { keyword: "カメラの前に立って", file: "/voice-stand.mp3" },
-  { keyword: "横向きのままカメラの前", file: "/voice-stand.mp3" },
   { keyword: "足元が映る", file: "/voice-back.mp3" },
   { keyword: "離れて", file: "/voice-back.mp3" },
   { keyword: "近づいて", file: "/voice-closer.mp3" },
   { keyword: "右に移動", file: "/voice-right.mp3" },
   { keyword: "左に移動", file: "/voice-left.mp3" },
-  { keyword: "ストップ", file: "/voice-stop.mp3" },
+  { keyword: "そのままの位置でストップ", file: "/voice-stop.mp3" },
   { keyword: "撮影しました", file: "/voice-done.mp3" },
 ];
 
@@ -672,6 +677,9 @@ const ALL_VOICE_FILES = [
   "/voice-right.mp3", "/voice-left.mp3", "/voice-stop.mp3",
   "/voice-5.mp3", "/voice-4.mp3", "/voice-3.mp3",
   "/voice-2.mp3", "/voice-1.mp3", "/voice-done.mp3",
+  "/voice-side-guide.mp3", "/voice-side-stand.mp3",
+  "/voice-side-stop.mp3", "/voice-side-done.mp3",
+  "/voice-adjust.mp3", "/voice-captured.mp3",
 ];
 const audioCache: Record<string, HTMLAudioElement> = {};
 let audioUnlocked = false;
@@ -691,33 +699,38 @@ function unlockAudio() {
   });
 }
 
-// すべての音声を停止する共通関数
-function stopAllAudio() {
-  Object.values(audioCache).forEach((a) => { a.pause(); a.currentTime = 0; });
-  if (typeof window !== "undefined" && "speechSynthesis" in window) {
-    window.speechSynthesis.cancel();
-  }
-  isSpeaking = false;
-}
-
 function speak(text: string, force = false) {
   try {
     if (typeof window === "undefined") return;
     if (isSpeaking && !force) return;
 
-    // まず全ての音声を停止
-    stopAllAudio();
+    let file: string | null = null;
 
-    // Web Speech APIのみで統一（自然な日本語音声）
-    if ("speechSynthesis" in window) {
-      isSpeaking = true;
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = "ja-JP";
-      utterance.rate = 1.1;
-      utterance.onend = () => { isSpeaking = false; };
-      utterance.onerror = () => { isSpeaking = false; };
-      window.speechSynthesis.speak(utterance);
+    if (text === "5") file = "/voice-5.mp3";
+    else if (text === "4") file = "/voice-4.mp3";
+    else if (text === "3") file = "/voice-3.mp3";
+    else if (text === "2") file = "/voice-2.mp3";
+    else if (text === "1") file = "/voice-1.mp3";
+    else {
+      const match = VOICE_KEYWORDS.find((v) => text.includes(v.keyword));
+      if (match) file = match.file;
     }
+
+    if (!file) return; // マッチしない場合は無音
+
+    // 前の音声を停止
+    Object.values(audioCache).forEach((a) => { a.pause(); a.currentTime = 0; });
+
+    isSpeaking = true;
+    let audio = audioCache[file];
+    if (!audio) {
+      audio = new Audio(file);
+      audioCache[file] = audio;
+    }
+    audio.currentTime = 0;
+    audio.onended = () => { isSpeaking = false; };
+    audio.onerror = () => { isSpeaking = false; };
+    audio.play().catch(() => { isSpeaking = false; });
   } catch { isSpeaking = false; }
 }
 
@@ -893,8 +906,8 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
     setCaptured(false);
 
     if (startGuideForStep.current === "side") {
-      setGuideText("次は側面の撮影です。体を横向きにしてください");
-      speak("次は側面の写真撮影をします。体を横向きにしてください。", true);
+      setGuideText("横向きのままカメラの前に立ってください");
+      speak("横向きのままカメラの前に立ってください", true);
     } else {
       setGuideText("カメラの前に全身が映る位置に立ってください");
       speak("カメラの前に立ってください。全身が映る位置まで下がってください。", true);
@@ -981,7 +994,11 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
     if (guideLoopRef.current) cancelAnimationFrame(guideLoopRef.current);
     guideLoopRef.current = null;
 
-    speak("ストップ", true);
+    if (startGuideForStep.current === "side") {
+      speak("そのまま横向きでストップ", true);
+    } else {
+      speak("そのままの位置でストップ", true);
+    }
     setCountdown(5);
     setGuideBorderColor("border-green-500");
     setGuideText("そのまま動かないでください...");
@@ -1043,12 +1060,12 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
       // 正面撮影完了 → 横向きへ誘導
       setCaptured(true);
       setGuideText("✅ 正面の撮影が完了しました。次は側面の撮影です。");
-      speak("正面の撮影が完了しました。次は側面の写真撮影をしますので、体を横向きにしてください。", true);
+      speak("次は側面の写真撮影をしますので横向きにしてください", true);
       setGuideBorderColor("border-blue-500");
       setTimeout(() => {
         startGuideForStep.current = "side";
         startGuide();
-      }, 5000);
+      }, 6000);
     } else if (currentStep === "side") {
       // 横向き撮影完了
       drawSideDiagnosisOverlay(ctx, lm, canvas.width, canvas.height);
@@ -1058,7 +1075,7 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
       captureStepRef.current = "done";
       setCaptured(true);
       setLoading(false);
-      speak("横向きの撮影が完了しました。診断結果をご確認ください。", true);
+      speak("横向きの撮影が完了しました", true);
       startGuideForStep.current = "front";
     }
   }, [startGuide]);
@@ -1113,11 +1130,11 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
           setCaptured(true);
           setLoading(false);
           setGuideText("✅ 正面の撮影が完了しました。次は側面の撮影です。");
-          speak("正面の撮影が完了しました。次は側面の写真撮影をしますので、体を横向きにしてください。", true);
+          speak("次は側面の写真撮影をしますので横向きにしてください", true);
           setTimeout(() => {
             startGuideForStep.current = "side";
             startGuide();
-          }, 5000);
+          }, 6000);
           return;
         } else if (manualStep === "side") {
           drawSideDiagnosisOverlay(ctx, lm, canvas.width, canvas.height);
