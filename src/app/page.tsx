@@ -111,6 +111,13 @@ const SYMPTOMS = [
 export default function Home() {
   const [screen, setScreen] = useState<Screen>("loading");
   const [selectedSymptomId, setSelectedSymptomId] = useState<string | null>(null);
+  const [splashFinished, setSplashFinished] = useState(false);
+
+  // スプラッシュ画面を最低2秒表示
+  useEffect(() => {
+    const timer = setTimeout(() => setSplashFinished(true), 2000);
+    return () => clearTimeout(timer);
+  }, []);
 
   // 初回チェック: ユーザー登録済みかどうか
   useEffect(() => {
@@ -132,9 +139,25 @@ export default function Home() {
     saveToDb({ type: "symptom", symptomId });
   };
 
-  // ローディング中はシンプルな黒画面のみ
-  if (screen === "loading") {
-    return <main className="fixed inset-0 bg-gray-950" />;
+  // スプラッシュ画面（黒背景 + ZERO-PAINロゴ）
+  if (screen === "loading" || !splashFinished) {
+    return (
+      <main className="fixed inset-0 bg-black flex items-center justify-center">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/splash-logo.png"
+          alt="ZERO-PAIN"
+          className="w-[85%] max-w-md object-contain"
+          style={{ animation: "fadeIn 0.8s ease-out" }}
+        />
+        <style jsx>{`
+          @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+        `}</style>
+      </main>
+    );
   }
 
   return (
