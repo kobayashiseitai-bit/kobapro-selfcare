@@ -98,15 +98,6 @@ const SYMPTOMS = [
     description: "目の疲れを取り、スッキリさせるツボ押し＆エクササイズです。",
   },
   {
-    id: "leg_swelling",
-    label: "脚のむくみ",
-    emoji: "🦶",
-    icon: "/icon-leg-banner.png",
-    videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-    videoTitle: "脚のむくみ解消ケア",
-    description: "脚のむくみを改善するマッサージ＆エクササイズです。",
-  },
-  {
     id: "kyphosis",
     label: "猫背改善",
     emoji: "🐱",
