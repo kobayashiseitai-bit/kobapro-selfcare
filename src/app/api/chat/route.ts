@@ -80,6 +80,17 @@ const BASE_PROMPT = `あなたはZERO-PAINセルフケアアプリの専属AIカ
 <recommendation>{"symptomId":"neck"}</recommendation>
 （symptomIdは: neck, shoulder_stiff, shoulder_pain, back, headache, knee, eye_fatigue, arm_numbness, leg_swelling, kyphosis, straight_neck のいずれか）
 
+【姿勢写真がある場合（重要）】
+ユーザーから姿勢写真が送られてくることがあります。その場合は：
+- 写真を実際に見て、視覚的に分析してください
+- 全体的な印象（姿勢全体のバランス、左右差、前後の傾きなど）を観察
+- 肩の高さ、頭の位置、骨盤の傾き、重心、足の開き方、立ち方の癖などを総合的に判断
+- 数値診断データと合わせて、より深い分析をする
+- 「写真を拝見しました」と最初に伝えると、ユーザーは見てもらえている実感を得られます
+- 良い点も必ず1つ伝える（例：「姿勢全体のバランスは保たれていますね」）
+- 改善ポイントは2-3個に絞って、優先度の高いものから提案
+- 専門用語は使わず、誰にでもわかる日常の言葉で説明
+
 【NGワードの言い換え例】
 - 椎間板ヘルニア → 背骨のクッションが飛び出してしまう状態
 - 坐骨神経痛 → お尻から脚にかけて走る痛み
@@ -92,14 +103,24 @@ const BASE_PROMPT = `あなたはZERO-PAINセルフケアアプリの専属AIカ
 
 整体師としての深い知識を活かしつつも、言葉は誰にでもわかるやさしい表現で答えてください。`;
 
-async function buildUserContext(deviceId: string): Promise<string> {
-  if (!deviceId) return "";
+interface UserContextResult {
+  contextText: string;
+  latestPostureImageUrl: string | null;
+  latestPostureDate: string | null;
+}
+
+async function buildUserContext(deviceId: string): Promise<UserContextResult> {
+  if (!deviceId) {
+    return { contextText: "", latestPostureImageUrl: null, latestPostureDate: null };
+  }
   const supabase = getSupabase();
   const { data: users } = await supabase
     .from("users")
     .select("id")
     .eq("device_id", deviceId);
-  if (!users || users.length === 0) return "";
+  if (!users || users.length === 0) {
+    return { contextText: "", latestPostureImageUrl: null, latestPostureDate: null };
+  }
   const userId = users[0].id;
 
   const [symptomRes, postureRes, chatRes] = await Promise.all([
@@ -111,7 +132,7 @@ async function buildUserContext(deviceId: string): Promise<string> {
       .limit(50),
     supabase
       .from("posture_records")
-      .select("diagnosis, created_at")
+      .select("diagnosis, image_url, created_at")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(5),
@@ -136,9 +157,17 @@ async function buildUserContext(deviceId: string): Promise<string> {
     parts.push(`【過去の症状傾向】${trend}`);
   }
 
+  // 最新の姿勢写真URL（vision用）
+  let latestPostureImageUrl: string | null = null;
+  let latestPostureDate: string | null = null;
+
   const postures = postureRes.data || [];
   if (postures.length > 0) {
     const latest = postures[0];
+    if (latest.image_url && latest.image_url.startsWith("http")) {
+      latestPostureImageUrl = latest.image_url;
+      latestPostureDate = new Date(latest.created_at).toLocaleDateString("ja-JP");
+    }
     const diag = Array.isArray(latest.diagnosis) ? latest.diagnosis : [];
     const issues = diag
       .filter((d: { level: string }) => d.level !== "good")
@@ -156,20 +185,52 @@ async function buildUserContext(deviceId: string): Promise<string> {
     parts.push(`【過去の相談内容】${topics}`);
   }
 
-  if (parts.length === 0) return "";
-  return `\n\n【このユーザーの過去データ】\nこのユーザーはリピーターです。過去のデータを参考にして、より的確なアドバイスをしてください。\n${parts.join("\n")}`;
+  const contextText =
+    parts.length === 0
+      ? ""
+      : `\n\n【このユーザーの過去データ】\nこのユーザーはリピーターです。過去のデータを参考にして、より的確なアドバイスをしてください。\n${parts.join("\n")}`;
+
+  return { contextText, latestPostureImageUrl, latestPostureDate };
 }
 
 export async function POST(req: NextRequest) {
   try {
     const { messages, deviceId } = await req.json();
 
-    const userContext = await buildUserContext(deviceId || "");
-    const systemPrompt = BASE_PROMPT + userContext;
+    const { contextText, latestPostureImageUrl, latestPostureDate } =
+      await buildUserContext(deviceId || "");
+    const systemPrompt = BASE_PROMPT + contextText;
 
-    const apiMessages = (!messages || messages.length === 0)
-      ? [{ role: "user" as const, content: "こんにちは、相談したいです。" }]
-      : messages;
+    // 初回チャット時のみ画像を添付（あれば）
+    const isFirstMessage = !messages || messages.length === 0;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let apiMessages: any[];
+
+    if (isFirstMessage && latestPostureImageUrl) {
+      // 画像付き初回メッセージ
+      apiMessages = [
+        {
+          role: "user" as const,
+          content: [
+            {
+              type: "image",
+              source: {
+                type: "url",
+                url: latestPostureImageUrl,
+              },
+            },
+            {
+              type: "text",
+              text: `こんにちは、相談したいです。これは${latestPostureDate}に撮影した私の姿勢写真です。実際に見ていただいて、気になる点や改善ポイントがあれば教えてください。`,
+            },
+          ],
+        },
+      ];
+    } else if (isFirstMessage) {
+      apiMessages = [{ role: "user" as const, content: "こんにちは、相談したいです。" }];
+    } else {
+      apiMessages = messages;
+    }
 
     const client = getClient();
 
