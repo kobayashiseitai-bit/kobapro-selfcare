@@ -71,15 +71,6 @@ const SYMPTOMS = [
     description: "固まった肩周りをほぐすストレッチです。",
   },
   {
-    id: "shoulder_pain",
-    label: "肩関節痛",
-    emoji: "🤕",
-    icon: "/icon-shoulder-pain-full.jpg",
-    videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-    videoTitle: "肩関節エクササイズ",
-    description: "肩関節の可動域を広げ、痛みを緩和するエクササイズです。",
-  },
-  {
     id: "back",
     label: "腰痛",
     emoji: "🔥",
@@ -98,15 +89,6 @@ const SYMPTOMS = [
     description: "頭痛を和らげるツボ押しと首肩のストレッチです。",
   },
   {
-    id: "knee",
-    label: "膝の痛み",
-    emoji: "🦵",
-    icon: "/icon-knee-full.jpg",
-    videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-    videoTitle: "膝痛改善エクササイズ",
-    description: "膝関節を支える筋肉を強化するエクササイズです。",
-  },
-  {
     id: "eye_fatigue",
     label: "眼精疲労",
     emoji: "👁️",
@@ -114,15 +96,6 @@ const SYMPTOMS = [
     videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
     videoTitle: "眼精疲労解消セルフケア",
     description: "目の疲れを取り、スッキリさせるツボ押し＆エクササイズです。",
-  },
-  {
-    id: "arm_numbness",
-    label: "腕のしびれ",
-    emoji: "🖐️",
-    icon: "/icon-arm-full.jpg",
-    videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-    videoTitle: "腕・手のしびれ改善ケア",
-    description: "腕や手のしびれを緩和する神経ストレッチです。",
   },
   {
     id: "leg_swelling",
@@ -565,10 +538,10 @@ function HomeScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Screen) =
               <button
                 key={symptom.id}
                 onClick={() => onSelectSymptom(symptom.id)}
-                className="btn-3d bg-sky-50 rounded-2xl overflow-hidden border border-sky-200 aspect-[16/5] flex items-center justify-center"
+                className="btn-3d rounded-2xl overflow-hidden aspect-[3722/1152]"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={symptom.icon} alt={symptom.label} className="w-full h-full object-contain" />
+                <img src={symptom.icon} alt={symptom.label} className="w-full h-full object-cover block" />
               </button>
             ))}
           </div>
