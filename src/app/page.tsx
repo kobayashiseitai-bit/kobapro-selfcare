@@ -142,20 +142,13 @@ export default function Home() {
   // スプラッシュ画面（黒背景 + ZERO-PAINロゴ）
   if (screen === "loading" || !splashFinished) {
     return (
-      <main className="fixed inset-0 bg-black flex items-center justify-center">
+      <main className="fixed inset-0 bg-black flex items-center justify-center p-4">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/splash-logo.png"
           alt="ZERO-PAIN"
-          className="w-[85%] max-w-md object-contain"
-          style={{ animation: "fadeIn 0.8s ease-out" }}
+          className="w-full max-w-md object-contain"
         />
-        <style jsx>{`
-          @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-          }
-        `}</style>
       </main>
     );
   }
