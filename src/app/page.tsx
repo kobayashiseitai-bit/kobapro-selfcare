@@ -781,7 +781,9 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   const [saved, setSaved] = useState(false);
   const [photoSaved, setPhotoSaved] = useState(false);
   const [captureStep, setCaptureStep] = useState<"front" | "side" | "done">("front");
+  const captureStepRef = useRef<"front" | "side" | "done">("front");
   const [frontDiagnosis, setFrontDiagnosis] = useState<DiagnosisItem[]>([]);
+  const frontDiagnosisRef = useRef<DiagnosisItem[]>([]);
   const [frontImageData, setFrontImageData] = useState<string>("");
   const [guideText, setGuideText] = useState("スマホを立てかけて、スタートを押してください");
   const [guideMode, setGuideMode] = useState(false);
@@ -1022,14 +1024,18 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
     drawingUtils.drawConnectors(lm, POSE_CONNECTIONS.map(([s, e]) => ({ start: s, end: e })), { color: "#00FF00", lineWidth: 2 });
     drawingUtils.drawLandmarks(lm, { color: "#FF0000", fillColor: "#FF0000", radius: 4 });
 
-    if (captureStep === "front") {
+    const currentStep = captureStepRef.current;
+
+    if (currentStep === "front") {
       // 正面撮影完了
       drawDiagnosisOverlay(ctx, lm, canvas.width, canvas.height);
       const frontResults = analyzeFrontPosture(lm);
       setFrontDiagnosis(frontResults);
+      frontDiagnosisRef.current = frontResults;
       setFrontImageData(canvas.toDataURL("image/jpeg", 0.7));
       clearLandmarkBuffer();
       setCaptureStep("side");
+      captureStepRef.current = "side";
       setLoading(false);
       // 正面撮影完了 → 横向きへ誘導
       setCaptured(true);
@@ -1038,21 +1044,21 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
       setGuideBorderColor("border-blue-500");
       setTimeout(() => {
         startGuideForStep.current = "side";
-        startGuide(); // 横向きAIガイドループ開始（位置誘導音声+カウントダウン付き）
+        startGuide();
       }, 5000);
-    } else if (captureStep === "side") {
+    } else if (currentStep === "side") {
       // 横向き撮影完了
       drawSideDiagnosisOverlay(ctx, lm, canvas.width, canvas.height);
       const sideResults = analyzeSidePosture(lm);
-      // 正面＋横向きの結果を統合
-      setDiagnosis([...frontDiagnosis, ...sideResults]);
+      setDiagnosis([...frontDiagnosisRef.current, ...sideResults]);
       setCaptureStep("done");
+      captureStepRef.current = "done";
       setCaptured(true);
       setLoading(false);
       speak("横向きの撮影が完了しました。診断結果をご確認ください。", true);
-      startGuideForStep.current = "front"; // リセット用
+      startGuideForStep.current = "front";
     }
-  }, [captureStep, frontDiagnosis, startGuide]);
+  }, [startGuide]);
 
   // 手動撮影
   const manualCapture = useCallback(() => {
@@ -1091,13 +1097,16 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
         const drawingUtils = new mp.DrawingUtils(ctx);
         drawingUtils.drawConnectors(lm, POSE_CONNECTIONS.map(([s, e]) => ({ start: s, end: e })), { color: "#00FF00", lineWidth: 2 });
         drawingUtils.drawLandmarks(lm, { color: "#FF0000", fillColor: "#FF0000", radius: 4 });
-        if (captureStep === "front") {
+        const manualStep = captureStepRef.current;
+        if (manualStep === "front") {
           drawDiagnosisOverlay(ctx, lm, canvas.width, canvas.height);
           const frontResults = analyzeFrontPosture(lm);
           setFrontDiagnosis(frontResults);
+          frontDiagnosisRef.current = frontResults;
           setFrontImageData(canvas.toDataURL("image/jpeg", 0.7));
           clearLandmarkBuffer();
           setCaptureStep("side");
+          captureStepRef.current = "side";
           setCaptured(true);
           setLoading(false);
           setGuideText("✅ 正面の撮影が完了しました。次は側面の撮影です。");
@@ -1107,11 +1116,12 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
             startGuide();
           }, 5000);
           return;
-        } else if (captureStep === "side") {
+        } else if (manualStep === "side") {
           drawSideDiagnosisOverlay(ctx, lm, canvas.width, canvas.height);
           const sideResults = analyzeSidePosture(lm);
-          setDiagnosis([...frontDiagnosis, ...sideResults]);
+          setDiagnosis([...frontDiagnosisRef.current, ...sideResults]);
           setCaptureStep("done");
+          captureStepRef.current = "done";
           speak("横向きの撮影が完了しました。診断結果をご確認ください。", true);
           startGuideForStep.current = "front";
         }
@@ -1169,7 +1179,9 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
     setGuideText("スマホを立てかけて、スタートを押してください");
     setGuideBorderColor("border-gray-700");
     setCaptureStep("front");
+    captureStepRef.current = "front";
     setFrontDiagnosis([]);
+    frontDiagnosisRef.current = [];
     setFrontImageData("");
     clearLandmarkBuffer();
     startGuideForStep.current = "front";
