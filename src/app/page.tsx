@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect, useCallback } from "react";
 import { addRecord, getRecords, deleteRecord, Landmark, PostureRecord } from "./lib/storage";
-import { analyzePosture, drawDiagnosisOverlay } from "./lib/postureAnalysis";
+import { analyzePosture, drawDiagnosisOverlay, addLandmarkFrame, clearLandmarkBuffer } from "./lib/postureAnalysis";
 import type { DiagnosisItem } from "./lib/storage";
 // Supabase保存はAPI経由
 function getDeviceId(): string {
@@ -734,24 +734,33 @@ function checkFullBody(lm: Landmark[]): { ok: boolean; guide: string } {
   const R_ANKLE = lm[28];
   const L_SHOULDER = lm[11];
   const R_SHOULDER = lm[12];
+  const L_HIP = lm[23];
+  const R_HIP = lm[24];
 
-  const vis = (l: Landmark) => (l.visibility ?? 0) > 0.5;
+  // 信頼度しきい値を引き上げ（0.5→0.65）
+  const vis = (l: Landmark) => (l.visibility ?? 0) > 0.65;
   const headVis = vis(HEAD);
   const ankleVis = vis(L_ANKLE) && vis(R_ANKLE);
   const shoulderVis = vis(L_SHOULDER) && vis(R_SHOULDER);
+  const hipVis = vis(L_HIP) && vis(R_HIP);
 
   if (!headVis && !shoulderVis) return { ok: false, guide: "カメラの前に立ってください" };
+  if (!shoulderVis || !hipVis) return { ok: false, guide: "上半身全体が映るように立ってください" };
   if (!ankleVis) return { ok: false, guide: "もう少し離れてください。足元が映るように" };
 
-  // 中央にいるか
+  // 中央にいるか（範囲を厳密化: 0.25-0.75 → 0.3-0.7）
   const cx = (L_SHOULDER.x + R_SHOULDER.x) / 2;
-  if (cx < 0.25) return { ok: false, guide: "もう少し右に移動してください" };
-  if (cx > 0.75) return { ok: false, guide: "もう少し左に移動してください" };
+  if (cx < 0.3) return { ok: false, guide: "もう少し右に移動してください" };
+  if (cx > 0.7) return { ok: false, guide: "もう少し左に移動してください" };
 
-  // 大きすぎ/小さすぎ
+  // 大きすぎ/小さすぎ（範囲を厳密化: 0.4-0.9 → 0.45-0.8）
   const bodyHeight = Math.abs(HEAD.y - ((L_ANKLE.y + R_ANKLE.y) / 2));
-  if (bodyHeight > 0.9) return { ok: false, guide: "もう少し離れてください" };
-  if (bodyHeight < 0.4) return { ok: false, guide: "もう少し近づいてください" };
+  if (bodyHeight > 0.8) return { ok: false, guide: "もう少し離れてください" };
+  if (bodyHeight < 0.45) return { ok: false, guide: "もう少し近づいてください" };
+
+  // 体が正面を向いているか確認（肩幅チェック）
+  const shoulderWidth = Math.abs(L_SHOULDER.x - R_SHOULDER.x);
+  if (shoulderWidth < 0.05) return { ok: false, guide: "体を正面に向けてください" };
 
   return { ok: true, guide: "そのままの位置でストップ！" };
 }
@@ -804,22 +813,28 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
           landmarker = await mp.PoseLandmarker.createFromOptions(vision, {
             baseOptions: {
               modelAssetPath:
-                "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
+                "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task",
               delegate: "GPU",
             },
             runningMode: "VIDEO",
             numPoses: 1,
+            minPoseDetectionConfidence: 0.7,
+            minPosePresenceConfidence: 0.7,
+            minTrackingConfidence: 0.7,
           });
         } catch {
           // GPU失敗時はCPUにフォールバック
           landmarker = await mp.PoseLandmarker.createFromOptions(vision, {
             baseOptions: {
               modelAssetPath:
-                "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
+                "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task",
               delegate: "CPU",
             },
             runningMode: "VIDEO",
             numPoses: 1,
+            minPoseDetectionConfidence: 0.7,
+            minPosePresenceConfidence: 0.7,
+            minTrackingConfidence: 0.7,
           });
         }
         if (cancelled) return;
@@ -870,6 +885,7 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
     speak("カメラの前に立ってください。全身が映る位置まで下がってください。");
     readyCountRef.current = 0;
     lastSpokenRef.current = "";
+    clearLandmarkBuffer(); // フレームバッファ初期化
 
     const detectLoop = () => {
       const video = videoRef.current;
@@ -883,6 +899,7 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
         const result = landmarker.detectForVideo(video, performance.now());
         if (result.landmarks.length > 0) {
           const lm: Landmark[] = result.landmarks[0];
+          addLandmarkFrame(lm); // フレームバッファに追加（平均化用）
           const check = checkFullBody(lm);
 
           // ガイドキャンバスにシルエット描画
