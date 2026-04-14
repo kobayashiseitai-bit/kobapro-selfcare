@@ -1300,18 +1300,48 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
       )}
 
       {diagnosis.length > 0 && (
-        <div className="w-full max-w-md mt-4 space-y-2">
-          <h2 className="text-lg font-bold mb-2">診断結果</h2>
-          {diagnosis.map((item, i) => (
-            <div key={i} className={`border rounded-lg px-4 py-3 ${levelBg(item.level)}`}>
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-semibold">{item.label}</span>
-                <span className="text-sm">{levelEmoji(item.level)} {item.value}{item.unit}</span>
-              </div>
-              <p className="text-sm opacity-80 mb-1">{item.message}</p>
-              <p className="text-xs opacity-60">{item.advice}</p>
+        <div className="w-full max-w-md mt-4 space-y-4">
+          {/* 正面の診断結果（最初の5項目） */}
+          <div>
+            <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
+              <span className="px-2 py-0.5 bg-blue-600 rounded text-xs">正面</span>
+              正面からの診断
+            </h2>
+            <div className="space-y-2">
+              {diagnosis.slice(0, 5).map((item, i) => (
+                <div key={i} className={`border rounded-lg px-4 py-3 ${levelBg(item.level)}`}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-semibold">{item.label}</span>
+                    <span className="text-sm">{levelEmoji(item.level)} {item.value}{item.unit}</span>
+                  </div>
+                  <p className="text-sm opacity-80 mb-1">{item.message}</p>
+                  <p className="text-xs opacity-60">{item.advice}</p>
+                </div>
+              ))}
             </div>
-          ))}
+          </div>
+
+          {/* 側面の診断結果（6項目目以降） */}
+          {diagnosis.length > 5 && (
+            <div>
+              <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
+                <span className="px-2 py-0.5 bg-purple-600 rounded text-xs">側面</span>
+                横からの診断
+              </h2>
+              <div className="space-y-2">
+                {diagnosis.slice(5).map((item, i) => (
+                  <div key={i} className={`border rounded-lg px-4 py-3 ${levelBg(item.level)}`}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-semibold">{item.label}</span>
+                      <span className="text-sm">{levelEmoji(item.level)} {item.value}{item.unit}</span>
+                    </div>
+                    <p className="text-sm opacity-80 mb-1">{item.message}</p>
+                    <p className="text-xs opacity-60">{item.advice}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </main>
