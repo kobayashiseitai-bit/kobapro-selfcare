@@ -662,19 +662,74 @@ function AiCounselScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Scre
   const [recommendedId, setRecommendedId] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  // ストリーミングAPIを呼び出す共通関数
+  const streamChat = async (
+    apiMessages: ChatMessage[],
+    onText: (delta: string) => void
+  ): Promise<{ cleanText: string; recommendedSymptomId: string | null }> => {
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        messages: apiMessages.map((m) => ({ role: m.role, content: m.content })),
+        deviceId: getDeviceId(),
+      }),
+    });
+    if (!res.body) throw new Error("No response body");
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let cleanText = "";
+    let recommendedSymptomId: string | null = null;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      // SSEはdata: {...}\n\nの形式
+      const lines = buffer.split("\n\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        if (!line.startsWith("data: ")) continue;
+        const jsonStr = line.slice(6);
+        try {
+          const data = JSON.parse(jsonStr);
+          if (data.text) {
+            onText(data.text);
+          }
+          if (data.done) {
+            cleanText = data.cleanText || "";
+            recommendedSymptomId = data.recommendedSymptomId || null;
+          }
+          if (data.error) {
+            throw new Error(data.error);
+          }
+        } catch { /* parse error skip */ }
+      }
+    }
+    return { cleanText, recommendedSymptomId };
+  };
+
   // 初回メッセージ
   useEffect(() => {
     async function firstMessage() {
       setLoading(true);
+      // 空のアシスタントメッセージを追加
+      setMessages([{ role: "assistant", content: "" }]);
+      let streamedText = "";
       try {
-        const res = await fetch("/api/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: [], deviceId: getDeviceId() }),
+        const result = await streamChat([], (delta) => {
+          streamedText += delta;
+          // recommendationタグはストリーミング中は除外
+          const display = streamedText.replace(/<recommendation>[\s\S]*$/, "");
+          setMessages([{ role: "assistant", content: display }]);
         });
-        const data = await res.json();
-        if (data.message) {
-          setMessages([{ role: "assistant", content: data.message }]);
+        // 完了時にクリーンテキストで上書き
+        if (result.cleanText) {
+          setMessages([{ role: "assistant", content: result.cleanText }]);
         }
       } catch {
         const fallback = "こんにちは！今日はどんな症状が気になりますか？お気軽にお話しください。";
@@ -693,31 +748,39 @@ function AiCounselScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Scre
     if (!input.trim() || loading) return;
     const userMsg: ChatMessage = { role: "user", content: input.trim() };
     const newMessages = [...messages, userMsg];
-    setMessages(newMessages);
+    // 空のアシスタントメッセージを追加（ストリーミング表示用）
+    setMessages([...newMessages, { role: "assistant", content: "" }]);
     setInput("");
     setLoading(true);
 
+    let streamedText = "";
     try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
-          deviceId: getDeviceId(),
-        }),
+      const result = await streamChat(newMessages, (delta) => {
+        streamedText += delta;
+        const display = streamedText.replace(/<recommendation>[\s\S]*$/, "");
+        setMessages([...newMessages, { role: "assistant", content: display }]);
       });
-      const data = await res.json();
-      if (data.message) {
-        setMessages([...newMessages, { role: "assistant", content: data.message }]);
-        // DBに保存
-        saveToDb({ type: "chat", role: "user", content: userMsg.content });
-        saveToDb({ type: "chat", role: "assistant", content: data.message, recommendedSymptom: data.recommendedSymptomId });
-      }
-      if (data.recommendedSymptomId) {
-        setRecommendedId(data.recommendedSymptomId);
+
+      const finalText = result.cleanText || streamedText;
+      setMessages([...newMessages, { role: "assistant", content: finalText }]);
+
+      // DBに保存
+      saveToDb({ type: "chat", role: "user", content: userMsg.content });
+      saveToDb({
+        type: "chat",
+        role: "assistant",
+        content: finalText,
+        recommendedSymptom: result.recommendedSymptomId,
+      });
+
+      if (result.recommendedSymptomId) {
+        setRecommendedId(result.recommendedSymptomId);
       }
     } catch {
-      setMessages([...newMessages, { role: "assistant", content: "すみません、通信エラーが発生しました。もう一度お試しください。" }]);
+      setMessages([
+        ...newMessages,
+        { role: "assistant", content: "すみません、通信エラーが発生しました。もう一度お試しください。" },
+      ]);
     }
     setLoading(false);
   };

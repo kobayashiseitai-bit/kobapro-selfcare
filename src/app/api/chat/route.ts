@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 
 function getClient() {
   return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -14,6 +14,7 @@ function getSupabase() {
 }
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 const SYMPTOM_LABELS: Record<string, string> = {
   neck: "首こり",
@@ -60,19 +61,14 @@ const BASE_PROMPT = `あなたはZERO-PAINセルフケアアプリの専属AIカ
 
 async function buildUserContext(deviceId: string): Promise<string> {
   if (!deviceId) return "";
-
   const supabase = getSupabase();
-
-  // ユーザーID取得
   const { data: users } = await supabase
     .from("users")
     .select("id")
     .eq("device_id", deviceId);
-
   if (!users || users.length === 0) return "";
   const userId = users[0].id;
 
-  // 過去データを並列取得
   const [symptomRes, postureRes, chatRes] = await Promise.all([
     supabase
       .from("symptom_selections")
@@ -96,7 +92,6 @@ async function buildUserContext(deviceId: string): Promise<string> {
 
   const parts: string[] = [];
 
-  // 症状傾向
   const symptoms = symptomRes.data || [];
   if (symptoms.length > 0) {
     const counts: Record<string, number> = {};
@@ -108,7 +103,6 @@ async function buildUserContext(deviceId: string): Promise<string> {
     parts.push(`【過去の症状傾向】${trend}`);
   }
 
-  // 姿勢データ
   const postures = postureRes.data || [];
   if (postures.length > 0) {
     const latest = postures[0];
@@ -122,7 +116,6 @@ async function buildUserContext(deviceId: string): Promise<string> {
     }
   }
 
-  // 過去のチャット要約
   const chats = chatRes.data || [];
   const userChats = chats.filter((c) => c.role === "user").slice(0, 3);
   if (userChats.length > 0) {
@@ -131,7 +124,6 @@ async function buildUserContext(deviceId: string): Promise<string> {
   }
 
   if (parts.length === 0) return "";
-
   return `\n\n【このユーザーの過去データ】\nこのユーザーはリピーターです。過去のデータを参考にして、より的確なアドバイスをしてください。\n${parts.join("\n")}`;
 }
 
@@ -139,46 +131,88 @@ export async function POST(req: NextRequest) {
   try {
     const { messages, deviceId } = await req.json();
 
-    // ユーザーコンテキストを構築
     const userContext = await buildUserContext(deviceId || "");
     const systemPrompt = BASE_PROMPT + userContext;
 
-    // 初回（空の場合）は挨拶メッセージを返す
     const apiMessages = (!messages || messages.length === 0)
       ? [{ role: "user" as const, content: "こんにちは、相談したいです。" }]
       : messages;
 
-    const response = await getClient().messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 500,
-      system: systemPrompt,
-      messages: apiMessages,
+    const client = getClient();
+
+    const encoder = new TextEncoder();
+    const readable = new ReadableStream({
+      async start(controller) {
+        let fullText = "";
+        try {
+          const stream = client.messages.stream({
+            model: "claude-haiku-4-5",
+            max_tokens: 500,
+            system: systemPrompt,
+            messages: apiMessages,
+          });
+
+          for await (const event of stream) {
+            if (
+              event.type === "content_block_delta" &&
+              event.delta.type === "text_delta"
+            ) {
+              const text = event.delta.text;
+              fullText += text;
+              // recommendationタグはストリーミングしない（最後に処理）
+              const cleanedChunk = text;
+              controller.enqueue(
+                encoder.encode(`data: ${JSON.stringify({ text: cleanedChunk })}\n\n`)
+              );
+            }
+          }
+
+          // recommendation抽出
+          const match = fullText.match(/<recommendation>\s*(\{.*?\})\s*<\/recommendation>/);
+          let recommendedSymptomId: string | null = null;
+          let cleanText = fullText;
+          if (match) {
+            try {
+              const parsed = JSON.parse(match[1]);
+              recommendedSymptomId = parsed.symptomId;
+            } catch { /* ignore */ }
+            cleanText = fullText.replace(/<recommendation>[\s\S]*?<\/recommendation>/, "").trim();
+          }
+
+          // 完了通知
+          controller.enqueue(
+            encoder.encode(
+              `data: ${JSON.stringify({
+                done: true,
+                recommendedSymptomId,
+                cleanText,
+              })}\n\n`
+            )
+          );
+          controller.close();
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ error: msg })}\n\n`)
+          );
+          controller.close();
+        }
+      },
     });
 
-    const text =
-      response.content[0].type === "text" ? response.content[0].text : "";
-
-    // recommendationタグからsymptomIdを抽出
-    const match = text.match(/<recommendation>\s*(\{.*?\})\s*<\/recommendation>/);
-    let recommendedSymptomId: string | null = null;
-    let cleanText = text;
-    if (match) {
-      try {
-        const parsed = JSON.parse(match[1]);
-        recommendedSymptomId = parsed.symptomId;
-      } catch { /* ignore */ }
-      cleanText = text.replace(/<recommendation>[\s\S]*?<\/recommendation>/, "").trim();
-    }
-
-    return NextResponse.json({
-      message: cleanText,
-      recommendedSymptomId,
+    return new Response(readable, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache, no-transform",
+        "Connection": "keep-alive",
+        "X-Accel-Buffering": "no",
+      },
     });
   } catch (e) {
     console.error("Chat API error:", e);
-    return NextResponse.json(
-      { error: "AIとの通信に失敗しました" },
-      { status: 500 }
+    return new Response(
+      JSON.stringify({ error: "AIとの通信に失敗しました" }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
 }
