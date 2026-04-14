@@ -142,15 +142,6 @@ const SYMPTOMS = [
     videoTitle: "猫背改善エクササイズ",
     description: "猫背を矯正し、正しい姿勢を身につけるエクササイズです。",
   },
-  {
-    id: "straight_neck",
-    label: "ストレートネック",
-    emoji: "📱",
-    icon: "/icon-straight-neck-full.jpg",
-    videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-    videoTitle: "ストレートネック改善ケア",
-    description: "スマホ首を改善する首のストレッチ＆エクササイズです。",
-  },
 ];
 
 export default function Home() {
@@ -574,10 +565,10 @@ function HomeScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Screen) =
               <button
                 key={symptom.id}
                 onClick={() => onSelectSymptom(symptom.id)}
-                className="btn-3d bg-white rounded-2xl overflow-hidden shadow-[0_8px_20px_rgba(0,0,0,0.5)] border border-gray-300"
+                className="btn-3d bg-gradient-to-br from-blue-50 via-white to-blue-100 rounded-2xl overflow-hidden shadow-[0_8px_20px_rgba(59,130,246,0.3)] border border-blue-200 aspect-[16/5] flex items-center justify-center"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={symptom.icon} alt={symptom.label} className="w-full h-auto block" />
+                <img src={symptom.icon} alt={symptom.label} className="w-full h-full object-contain" />
               </button>
             ))}
           </div>
