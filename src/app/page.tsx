@@ -134,8 +134,10 @@ export default function Home() {
 
   if (screen === "loading") {
     return (
-      <main className="fixed inset-0 bg-gray-950 flex items-center justify-center">
-        <p className="text-gray-400 text-lg animate-pulse">読み込み中...</p>
+      <main className="fixed inset-0 bg-gray-950 flex flex-col items-center justify-center">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/splash-logo.png" alt="ZERO-PAIN" className="w-72 h-72 object-contain animate-pulse" />
+        <p className="text-gray-500 text-sm mt-4 tracking-widest">WELLNESS &amp; CARE SOLUTIONS</p>
       </main>
     );
   }
