@@ -56,7 +56,7 @@ const SYMPTOMS = [
     id: "neck",
     label: "首こり",
     emoji: "🦴",
-    icon: "/icon-neck-new.png",
+    icon: "/icon-neck-full.jpg",
     videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
     videoTitle: "首こり解消セルフケア",
     description: "首周りの筋肉をほぐし、痛みを和らげるストレッチです。",
@@ -65,7 +65,7 @@ const SYMPTOMS = [
     id: "shoulder_stiff",
     label: "肩凝り",
     emoji: "💪",
-    icon: "/icon-shoulder-stiff-new.png",
+    icon: "/icon-shoulder-stiff-full.jpg",
     videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
     videoTitle: "肩凝り解消セルフケア",
     description: "固まった肩周りをほぐすストレッチです。",
@@ -74,7 +74,7 @@ const SYMPTOMS = [
     id: "shoulder_pain",
     label: "肩関節痛",
     emoji: "🤕",
-    icon: "/icon-shoulder-pain-new.png",
+    icon: "/icon-shoulder-pain-full.jpg",
     videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
     videoTitle: "肩関節エクササイズ",
     description: "肩関節の可動域を広げ、痛みを緩和するエクササイズです。",
@@ -83,7 +83,7 @@ const SYMPTOMS = [
     id: "back",
     label: "腰痛",
     emoji: "🔥",
-    icon: "/icon-back-new.png",
+    icon: "/icon-back-full.jpg",
     videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
     videoTitle: "腰痛改善セルフケア",
     description: "腰回りの筋肉を緩め、腰痛を予防・改善するストレッチです。",
@@ -92,7 +92,7 @@ const SYMPTOMS = [
     id: "headache",
     label: "頭痛",
     emoji: "🧠",
-    icon: "/icon-headache-new.png",
+    icon: "/icon-headache-full.jpg",
     videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
     videoTitle: "頭痛緩和セルフケア",
     description: "頭痛を和らげるツボ押しと首肩のストレッチです。",
@@ -101,7 +101,7 @@ const SYMPTOMS = [
     id: "knee",
     label: "膝の痛み",
     emoji: "🦵",
-    icon: "/icon-knee-new.png",
+    icon: "/icon-knee-full.jpg",
     videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
     videoTitle: "膝痛改善エクササイズ",
     description: "膝関節を支える筋肉を強化するエクササイズです。",
@@ -110,7 +110,7 @@ const SYMPTOMS = [
     id: "eye_fatigue",
     label: "眼精疲労",
     emoji: "👁️",
-    icon: "/icon-eye-new.png",
+    icon: "/icon-eye-full.jpg",
     videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
     videoTitle: "眼精疲労解消セルフケア",
     description: "目の疲れを取り、スッキリさせるツボ押し＆エクササイズです。",
@@ -119,7 +119,7 @@ const SYMPTOMS = [
     id: "arm_numbness",
     label: "腕のしびれ",
     emoji: "🖐️",
-    icon: "/icon-arm-new.png",
+    icon: "/icon-arm-full.jpg",
     videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
     videoTitle: "腕・手のしびれ改善ケア",
     description: "腕や手のしびれを緩和する神経ストレッチです。",
@@ -128,7 +128,7 @@ const SYMPTOMS = [
     id: "leg_swelling",
     label: "脚のむくみ",
     emoji: "🦶",
-    icon: "/icon-leg-new.png",
+    icon: "/icon-leg-full.jpg",
     videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
     videoTitle: "脚のむくみ解消ケア",
     description: "脚のむくみを改善するマッサージ＆エクササイズです。",
@@ -137,7 +137,7 @@ const SYMPTOMS = [
     id: "kyphosis",
     label: "猫背改善",
     emoji: "🐱",
-    icon: "/icon-kyphosis-new.png",
+    icon: "/icon-kyphosis-full.jpg",
     videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
     videoTitle: "猫背改善エクササイズ",
     description: "猫背を矯正し、正しい姿勢を身につけるエクササイズです。",
@@ -146,7 +146,7 @@ const SYMPTOMS = [
     id: "straight_neck",
     label: "ストレートネック",
     emoji: "📱",
-    icon: "/icon-straight-neck-new.png",
+    icon: "/icon-straight-neck-full.jpg",
     videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
     videoTitle: "ストレートネック改善ケア",
     description: "スマホ首を改善する首のストレッチ＆エクササイズです。",
@@ -569,16 +569,15 @@ function HomeScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Screen) =
         {/* 症状選択 */}
         <div>
           <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">セルフケアメニュー</h2>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 gap-3">
             {SYMPTOMS.map((symptom) => (
               <button
                 key={symptom.id}
                 onClick={() => onSelectSymptom(symptom.id)}
-                className="flex flex-col items-center gap-1 py-2 px-1 bg-gray-900 hover:bg-gray-800 border border-gray-800 rounded-xl transition-colors active:scale-95"
+                className="btn-3d bg-white rounded-2xl overflow-hidden shadow-[0_8px_20px_rgba(0,0,0,0.5)] border border-gray-300"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={symptom.icon} alt={symptom.label} className="w-12 h-12 rounded-full object-cover" />
-                <span className="text-[10px] font-bold text-gray-300 leading-tight text-center">{symptom.label}</span>
+                <img src={symptom.icon} alt={symptom.label} className="w-full h-auto block" />
               </button>
             ))}
           </div>
