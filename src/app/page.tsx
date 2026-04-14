@@ -880,15 +880,22 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
     };
   }, []);
 
-  // AIガイドモード開始
+  // AIガイドモード開始（正面・横向き共通）
+  const startGuideForStep = useRef<"front" | "side">("front");
   const startGuide = useCallback(() => {
     unlockAudio();
     setGuideMode(true);
-    setGuideText("カメラの前に全身が映る位置に立ってください");
-    speak("カメラの前に立ってください。全身が映る位置まで下がってください。");
+    setCaptured(false);
+    if (startGuideForStep.current === "side") {
+      setGuideText("体を横向きにして、カメラの前に立ってください");
+      speak("体を横向きにしてください。全身が映る位置に立ってください。");
+    } else {
+      setGuideText("カメラの前に全身が映る位置に立ってください");
+      speak("カメラの前に立ってください。全身が映る位置まで下がってください。");
+    }
     readyCountRef.current = 0;
     lastSpokenRef.current = "";
-    clearLandmarkBuffer(); // フレームバッファ初期化
+    clearLandmarkBuffer();
 
     const detectLoop = () => {
       const video = videoRef.current;
@@ -1023,18 +1030,15 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
       clearLandmarkBuffer();
       setCaptureStep("side");
       setLoading(false);
-      // 横向き撮影へのガイド表示
-      setGuideText("正面撮影完了！次は体を横向きにしてください");
-      speak("正面の撮影が完了しました。次は体を横向きにしてください。");
+      // 横向き撮影へのガイド → 3秒後にAIガイドを自動開始
+      setCaptured(true); // 一旦正面結果を見せる
+      setGuideText("✅ 正面撮影完了！3秒後に横向き撮影を開始します...");
+      speak("正面の撮影が完了しました。3秒後に横向き撮影を開始します。体を横向きにしてください。", true);
       setGuideBorderColor("border-blue-500");
-      // 横向きガイドを自動開始するために少し待つ
       setTimeout(() => {
-        setCaptured(false);
-        setGuideMode(true);
-        setGuideText("体を横向きにして、カメラの前に立ってください");
-        readyCountRef.current = 0;
-        lastSpokenRef.current = "";
-      }, 3000);
+        startGuideForStep.current = "side";
+        startGuide(); // AIガイドループを開始（音声ガイド+カウントダウン付き）
+      }, 4000);
     } else if (captureStep === "side") {
       // 横向き撮影完了
       drawSideDiagnosisOverlay(ctx, lm, canvas.width, canvas.height);
@@ -1044,8 +1048,10 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
       setCaptureStep("done");
       setCaptured(true);
       setLoading(false);
+      speak("横向きの撮影が完了しました。診断結果をご確認ください。", true);
+      startGuideForStep.current = "front"; // リセット用
     }
-  }, [captureStep, frontDiagnosis]);
+  }, [captureStep, frontDiagnosis, startGuide]);
 
   // 手動撮影
   const manualCapture = useCallback(() => {
@@ -1091,19 +1097,22 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
           setFrontImageData(canvas.toDataURL("image/jpeg", 0.7));
           clearLandmarkBuffer();
           setCaptureStep("side");
+          setCaptured(true);
           setLoading(false);
-          setGuideText("正面撮影完了！次は体を横向きにしてください");
-          speak("正面の撮影が完了しました。次は体を横向きにしてください。");
+          setGuideText("✅ 正面撮影完了！3秒後に横向き撮影を開始します...");
+          speak("正面の撮影が完了しました。3秒後に横向き撮影を開始します。体を横向きにしてください。", true);
           setTimeout(() => {
-            setCaptured(false);
-            setGuideText("体を横向きにして撮影してください");
-          }, 3000);
+            startGuideForStep.current = "side";
+            startGuide();
+          }, 4000);
           return;
         } else if (captureStep === "side") {
           drawSideDiagnosisOverlay(ctx, lm, canvas.width, canvas.height);
           const sideResults = analyzeSidePosture(lm);
           setDiagnosis([...frontDiagnosis, ...sideResults]);
           setCaptureStep("done");
+          speak("横向きの撮影が完了しました。診断結果をご確認ください。", true);
+          startGuideForStep.current = "front";
         }
       } else {
         setError("人物が検出されませんでした。全身が映るように撮影してください。");
@@ -1162,6 +1171,7 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
     setFrontDiagnosis([]);
     setFrontImageData("");
     clearLandmarkBuffer();
+    startGuideForStep.current = "front";
     readyCountRef.current = 0;
     if (guideLoopRef.current) cancelAnimationFrame(guideLoopRef.current);
     if (countdownRef.current) clearInterval(countdownRef.current);
