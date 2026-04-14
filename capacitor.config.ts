@@ -14,6 +14,22 @@ const config: CapacitorConfig = {
     backgroundColor: '#030712',
     limitsNavigationsToAppBoundDomains: false,
   },
+  plugins: {
+    SplashScreen: {
+      launchShowDuration: 2000,
+      launchAutoHide: true,
+      backgroundColor: '#030712',
+      androidSplashResourceName: 'splash',
+      androidScaleType: 'CENTER_CROP',
+      showSpinner: false,
+      splashFullScreen: true,
+      splashImmersive: true,
+    },
+    StatusBar: {
+      style: 'DARK',
+      backgroundColor: '#030712',
+    },
+  },
 };
 
 export default config;

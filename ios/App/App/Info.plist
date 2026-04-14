@@ -55,5 +55,9 @@
 	<string>姿勢チェックの結果画像を保存するために使用します。</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>過去の姿勢チェック画像にアクセスするために使用します。</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 </dict>
 </plist>
