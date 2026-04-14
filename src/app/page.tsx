@@ -55,6 +55,7 @@ const SYMPTOMS = [
   {
     id: "neck",
     label: "首こり",
+    emoji: "🦴",
     icon: "/icon-neck.png",
     videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
     videoTitle: "首こり解消セルフケア",
@@ -63,26 +64,92 @@ const SYMPTOMS = [
   {
     id: "shoulder_stiff",
     label: "肩凝り",
+    emoji: "💪",
     icon: "/icon-shoulder.png",
     videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
     videoTitle: "肩凝り解消セルフケア",
     description: "固まった肩周りをほぐすストレッチです。",
   },
   {
+    id: "shoulder_pain",
+    label: "肩関節痛",
+    emoji: "🤕",
+    icon: "",
+    videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    videoTitle: "肩関節エクササイズ",
+    description: "肩関節の可動域を広げ、痛みを緩和するエクササイズです。",
+  },
+  {
     id: "back",
     label: "腰痛",
+    emoji: "🔥",
     icon: "/icon-back.png",
     videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
     videoTitle: "腰痛改善セルフケア",
     description: "腰回りの筋肉を緩め、腰痛を予防・改善するストレッチです。",
   },
   {
+    id: "headache",
+    label: "頭痛",
+    emoji: "🧠",
+    icon: "",
+    videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    videoTitle: "頭痛緩和セルフケア",
+    description: "頭痛を和らげるツボ押しと首肩のストレッチです。",
+  },
+  {
+    id: "knee",
+    label: "膝の痛み",
+    emoji: "🦵",
+    icon: "",
+    videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    videoTitle: "膝痛改善エクササイズ",
+    description: "膝関節を支える筋肉を強化するエクササイズです。",
+  },
+  {
     id: "eye_fatigue",
     label: "眼精疲労",
+    emoji: "👁️",
     icon: "/icon-eye.png",
     videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
     videoTitle: "眼精疲労解消セルフケア",
     description: "目の疲れを取り、スッキリさせるツボ押し＆エクササイズです。",
+  },
+  {
+    id: "arm_numbness",
+    label: "腕のしびれ",
+    emoji: "🖐️",
+    icon: "",
+    videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    videoTitle: "腕・手のしびれ改善ケア",
+    description: "腕や手のしびれを緩和する神経ストレッチです。",
+  },
+  {
+    id: "leg_swelling",
+    label: "脚のむくみ",
+    emoji: "🦶",
+    icon: "",
+    videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    videoTitle: "脚のむくみ解消ケア",
+    description: "脚のむくみを改善するマッサージ＆エクササイズです。",
+  },
+  {
+    id: "kyphosis",
+    label: "猫背改善",
+    emoji: "🐱",
+    icon: "",
+    videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    videoTitle: "猫背改善エクササイズ",
+    description: "猫背を矯正し、正しい姿勢を身につけるエクササイズです。",
+  },
+  {
+    id: "straight_neck",
+    label: "ストレートネック",
+    emoji: "📱",
+    icon: "",
+    videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    videoTitle: "ストレートネック改善ケア",
+    description: "スマホ首を改善する首のストレッチ＆エクササイズです。",
   },
 ];
 
@@ -502,16 +569,15 @@ function HomeScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Screen) =
         {/* 症状選択 */}
         <div>
           <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">セルフケアメニュー</h2>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-4 gap-2">
             {SYMPTOMS.map((symptom) => (
               <button
                 key={symptom.id}
                 onClick={() => onSelectSymptom(symptom.id)}
-                className="card-3d font-semibold rounded-2xl bg-gray-900 overflow-hidden"
+                className="flex flex-col items-center gap-1.5 py-3 px-1 bg-gray-900 hover:bg-gray-800 border border-gray-800 rounded-xl transition-colors active:scale-95"
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={symptom.icon} alt={symptom.label} className="w-full aspect-square object-cover" />
-                <p className="text-sm font-bold py-2.5 text-center text-white bg-gradient-to-b from-gray-700 to-gray-900 border-t border-gray-600/30">{symptom.label}</p>
+                <span className="text-2xl">{symptom.emoji}</span>
+                <span className="text-[10px] font-bold text-gray-300 leading-tight text-center">{symptom.label}</span>
               </button>
             ))}
           </div>
