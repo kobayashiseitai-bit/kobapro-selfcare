@@ -578,13 +578,13 @@ function HomeScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Screen) =
         {/* AIカウンセリング */}
         <button
           onClick={() => onNavigate("ai-counsel")}
-          className="btn-3d w-full px-5 py-4 bg-gradient-to-b from-blue-400 via-blue-600 to-purple-800 rounded-2xl font-bold text-left flex items-center gap-4 shadow-[0_10px_30px_rgba(79,70,229,0.5)]"
+          className="btn-3d w-full bg-gradient-to-b from-blue-400 via-blue-600 to-purple-800 rounded-2xl font-bold text-left flex items-center gap-3 shadow-[0_10px_30px_rgba(79,70,229,0.5)] aspect-[3722/1152] px-4 overflow-hidden"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icon-skeleton-sensei.png" alt="ガイコツ先生" className="w-24 h-24 drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)]" />
-          <div>
+          <img src="/icon-skeleton-sensei.png" alt="ガイコツ先生" className="h-full w-auto drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)] -my-2" />
+          <div className="flex-1 min-w-0">
             <p className="text-base font-bold drop-shadow-sm">ガイコツ先生に相談する</p>
-            <p className="text-xs font-normal opacity-80">症状を聞き取り、最適なケアを提案します</p>
+            <p className="text-xs font-normal opacity-80">症状を聞き取り最適なケアを提案</p>
           </div>
         </button>
 
