@@ -580,9 +580,10 @@ function HomeScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Screen) =
           onClick={() => onNavigate("ai-counsel")}
           className="btn-3d w-full px-5 py-4 bg-gradient-to-b from-blue-400 via-blue-600 to-purple-800 rounded-2xl font-bold text-left flex items-center gap-4 shadow-[0_10px_30px_rgba(79,70,229,0.5)]"
         >
-          <span className="text-3xl drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)]">🤖</span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/icon-skeleton-sensei.png" alt="ガイコツ先生" className="w-12 h-12 drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)]" />
           <div>
-            <p className="text-base font-bold drop-shadow-sm">ZERO-PAIN AIに相談する</p>
+            <p className="text-base font-bold drop-shadow-sm">ガイコツ先生に相談する</p>
             <p className="text-xs font-normal opacity-80">症状を聞き取り、最適なケアを提案します</p>
           </div>
         </button>
@@ -791,7 +792,11 @@ function AiCounselScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Scre
     <main className="fixed inset-0 bg-gray-950 text-white flex flex-col">
       <header className="sticky top-0 z-10 bg-gray-950/95 backdrop-blur-sm border-b border-gray-800/50 px-4 py-3 flex items-center gap-3">
         <button onClick={() => onNavigate("home")} className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm">← 戻る</button>
-        <h1 className="text-base font-bold">ZERO-PAIN AIカウンセリング</h1>
+        <div className="flex items-center gap-2">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/icon-skeleton-sensei.png" alt="ガイコツ先生" className="w-8 h-8" />
+          <h1 className="text-base font-bold">ガイコツ先生のカウンセリング</h1>
+        </div>
       </header>
 
       {/* チャットエリア */}
@@ -803,7 +808,7 @@ function AiCounselScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Scre
                 ? "bg-blue-600 rounded-br-md"
                 : "bg-gray-800 rounded-bl-md"
             }`}>
-              {msg.role === "assistant" && <p className="text-xs text-gray-400 mb-1">🤖 ZERO-PAIN AI</p>}
+              {msg.role === "assistant" && <p className="text-xs text-gray-400 mb-1">💀 ガイコツ先生</p>}
               <p className="whitespace-pre-wrap">{msg.content}</p>
             </div>
           </div>
@@ -811,7 +816,7 @@ function AiCounselScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Scre
         {loading && (
           <div className="flex justify-start">
             <div className="bg-gray-800 px-4 py-3 rounded-2xl rounded-bl-md">
-              <p className="text-xs text-gray-400 mb-1">🤖 ZERO-PAIN AI</p>
+              <p className="text-xs text-gray-400 mb-1">💀 ガイコツ先生</p>
               <p className="text-sm animate-pulse">考え中...</p>
             </div>
           </div>
