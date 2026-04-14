@@ -656,6 +656,7 @@ function SelfcareScreen({ onNavigate, initialSymptomId }: { onNavigate: (s: Scre
 const VOICE_KEYWORDS: { keyword: string; file: string }[] = [
   { keyword: "全身が映る", file: "/voice-stand.mp3" },
   { keyword: "カメラの前に立って", file: "/voice-stand.mp3" },
+  { keyword: "横向きのままカメラの前", file: "/voice-stand.mp3" },
   { keyword: "足元が映る", file: "/voice-back.mp3" },
   { keyword: "離れて", file: "/voice-back.mp3" },
   { keyword: "近づいて", file: "/voice-closer.mp3" },
@@ -708,9 +709,8 @@ function speak(text: string, force = false) {
     }
 
     if (file) {
-      // 前の音声を停止
+      // 音声ファイルで再生
       Object.values(audioCache).forEach((a) => { a.pause(); a.currentTime = 0; });
-
       isSpeaking = true;
       let audio = audioCache[file];
       if (!audio) {
@@ -721,15 +721,27 @@ function speak(text: string, force = false) {
       audio.onended = () => { isSpeaking = false; };
       audio.onerror = () => { isSpeaking = false; };
       audio.play().catch(() => { isSpeaking = false; });
+    } else {
+      // 音声ファイルにマッチしない場合 → Web Speech APIで読み上げ
+      if ("speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+        isSpeaking = true;
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = "ja-JP";
+        utterance.rate = 1.0;
+        utterance.onend = () => { isSpeaking = false; };
+        utterance.onerror = () => { isSpeaking = false; };
+        window.speechSynthesis.speak(utterance);
+      }
     }
   } catch { isSpeaking = false; }
 }
 
-// 全身が映っているか判定
-function checkFullBody(lm: Landmark[]): { ok: boolean; guide: string } {
+// 全身が映っているか判定（isSide: 横向き撮影モード）
+function checkFullBody(lm: Landmark[], isSide = false): { ok: boolean; guide: string } {
   if (lm.length < 33) return { ok: false, guide: "人物が見つかりません" };
 
-  const HEAD = lm[0]; // nose
+  const HEAD = lm[0];
   const L_ANKLE = lm[27];
   const R_ANKLE = lm[28];
   const L_SHOULDER = lm[11];
@@ -737,32 +749,39 @@ function checkFullBody(lm: Landmark[]): { ok: boolean; guide: string } {
   const L_HIP = lm[23];
   const R_HIP = lm[24];
 
-  // 信頼度しきい値を引き上げ（0.5→0.65）
-  const vis = (l: Landmark) => (l.visibility ?? 0) > 0.65;
+  const vis = (l: Landmark) => (l.visibility ?? 0) > 0.5;
   const headVis = vis(HEAD);
-  const ankleVis = vis(L_ANKLE) && vis(R_ANKLE);
-  const shoulderVis = vis(L_SHOULDER) && vis(R_SHOULDER);
-  const hipVis = vis(L_HIP) && vis(R_HIP);
+  const ankleVis = vis(L_ANKLE) || vis(R_ANKLE); // 横向きは片足見えればOK
+  const shoulderVis = vis(L_SHOULDER) || vis(R_SHOULDER); // 横向きは片肩見えればOK
+  const hipVis = vis(L_HIP) || vis(R_HIP);
 
-  if (!headVis && !shoulderVis) return { ok: false, guide: "カメラの前に立ってください" };
-  if (!shoulderVis || !hipVis) return { ok: false, guide: "上半身全体が映るように立ってください" };
-  if (!ankleVis) return { ok: false, guide: "もう少し離れてください。足元が映るように" };
+  if (!headVis && !shoulderVis) {
+    return { ok: false, guide: isSide ? "横向きのままカメラの前に立ってください" : "カメラの前に立ってください" };
+  }
+  if (!shoulderVis || !hipVis) {
+    return { ok: false, guide: isSide ? "上半身が映るように位置を調整してください" : "上半身全体が映るように立ってください" };
+  }
+  if (!ankleVis) {
+    return { ok: false, guide: "もう少し離れてください。足元が映るように" };
+  }
 
-  // 中央にいるか（範囲を厳密化: 0.25-0.75 → 0.3-0.7）
+  // 中央にいるか
   const cx = (L_SHOULDER.x + R_SHOULDER.x) / 2;
   if (cx < 0.3) return { ok: false, guide: "もう少し右に移動してください" };
   if (cx > 0.7) return { ok: false, guide: "もう少し左に移動してください" };
 
-  // 大きすぎ/小さすぎ（範囲を厳密化: 0.4-0.9 → 0.45-0.8）
+  // 大きすぎ/小さすぎ
   const bodyHeight = Math.abs(HEAD.y - ((L_ANKLE.y + R_ANKLE.y) / 2));
-  if (bodyHeight > 0.8) return { ok: false, guide: "もう少し離れてください" };
-  if (bodyHeight < 0.45) return { ok: false, guide: "もう少し近づいてください" };
+  if (bodyHeight > 0.85) return { ok: false, guide: "もう少し離れてください" };
+  if (bodyHeight < 0.4) return { ok: false, guide: "もう少し近づいてください" };
 
-  // 体が正面を向いているか確認（肩幅チェック）
-  const shoulderWidth = Math.abs(L_SHOULDER.x - R_SHOULDER.x);
-  if (shoulderWidth < 0.05) return { ok: false, guide: "体を正面に向けてください" };
+  if (!isSide) {
+    // 正面: 体が正面を向いているか確認
+    const shoulderWidth = Math.abs(L_SHOULDER.x - R_SHOULDER.x);
+    if (shoulderWidth < 0.05) return { ok: false, guide: "体を正面に向けてください" };
+  }
 
-  return { ok: true, guide: "そのままの位置でストップ！" };
+  return { ok: true, guide: isSide ? "そのまま横向きでストップ！" : "そのままの位置でストップ！" };
 }
 
 // ==================== 撮影＋診断画面（AIガイド付き） ====================
@@ -912,8 +931,8 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
         const result = landmarker.detectForVideo(video, performance.now());
         if (result.landmarks.length > 0) {
           const lm: Landmark[] = result.landmarks[0];
-          addLandmarkFrame(lm); // フレームバッファに追加（平均化用）
-          const check = checkFullBody(lm);
+          addLandmarkFrame(lm);
+          const check = checkFullBody(lm, startGuideForStep.current === "side");
 
           // ガイドキャンバスにシルエット描画
           const gc = guideCanvasRef.current;
