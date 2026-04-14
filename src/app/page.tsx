@@ -333,6 +333,85 @@ function InstallBanner() {
 // ==================== ホーム画面 ====================
 function HomeScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Screen) => void; onSelectSymptom: (id: string) => void }) {
   const records = getRecords(SELF_ID);
+  const [prediction, setPrediction] = useState<{
+    prediction: string; detail?: string; riskLevel: string; symptomId: string | null;
+  } | null>(null);
+  const [reminderHours, setReminderHours] = useState<number | null>(null);
+  const [reminderAlert, setReminderAlert] = useState<string | null>(null);
+  const [showReminderSetting, setShowReminderSetting] = useState(false);
+
+  // 痛み予測を取得
+  useEffect(() => {
+    const deviceId = getDeviceId();
+    if (!deviceId) return;
+    fetch("/api/predict", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ deviceId }),
+    })
+      .then((r) => r.json())
+      .then((d) => { if (d.prediction) setPrediction(d); })
+      .catch(() => {});
+  }, []);
+
+  // リマインダーチェック
+  useEffect(() => {
+    const saved = localStorage.getItem("zero_pain_reminder_hours");
+    if (saved) setReminderHours(parseInt(saved));
+
+    const lastActive = localStorage.getItem("zero_pain_last_active");
+    const hours = saved ? parseInt(saved) : null;
+    if (lastActive && hours) {
+      const elapsed = (Date.now() - parseInt(lastActive)) / (1000 * 60 * 60);
+      if (elapsed >= hours) {
+        setReminderAlert(`前回のアクセスから${Math.floor(elapsed)}時間経過しています。簡単なストレッチをしましょう！`);
+        // ブラウザ通知
+        if ("Notification" in window && Notification.permission === "granted") {
+          new Notification("ZERO-PAIN リマインダー", {
+            body: `${Math.floor(elapsed)}時間座りっぱなしではありませんか？ストレッチをしましょう！`,
+            icon: "/app-icon-192.png",
+          });
+        }
+      }
+    }
+    localStorage.setItem("zero_pain_last_active", String(Date.now()));
+
+    // ブラウザ通知許可を要求（初回のみ）
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+
+    // アプリ内タイマー（開いている間）
+    const timerId = setInterval(() => {
+      const h = parseInt(localStorage.getItem("zero_pain_reminder_hours") || "0");
+      if (h > 0) {
+        if ("Notification" in window && Notification.permission === "granted") {
+          new Notification("ZERO-PAIN ストレッチタイム", {
+            body: `${h}時間経ちました。体を動かしましょう！`,
+            icon: "/app-icon-192.png",
+          });
+        }
+      }
+    }, (parseInt(saved || "0") || 999) * 60 * 60 * 1000);
+
+    return () => clearInterval(timerId);
+  }, []);
+
+  const saveReminder = (hours: number) => {
+    setReminderHours(hours);
+    localStorage.setItem("zero_pain_reminder_hours", String(hours));
+    localStorage.setItem("zero_pain_last_active", String(Date.now()));
+    setShowReminderSetting(false);
+    setReminderAlert(null);
+  };
+
+  const riskColors: Record<string, string> = {
+    high: "from-red-500/20 to-red-600/10 border-red-500/30",
+    medium: "from-amber-500/20 to-amber-600/10 border-amber-500/30",
+    low: "from-emerald-500/20 to-emerald-600/10 border-emerald-500/30",
+  };
+  const riskIcons: Record<string, string> = { high: "🔴", medium: "⚠️", low: "✅" };
+
   return (
     <main className="fixed inset-0 bg-gray-950 text-white flex flex-col overflow-y-auto">
       {/* ヘッダー */}
@@ -342,6 +421,71 @@ function HomeScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Screen) =
 
       <div className="flex-1 px-4 py-5 space-y-5 max-w-md w-full mx-auto">
         <InstallBanner />
+
+        {/* リマインダーアラート */}
+        {reminderAlert && (
+          <div className="bg-gradient-to-r from-orange-500/20 to-amber-500/10 border border-orange-500/30 rounded-2xl px-4 py-3">
+            <p className="text-sm text-orange-300 font-semibold">⏰ {reminderAlert}</p>
+            <button
+              onClick={() => { setReminderAlert(null); onSelectSymptom("neck"); }}
+              className="mt-2 px-4 py-2 bg-orange-600 rounded-xl text-xs font-bold"
+            >
+              今すぐストレッチする
+            </button>
+          </div>
+        )}
+
+        {/* AI痛み予測カード */}
+        {prediction && (
+          <button
+            onClick={() => prediction.symptomId ? onSelectSymptom(prediction.symptomId) : onNavigate("ai-counsel")}
+            className={`w-full bg-gradient-to-r ${riskColors[prediction.riskLevel] || riskColors.low} border rounded-2xl px-4 py-4 text-left`}
+          >
+            <div className="flex items-start gap-3">
+              <span className="text-2xl">{riskIcons[prediction.riskLevel] || "✅"}</span>
+              <div className="flex-1">
+                <p className="text-xs text-gray-400 mb-1">🤖 AI痛み予測</p>
+                <p className="text-sm font-bold text-white">{prediction.prediction}</p>
+                {prediction.detail && <p className="text-xs text-gray-300 mt-1">{prediction.detail}</p>}
+                <p className="text-xs text-blue-400 mt-2">タップしてケアを開始 →</p>
+              </div>
+            </div>
+          </button>
+        )}
+
+        {/* リマインダー設定 */}
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => setShowReminderSetting(!showReminderSetting)}
+            className="text-xs text-gray-500 flex items-center gap-1"
+          >
+            ⏰ リマインダー: {reminderHours ? `${reminderHours}時間ごと` : "未設定"}
+          </button>
+        </div>
+        {showReminderSetting && (
+          <div className="bg-gray-900 rounded-xl p-4 border border-gray-800">
+            <p className="text-sm text-gray-300 mb-3">ストレッチリマインダー間隔</p>
+            <div className="flex gap-2">
+              {[1, 2, 3].map((h) => (
+                <button
+                  key={h}
+                  onClick={() => saveReminder(h)}
+                  className={`flex-1 py-2 rounded-lg text-sm font-bold ${
+                    reminderHours === h ? "bg-blue-600 text-white" : "bg-gray-800 text-gray-400"
+                  }`}
+                >
+                  {h}時間
+                </button>
+              ))}
+              <button
+                onClick={() => { setReminderHours(null); localStorage.removeItem("zero_pain_reminder_hours"); setShowReminderSetting(false); }}
+                className="flex-1 py-2 rounded-lg text-sm bg-gray-800 text-gray-400"
+              >
+                OFF
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* AIカウンセリング */}
         <button
