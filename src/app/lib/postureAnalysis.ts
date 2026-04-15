@@ -12,6 +12,35 @@ const RIGHT_KNEE = 26;
 const LEFT_ANKLE = 27;
 const RIGHT_ANKLE = 28;
 
+// ===== カメラ左右反転補正 =====
+// フロントカメラは鏡像表示のため、MediaPipeの「左肩」は実際の「右肩」になる
+// 全ての左右ペアを入れ替え + X座標を反転することで解剖学的な左右を正しく判定
+const LEFT_RIGHT_PAIRS: [number, number][] = [
+  [1, 4], [2, 5], [3, 6], // 目
+  [7, 8], // 耳
+  [9, 10], // 口
+  [11, 12], // 肩
+  [13, 14], // 肘
+  [15, 16], // 手首
+  [17, 18], [19, 20], [21, 22], // 手
+  [23, 24], // 腰
+  [25, 26], // 膝
+  [27, 28], // 足首
+  [29, 30], [31, 32], // 足
+];
+
+function mirrorLandmarks(landmarks: Landmark[]): Landmark[] {
+  const mirrored = landmarks.map((l) => ({ ...l, x: 1 - l.x }));
+  for (const [left, right] of LEFT_RIGHT_PAIRS) {
+    if (left < mirrored.length && right < mirrored.length) {
+      const tmp = mirrored[left];
+      mirrored[left] = mirrored[right];
+      mirrored[right] = tmp;
+    }
+  }
+  return mirrored;
+}
+
 // ===== 厳格化されたしきい値 =====
 const THRESHOLDS = {
   shoulder: { good: 0.008, caution: 0.020 },
@@ -116,7 +145,9 @@ function balanceAdvice(level: "good" | "caution" | "bad", diff: number): string 
 // ===== 正面撮影の解析（5項目） =====
 export function analyzeFrontPosture(landmarks: Landmark[]): DiagnosisItem[] {
   if (landmarks.length < 33) return [];
-  const lm = getAveragedLandmarks() || landmarks;
+  const raw = getAveragedLandmarks() || landmarks;
+  // フロントカメラの鏡像反転を補正（解剖学的な左右に揃える）
+  const lm = mirrorLandmarks(raw);
   const results: DiagnosisItem[] = [];
 
   const shoulderDiff = lm[LEFT_SHOULDER].y - lm[RIGHT_SHOULDER].y;
