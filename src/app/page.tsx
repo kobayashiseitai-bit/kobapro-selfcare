@@ -56,7 +56,7 @@ const SYMPTOMS = [
     id: "neck",
     label: "首こり",
     emoji: "🦴",
-    icon: "/icon-neck-banner.png",
+    icon: "/icon-neck-sq.jpg",
     videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
     videoTitle: "首こり解消セルフケア",
     description: "首周りの筋肉をほぐし、痛みを和らげるストレッチです。",
@@ -65,7 +65,7 @@ const SYMPTOMS = [
     id: "shoulder_stiff",
     label: "肩凝り",
     emoji: "💪",
-    icon: "/icon-shoulder-stiff-banner.png",
+    icon: "/icon-shoulder-stiff-sq.jpg",
     videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
     videoTitle: "肩凝り解消セルフケア",
     description: "固まった肩周りをほぐすストレッチです。",
@@ -74,7 +74,7 @@ const SYMPTOMS = [
     id: "back",
     label: "腰痛",
     emoji: "🔥",
-    icon: "/icon-back-banner.png",
+    icon: "/icon-back-sq.jpg",
     videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
     videoTitle: "腰痛改善セルフケア",
     description: "腰回りの筋肉を緩め、腰痛を予防・改善するストレッチです。",
@@ -83,7 +83,7 @@ const SYMPTOMS = [
     id: "headache",
     label: "頭痛",
     emoji: "🧠",
-    icon: "/icon-headache-banner.png",
+    icon: "/icon-headache-sq.jpg",
     videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
     videoTitle: "頭痛緩和セルフケア",
     description: "頭痛を和らげるツボ押しと首肩のストレッチです。",
@@ -92,7 +92,7 @@ const SYMPTOMS = [
     id: "eye_fatigue",
     label: "眼精疲労",
     emoji: "👁️",
-    icon: "/icon-eye-banner.png",
+    icon: "/icon-eye-sq.jpg",
     videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
     videoTitle: "眼精疲労解消セルフケア",
     description: "目の疲れを取り、スッキリさせるツボ押し＆エクササイズです。",
@@ -101,7 +101,7 @@ const SYMPTOMS = [
     id: "kyphosis",
     label: "猫背改善",
     emoji: "🐱",
-    icon: "/icon-kyphosis-banner.png",
+    icon: "/icon-kyphosis-sq.jpg",
     videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
     videoTitle: "猫背改善エクササイズ",
     description: "猫背を矯正し、正しい姿勢を身につけるエクササイズです。",
@@ -602,7 +602,7 @@ function HomeScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Screen) =
               <button
                 key={symptom.id}
                 onClick={() => onSelectSymptom(symptom.id)}
-                className="btn-3d rounded-2xl overflow-hidden aspect-[3722/1152]"
+                className="btn-3d rounded-2xl overflow-hidden aspect-square"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={symptom.icon} alt={symptom.label} className="w-full h-full object-cover block" />
