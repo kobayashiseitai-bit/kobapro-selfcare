@@ -22,7 +22,7 @@ export const viewport = {
 
 export const metadata: Metadata = {
   title: "ZERO-PAIN",
-  description: "ZERO-PAIN セルフケアアプリ",
+  description: "あなた専用のAIパーソナルトレーナー。姿勢チェック・セルフケア・痛み予測で体の悩みをゼロに。",
   icons: {
     apple: [
       { url: "/app-icon-180.png?v=3", sizes: "180x180", type: "image/png" },
@@ -30,6 +30,26 @@ export const metadata: Metadata = {
     icon: [
       { url: "/app-icon-192.png?v=3", sizes: "192x192", type: "image/png" },
     ],
+  },
+  openGraph: {
+    title: "ZERO-PAIN セルフケアアプリ",
+    description: "あなた専用のAIパーソナルトレーナー。姿勢チェック・セルフケア・痛み予測で体の悩みをゼロに。",
+    images: [
+      {
+        url: "https://posture-app-steel.vercel.app/og-image.jpg",
+        width: 1200,
+        height: 630,
+        alt: "ZERO-PAIN",
+      },
+    ],
+    type: "website",
+    siteName: "ZERO-PAIN",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "ZERO-PAIN セルフケアアプリ",
+    description: "あなた専用のAIパーソナルトレーナー。姿勢チェック・セルフケア・痛み予測で体の悩みをゼロに。",
+    images: ["https://posture-app-steel.vercel.app/og-image.jpg"],
   },
   appleWebApp: {
     capable: true,
