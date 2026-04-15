@@ -617,6 +617,17 @@ function HomeScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Screen) =
         {/* Step 2: AIカウンセリング */}
         <div className="space-y-3">
           <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Step 2 · AI相談</h2>
+
+          {/* パーソナルトレーナー訴求バッジ */}
+          <div className="bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-transparent border-l-4 border-amber-400 rounded-r-lg px-3 py-2">
+            <p className="text-xs text-amber-300 font-bold flex items-center gap-1">
+              ✨ あなた専用のパーソナルトレーナー
+            </p>
+            <p className="text-[11px] text-gray-400 mt-0.5">
+              使うほど賢くなる、あなた専属のAI相談窓口
+            </p>
+          </div>
+
           <button
             onClick={() => onNavigate("ai-counsel")}
             className="btn-3d w-full bg-gradient-to-b from-blue-400 via-blue-600 to-purple-800 rounded-2xl font-bold text-left flex items-center gap-3 shadow-[0_10px_30px_rgba(79,70,229,0.5)] aspect-[3722/1152] px-4 overflow-hidden"
