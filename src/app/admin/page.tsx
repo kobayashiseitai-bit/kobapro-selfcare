@@ -52,8 +52,6 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     fetchHealth();
-    const id = setInterval(fetchHealth, 10000);
-    return () => clearInterval(id);
   }, []);
 
   return (

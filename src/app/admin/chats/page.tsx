@@ -48,8 +48,6 @@ export default function ChatsPage() {
         });
     };
     load();
-    const id = setInterval(load, 10000);
-    return () => clearInterval(id);
   }, [page, userId]);
 
   const totalPages = Math.ceil(total / limit);

@@ -27,8 +27,6 @@ export default function SymptomsPage() {
         .then((r) => r.json())
         .then(setData);
     load();
-    const id = setInterval(load, 10000);
-    return () => clearInterval(id);
   }, []);
 
   const barData = data

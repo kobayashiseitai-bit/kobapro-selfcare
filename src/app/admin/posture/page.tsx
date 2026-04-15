@@ -41,8 +41,6 @@ export default function PosturePage() {
           setTotal(d.total || 0);
         });
     load();
-    const id = setInterval(load, 10000);
-    return () => clearInterval(id);
   }, [page]);
 
   const totalPages = Math.ceil(total / limit);

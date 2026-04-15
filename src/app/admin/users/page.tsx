@@ -38,8 +38,6 @@ export default function UsersPage() {
 
   useEffect(() => {
     loadUsers();
-    const id = setInterval(loadUsers, 10000);
-    return () => clearInterval(id);
   }, [page]);
 
   const saveName = async (userId: string) => {
