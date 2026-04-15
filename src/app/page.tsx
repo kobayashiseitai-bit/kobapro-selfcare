@@ -323,6 +323,11 @@ function InstallBanner() {
   const [show, setShow] = useState(false);
 
   useEffect(() => {
+    // Capacitor（iOS/Androidネイティブ）で起動済みなら表示しない
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cap = (window as any).Capacitor;
+    if (cap?.isNativePlatform?.() === true) return;
+
     // スタンドアロンモードで起動済みなら表示しない
     const isStandalone = window.matchMedia("(display-mode: standalone)").matches
       || ("standalone" in window.navigator && (window.navigator as unknown as { standalone: boolean }).standalone);
@@ -581,39 +586,9 @@ function HomeScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Screen) =
           </div>
         )}
 
-        {/* AIカウンセリング */}
-        <button
-          onClick={() => onNavigate("ai-counsel")}
-          className="btn-3d w-full bg-gradient-to-b from-blue-400 via-blue-600 to-purple-800 rounded-2xl font-bold text-left flex items-center gap-3 shadow-[0_10px_30px_rgba(79,70,229,0.5)] aspect-[3722/1152] px-4 overflow-hidden"
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icon-skeleton-sensei.png" alt="ガイコツ先生" className="h-full w-auto drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)] -my-2" />
-          <div className="flex-1 min-w-0">
-            <p className="text-base font-bold drop-shadow-sm">ガイコツ先生に相談する</p>
-            <p className="text-xs font-normal opacity-80">症状を聞き取り最適なケアを提案</p>
-          </div>
-        </button>
-
-        {/* 症状選択 */}
-        <div>
-          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">セルフケアメニュー</h2>
-          <div className="grid grid-cols-2 gap-3">
-            {SYMPTOMS.map((symptom) => (
-              <button
-                key={symptom.id}
-                onClick={() => onSelectSymptom(symptom.id)}
-                className="btn-3d rounded-2xl overflow-hidden aspect-square"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={symptom.icon} alt={symptom.label} className="w-full h-full object-cover block" />
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* 全身チェック */}
+        {/* Step 1: 姿勢チェック */}
         <div className="space-y-3">
-          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">姿勢チェック</h2>
+          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Step 1 · 姿勢チェック</h2>
           <button
             onClick={() => onNavigate("check")}
             className="btn-3d w-full px-5 py-5 bg-gradient-to-b from-orange-400 via-orange-600 to-amber-800 rounded-2xl font-semibold flex items-center gap-4 shadow-[0_10px_30px_rgba(234,88,12,0.5)]"
@@ -637,6 +612,39 @@ function HomeScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Screen) =
               </p>
             </div>
           </button>
+        </div>
+
+        {/* Step 2: AIカウンセリング */}
+        <div className="space-y-3">
+          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Step 2 · AI相談</h2>
+          <button
+            onClick={() => onNavigate("ai-counsel")}
+            className="btn-3d w-full bg-gradient-to-b from-blue-400 via-blue-600 to-purple-800 rounded-2xl font-bold text-left flex items-center gap-3 shadow-[0_10px_30px_rgba(79,70,229,0.5)] aspect-[3722/1152] px-4 overflow-hidden"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/icon-skeleton-sensei.png" alt="ガイコツ先生" className="h-full w-auto drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)] -my-2" />
+            <div className="flex-1 min-w-0">
+              <p className="text-base font-bold drop-shadow-sm">ガイコツ先生に相談する</p>
+              <p className="text-xs font-normal opacity-80">症状を聞き取り最適なケアを提案</p>
+            </div>
+          </button>
+        </div>
+
+        {/* Step 3: 症状選択 */}
+        <div>
+          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Step 3 · セルフケアメニュー</h2>
+          <div className="grid grid-cols-2 gap-3">
+            {SYMPTOMS.map((symptom) => (
+              <button
+                key={symptom.id}
+                onClick={() => onSelectSymptom(symptom.id)}
+                className="btn-3d rounded-2xl overflow-hidden aspect-square"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={symptom.icon} alt={symptom.label} className="w-full h-full object-cover block" />
+              </button>
+            ))}
+          </div>
         </div>
 
       </div>
