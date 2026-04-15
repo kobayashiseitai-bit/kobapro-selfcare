@@ -618,25 +618,28 @@ function HomeScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Screen) =
         <div className="space-y-3">
           <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Step 2 · AI相談</h2>
 
-          {/* パーソナルトレーナー訴求バッジ */}
-          <div className="bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-transparent border-l-4 border-amber-400 rounded-r-lg px-3 py-2">
-            <p className="text-xs text-amber-300 font-bold flex items-center gap-1">
-              ✨ あなた専用のパーソナルトレーナー
-            </p>
-            <p className="text-[11px] text-gray-400 mt-0.5">
-              使うほど賢くなる、あなた専属のAI相談窓口
-            </p>
-          </div>
-
+          {/* パーソナルトレーナー統合ボタン */}
           <button
             onClick={() => onNavigate("ai-counsel")}
-            className="btn-3d w-full bg-gradient-to-b from-blue-400 via-blue-600 to-purple-800 rounded-2xl font-bold text-left flex items-center gap-3 shadow-[0_10px_30px_rgba(79,70,229,0.5)] aspect-[3722/1152] px-4 overflow-hidden"
+            className="btn-3d w-full rounded-2xl overflow-hidden shadow-[0_10px_30px_rgba(79,70,229,0.5)] text-left"
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/icon-skeleton-sensei.png" alt="ガイコツ先生" className="h-full w-auto drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)] -my-2" />
-            <div className="flex-1 min-w-0">
-              <p className="text-base font-bold drop-shadow-sm">ガイコツ先生に相談する</p>
-              <p className="text-xs font-normal opacity-80">症状を聞き取り最適なケアを提案</p>
+            {/* 上部: パーソナルトレーナー訴求 */}
+            <div className="bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 px-4 py-3">
+              <p className="text-base font-extrabold text-gray-900 flex items-center gap-1.5 drop-shadow-sm">
+                ✨ あなた専用のパーソナルトレーナー
+              </p>
+              <p className="text-xs font-semibold text-amber-900 mt-0.5">
+                使うほど賢くなる、あなた専属のAI相談窓口
+              </p>
+            </div>
+            {/* 下部: ガイコツ先生ボタン */}
+            <div className="bg-gradient-to-b from-blue-400 via-blue-600 to-purple-800 flex items-center gap-3 px-4 overflow-hidden aspect-[3722/1152]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/icon-skeleton-sensei.png" alt="ガイコツ先生" className="h-full w-auto drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)] -my-2" />
+              <div className="flex-1 min-w-0">
+                <p className="text-base font-bold drop-shadow-sm text-white">ガイコツ先生に相談する</p>
+                <p className="text-xs font-normal opacity-80 text-white">症状を聞き取り最適なケアを提案</p>
+              </div>
             </div>
           </button>
         </div>
