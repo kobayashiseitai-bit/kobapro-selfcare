@@ -856,24 +856,6 @@ function AiCounselScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Scre
         </div>
       )}
 
-      {/* LINE予約導線 */}
-      {messages.length >= 4 && (
-        <div className="max-w-md w-full mx-auto mb-3 px-4">
-          <a
-            href="https://lin.ee/TKHXNpJn"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full px-4 py-3 bg-[#06C755] hover:bg-[#05b04c] active:bg-[#04a044] rounded-xl font-semibold text-sm flex items-center gap-3 text-white block text-center"
-          >
-            <span className="text-2xl">💬</span>
-            <div className="text-left">
-              <p className="font-bold">改善しない場合はプロにお任せ</p>
-              <p className="text-xs opacity-90">LINEから予約する</p>
-            </div>
-          </a>
-        </div>
-      )}
-
       {/* 入力エリア */}
       <div className="border-t border-gray-800 px-4 py-3 max-w-md w-full mx-auto flex gap-2">
         <input
@@ -951,14 +933,6 @@ function SelfcareScreen({ onNavigate, initialSymptomId }: { onNavigate: (s: Scre
             >
               閉じる
             </button>
-            <a
-              href="https://lin.ee/TKHXNpJn"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-2 w-full py-3 bg-[#06C755] hover:bg-[#05b04c] rounded-lg text-sm font-semibold flex items-center justify-center gap-2 text-white block"
-            >
-              💬 改善しない場合はLINEで予約
-            </a>
           </div>
         </div>
       )}
