@@ -924,6 +924,23 @@ function SelfcareScreen({ onNavigate, initialSymptomId }: { onNavigate: (s: Scre
             <span className="text-xs text-gray-500">{stretches.length}種類</span>
           </div>
 
+          {/* YouTubeで動画を探すボタン */}
+          <a
+            href={`https://www.youtube.com/results?search_query=${encodeURIComponent(activeSymptom.label + " 解消 ストレッチ")}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 rounded-xl p-4 text-white"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">▶️</span>
+              <div className="flex-1">
+                <p className="font-bold text-sm">YouTubeで動画を見る</p>
+                <p className="text-xs opacity-90">{activeSymptom.label}の改善動画を検索</p>
+              </div>
+              <span className="text-lg">→</span>
+            </div>
+          </a>
+
           {stretches.map((stretch, i) => (
             <div key={stretch.id} className="bg-gray-800 rounded-2xl overflow-hidden border border-gray-700">
               {/* 画像エリア */}
