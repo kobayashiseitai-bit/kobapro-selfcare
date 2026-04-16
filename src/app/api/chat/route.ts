@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest } from "next/server";
+import { STRETCH_DATA } from "../../lib/stretches";
 
 function getClient() {
   return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -103,6 +104,47 @@ const BASE_PROMPT = `あなたはZERO-PAINセルフケアアプリの専属AIカ
 
 整体師としての深い知識を活かしつつも、言葉は誰にでもわかるやさしい表現で答えてください。`;
 
+// アプリ内に用意されている30種類のストレッチカタログを文字列化
+function buildStretchCatalog(): string {
+  const symptomLabelMap: Record<string, string> = {
+    neck: "首こり",
+    shoulder_stiff: "肩こり",
+    back: "腰痛",
+    headache: "頭痛",
+    eye_fatigue: "眼精疲労",
+    kyphosis: "猫背改善",
+  };
+
+  const sections = STRETCH_DATA.map((category) => {
+    const label = symptomLabelMap[category.symptomId] || category.symptomId;
+    const lines = category.stretches.map((s, i) => {
+      return `  ${i + 1}. ${s.title}（${s.duration} / ${s.reps}）- ${s.benefit}`;
+    });
+    return `■ ${label}\n${lines.join("\n")}`;
+  });
+
+  return sections.join("\n\n");
+}
+
+const STRETCH_CATALOG_TEXT = buildStretchCatalog();
+
+const STRETCH_CATALOG_PROMPT = `
+
+【アプリ内に用意されている30種類のセルフケア（重要）】
+ZERO-PAINアプリには、6症状 × 5種類 = 計30種類のストレッチが用意されています。
+セルフケアを提案する時は、必ず以下の実際のストレッチ名を具体的に挙げて、
+「このアプリの○○のセルフケアをやってみてください」と案内してください。
+
+${STRETCH_CATALOG_TEXT}
+
+【ストレッチ提案時のルール】
+- 必ず上記のストレッチ名を使って具体的に提案する
+- 「首の横倒しストレッチが効果的です」のように名前を出す
+- 1〜3個選んで優先順位をつけて紹介
+- その人の症状・生活習慣に合わせてどれが最適かを説明
+- 「アプリのセルフケアメニューから○○を選んで実践してみてください」と誘導`;
+
+
 interface UserContextResult {
   contextText: string;
   latestPostureImageUrl: string | null;
@@ -199,7 +241,7 @@ export async function POST(req: NextRequest) {
 
     const { contextText, latestPostureImageUrl, latestPostureDate } =
       await buildUserContext(deviceId || "");
-    const systemPrompt = BASE_PROMPT + contextText;
+    const systemPrompt = BASE_PROMPT + STRETCH_CATALOG_PROMPT + contextText;
 
     // 初回チャット時のみ画像を添付（あれば）
     const isFirstMessage = !messages || messages.length === 0;
