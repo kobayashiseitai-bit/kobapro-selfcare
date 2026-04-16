@@ -3,6 +3,7 @@
 import { useRef, useState, useEffect, useCallback } from "react";
 import { addRecord, getRecords, deleteRecord, Landmark, PostureRecord } from "./lib/storage";
 import { analyzeFrontPosture, analyzeSidePosture, drawDiagnosisOverlay, drawSideDiagnosisOverlay, addLandmarkFrame, clearLandmarkBuffer } from "./lib/postureAnalysis";
+import { getStretchesBySymptom } from "./lib/stretches";
 import type { DiagnosisItem } from "./lib/storage";
 // Supabase保存はAPI経由
 function getDeviceId(): string {
@@ -883,6 +884,7 @@ function AiCounselScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Scre
 function SelfcareScreen({ onNavigate, initialSymptomId }: { onNavigate: (s: Screen) => void; initialSymptomId: string | null }) {
   const [selectedId, setSelectedId] = useState<string | null>(initialSymptomId);
   const activeSymptom = SYMPTOMS.find((s) => s.id === selectedId);
+  const stretches = selectedId ? getStretchesBySymptom(selectedId) : [];
 
   return (
     <main className="fixed inset-0 bg-gray-950 overflow-y-auto text-white flex flex-col items-center p-4 pb-20">
@@ -913,27 +915,76 @@ function SelfcareScreen({ onNavigate, initialSymptomId }: { onNavigate: (s: Scre
         ))}
       </div>
 
-      {activeSymptom && (
-        <div className="w-full max-w-md mt-6">
-          <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
-            <h3 className="font-bold text-base mb-1">{activeSymptom.videoTitle}</h3>
-            <p className="text-gray-400 text-xs mb-3">{activeSymptom.description}</p>
-            <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-black">
-              <iframe
-                src={`${activeSymptom.videoUrl}?rel=0&modestbranding=1`}
-                title={activeSymptom.videoTitle}
-                className="absolute inset-0 w-full h-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-            </div>
-            <button
-              onClick={() => setSelectedId(null)}
-              className="mt-3 w-full py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm"
-            >
-              閉じる
-            </button>
+      {activeSymptom && stretches.length > 0 && (
+        <div className="w-full max-w-md mt-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-lg text-blue-400">
+              {activeSymptom.label}のセルフケア
+            </h3>
+            <span className="text-xs text-gray-500">{stretches.length}種類</span>
           </div>
+
+          {stretches.map((stretch, i) => (
+            <div key={stretch.id} className="bg-gray-800 rounded-2xl overflow-hidden border border-gray-700">
+              {/* 画像エリア */}
+              <div className="relative w-full aspect-video bg-gray-900">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={stretch.image}
+                  alt={stretch.title}
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+                <div className="absolute top-2 left-2 bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded">
+                  {i + 1}/{stretches.length}
+                </div>
+              </div>
+
+              {/* 内容 */}
+              <div className="p-4 space-y-3">
+                <h4 className="font-bold text-base">{stretch.title}</h4>
+
+                {/* 時間・回数 */}
+                <div className="flex gap-2">
+                  <span className="bg-blue-900/40 text-blue-300 text-xs px-3 py-1 rounded-full font-semibold">
+                    ⏱ {stretch.duration}
+                  </span>
+                  <span className="bg-purple-900/40 text-purple-300 text-xs px-3 py-1 rounded-full font-semibold">
+                    🔄 {stretch.reps}
+                  </span>
+                </div>
+
+                {/* 手順 */}
+                <div>
+                  <p className="text-xs text-gray-400 font-semibold mb-1">▶ やり方</p>
+                  <ol className="space-y-1 pl-4">
+                    {stretch.steps.map((step, j) => (
+                      <li key={j} className="text-sm text-gray-200 list-decimal">
+                        {step}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+
+                {/* コツ */}
+                <div className="bg-amber-900/20 border-l-2 border-amber-400 pl-3 py-1">
+                  <p className="text-xs text-amber-300 font-semibold mb-0.5">💡 ポイント</p>
+                  <p className="text-xs text-gray-300">{stretch.tips}</p>
+                </div>
+
+                {/* 効果 */}
+                <div className="text-xs text-gray-500">
+                  <span className="font-semibold">効果:</span> {stretch.benefit}
+                </div>
+              </div>
+            </div>
+          ))}
+
+          <button
+            onClick={() => setSelectedId(null)}
+            className="w-full py-3 bg-gray-700 hover:bg-gray-600 rounded-xl text-sm font-semibold"
+          >
+            閉じる
+          </button>
         </div>
       )}
     </main>
