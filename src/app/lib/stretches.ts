@@ -26,7 +26,7 @@ export const STRETCH_DATA: StretchCategory[] = [
       {
         id: "neck-1",
         title: "首の横倒しストレッチ",
-        image: "/stretches/placeholder.jpg",
+        image: "/stretches/neck-1.png",
         duration: "左右各20秒",
         reps: "3セット",
         steps: [
@@ -41,7 +41,7 @@ export const STRETCH_DATA: StretchCategory[] = [
       {
         id: "neck-2",
         title: "首回しストレッチ",
-        image: "/stretches/placeholder.jpg",
+        image: "/stretches/neck-2.png",
         duration: "各方向30秒",
         reps: "2セット",
         steps: [
@@ -56,7 +56,7 @@ export const STRETCH_DATA: StretchCategory[] = [
       {
         id: "neck-3",
         title: "あご引きストレッチ",
-        image: "/stretches/placeholder.jpg",
+        image: "/stretches/neck-3.png",
         duration: "10秒キープ",
         reps: "10回",
         steps: [
@@ -71,7 +71,7 @@ export const STRETCH_DATA: StretchCategory[] = [
       {
         id: "neck-4",
         title: "首の斜め伸ばし",
-        image: "/stretches/placeholder.jpg",
+        image: "/stretches/neck-4.png",
         duration: "左右各20秒",
         reps: "3セット",
         steps: [
@@ -86,7 +86,7 @@ export const STRETCH_DATA: StretchCategory[] = [
       {
         id: "neck-5",
         title: "肩甲骨寄せストレッチ",
-        image: "/stretches/placeholder.jpg",
+        image: "/stretches/neck-5.png",
         duration: "5秒キープ",
         reps: "15回",
         steps: [
@@ -107,7 +107,7 @@ export const STRETCH_DATA: StretchCategory[] = [
       {
         id: "shoulder-1",
         title: "肩回し（前後）",
-        image: "/stretches/placeholder.jpg",
+        image: "/stretches/shoulder-1.png",
         duration: "各方向30秒",
         reps: "2セット",
         steps: [
@@ -122,7 +122,7 @@ export const STRETCH_DATA: StretchCategory[] = [
       {
         id: "shoulder-2",
         title: "腕の前後ストレッチ",
-        image: "/stretches/placeholder.jpg",
+        image: "/stretches/shoulder-2.png",
         duration: "左右各20秒",
         reps: "3セット",
         steps: [
@@ -137,7 +137,7 @@ export const STRETCH_DATA: StretchCategory[] = [
       {
         id: "shoulder-3",
         title: "タオルストレッチ",
-        image: "/stretches/placeholder.jpg",
+        image: "/stretches/shoulder-3.png",
         duration: "15秒キープ",
         reps: "10回",
         steps: [
@@ -152,7 +152,7 @@ export const STRETCH_DATA: StretchCategory[] = [
       {
         id: "shoulder-4",
         title: "肩すくめストレッチ",
-        image: "/stretches/placeholder.jpg",
+        image: "/stretches/shoulder-4.png",
         duration: "5秒キープ",
         reps: "20回",
         steps: [
@@ -167,7 +167,7 @@ export const STRETCH_DATA: StretchCategory[] = [
       {
         id: "shoulder-5",
         title: "胸開きストレッチ",
-        image: "/stretches/placeholder.jpg",
+        image: "/stretches/shoulder-5.png",
         duration: "30秒キープ",
         reps: "3セット",
         steps: [
@@ -188,7 +188,7 @@ export const STRETCH_DATA: StretchCategory[] = [
       {
         id: "back-1",
         title: "膝抱えストレッチ",
-        image: "/stretches/placeholder.jpg",
+        image: "/stretches/back-1.png",
         duration: "30秒キープ",
         reps: "3セット",
         steps: [
@@ -203,7 +203,7 @@ export const STRETCH_DATA: StretchCategory[] = [
       {
         id: "back-2",
         title: "腰ひねりストレッチ",
-        image: "/stretches/placeholder.jpg",
+        image: "/stretches/back-2.png",
         duration: "左右各20秒",
         reps: "3セット",
         steps: [
@@ -218,7 +218,7 @@ export const STRETCH_DATA: StretchCategory[] = [
       {
         id: "back-3",
         title: "キャット&カウ",
-        image: "/stretches/placeholder.jpg",
+        image: "/stretches/back-3.png",
         duration: "10回",
         reps: "3セット",
         steps: [
@@ -233,7 +233,7 @@ export const STRETCH_DATA: StretchCategory[] = [
       {
         id: "back-4",
         title: "ヒップリフト",
-        image: "/stretches/placeholder.jpg",
+        image: "/stretches/back-4.png",
         duration: "5秒キープ",
         reps: "15回 × 3セット",
         steps: [
@@ -248,7 +248,7 @@ export const STRETCH_DATA: StretchCategory[] = [
       {
         id: "back-5",
         title: "ハムストリングス伸ばし",
-        image: "/stretches/placeholder.jpg",
+        image: "/stretches/back-5.png",
         duration: "左右各30秒",
         reps: "2セット",
         steps: [
@@ -269,7 +269,7 @@ export const STRETCH_DATA: StretchCategory[] = [
       {
         id: "headache-1",
         title: "こめかみマッサージ",
-        image: "/stretches/placeholder.jpg",
+        image: "/stretches/headache-1.png",
         duration: "1分",
         reps: "3セット",
         steps: [
@@ -284,7 +284,7 @@ export const STRETCH_DATA: StretchCategory[] = [
       {
         id: "headache-2",
         title: "首の付け根マッサージ",
-        image: "/stretches/placeholder.jpg",
+        image: "/stretches/headache-2.png",
         duration: "30秒",
         reps: "3セット",
         steps: [
@@ -299,7 +299,7 @@ export const STRETCH_DATA: StretchCategory[] = [
       {
         id: "headache-3",
         title: "目の周りツボ押し",
-        image: "/stretches/placeholder.jpg",
+        image: "/stretches/headache-3.png",
         duration: "各5秒",
         reps: "5ヶ所 × 3回",
         steps: [
@@ -314,7 +314,7 @@ export const STRETCH_DATA: StretchCategory[] = [
       {
         id: "headache-4",
         title: "首の前ストレッチ",
-        image: "/stretches/placeholder.jpg",
+        image: "/stretches/headache-4.png",
         duration: "20秒キープ",
         reps: "5回",
         steps: [
@@ -329,7 +329,7 @@ export const STRETCH_DATA: StretchCategory[] = [
       {
         id: "headache-5",
         title: "肩甲骨ストレッチ",
-        image: "/stretches/placeholder.jpg",
+        image: "/stretches/headache-5.png",
         duration: "30秒",
         reps: "3セット",
         steps: [
@@ -350,7 +350,7 @@ export const STRETCH_DATA: StretchCategory[] = [
       {
         id: "eye-1",
         title: "目のパチパチ体操",
-        image: "/stretches/placeholder.jpg",
+        image: "/stretches/eye-1.png",
         duration: "1分",
         reps: "3セット",
         steps: [
@@ -365,7 +365,7 @@ export const STRETCH_DATA: StretchCategory[] = [
       {
         id: "eye-2",
         title: "遠近ストレッチ",
-        image: "/stretches/placeholder.jpg",
+        image: "/stretches/eye-2.png",
         duration: "1分",
         reps: "5セット",
         steps: [
@@ -380,7 +380,7 @@ export const STRETCH_DATA: StretchCategory[] = [
       {
         id: "eye-3",
         title: "眼球回し",
-        image: "/stretches/placeholder.jpg",
+        image: "/stretches/eye-3.png",
         duration: "各方向30秒",
         reps: "2セット",
         steps: [
@@ -395,7 +395,7 @@ export const STRETCH_DATA: StretchCategory[] = [
       {
         id: "eye-4",
         title: "温タオル",
-        image: "/stretches/placeholder.jpg",
+        image: "/stretches/eye-4.png",
         duration: "5分",
         reps: "1回",
         steps: [
@@ -410,7 +410,7 @@ export const STRETCH_DATA: StretchCategory[] = [
       {
         id: "eye-5",
         title: "ツボ押し（晴明）",
-        image: "/stretches/placeholder.jpg",
+        image: "/stretches/eye-5.png",
         duration: "10秒",
         reps: "5回",
         steps: [
@@ -431,7 +431,7 @@ export const STRETCH_DATA: StretchCategory[] = [
       {
         id: "kyphosis-1",
         title: "胸開きストレッチ",
-        image: "/stretches/placeholder.jpg",
+        image: "/stretches/kyphosis-1.png",
         duration: "30秒",
         reps: "3セット",
         steps: [
@@ -446,7 +446,7 @@ export const STRETCH_DATA: StretchCategory[] = [
       {
         id: "kyphosis-2",
         title: "壁に背中つけ",
-        image: "/stretches/placeholder.jpg",
+        image: "/stretches/kyphosis-2.png",
         duration: "1分",
         reps: "3セット",
         steps: [
@@ -461,7 +461,7 @@ export const STRETCH_DATA: StretchCategory[] = [
       {
         id: "kyphosis-3",
         title: "肩甲骨寄せ",
-        image: "/stretches/placeholder.jpg",
+        image: "/stretches/kyphosis-3.png",
         duration: "10秒",
         reps: "15回",
         steps: [
@@ -476,7 +476,7 @@ export const STRETCH_DATA: StretchCategory[] = [
       {
         id: "kyphosis-4",
         title: "胸椎ストレッチ",
-        image: "/stretches/placeholder.jpg",
+        image: "/stretches/kyphosis-4.png",
         duration: "1分",
         reps: "2セット",
         steps: [
@@ -491,7 +491,7 @@ export const STRETCH_DATA: StretchCategory[] = [
       {
         id: "kyphosis-5",
         title: "あご引きエクササイズ",
-        image: "/stretches/placeholder.jpg",
+        image: "/stretches/kyphosis-5.png",
         duration: "5秒",
         reps: "20回",
         steps: [
