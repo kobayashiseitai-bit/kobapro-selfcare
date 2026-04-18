@@ -1993,7 +1993,7 @@ async function compressImageToBase64(input: File, maxSize = 512): Promise<string
 }
 
 function MealScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
-  const [mode, setMode] = useState<"home" | "analyzing" | "result" | "history">("home");
+  const [mode, setMode] = useState<"home" | "analyzing" | "result" | "history" | "calendar" | "goal">("home");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<MealAnalysis | null>(null);
   const [analysisImageUrl, setAnalysisImageUrl] = useState<string | null>(null);
@@ -2119,16 +2119,51 @@ function MealScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
           </button>
 
           <button
+            onClick={() => setMode("calendar")}
+            className="w-full px-5 py-3 bg-gray-800 hover:bg-gray-700 rounded-2xl font-semibold flex items-center gap-3 border border-gray-700"
+          >
+            <span className="text-2xl">📅</span>
+            <div className="text-left flex-1">
+              <p className="text-sm font-bold">食事カレンダー</p>
+              <p className="text-xs text-gray-400">日別カロリー・栄養バランスの推移</p>
+            </div>
+            <span className="text-gray-500">›</span>
+          </button>
+
+          <button
+            onClick={() => setMode("goal")}
+            className="w-full px-5 py-3 bg-gray-800 hover:bg-gray-700 rounded-2xl font-semibold flex items-center gap-3 border border-gray-700"
+          >
+            <span className="text-2xl">🎯</span>
+            <div className="text-left flex-1">
+              <p className="text-sm font-bold">目標設定</p>
+              <p className="text-xs text-gray-400">ダイエット・体重維持・筋肉増量</p>
+            </div>
+            <span className="text-gray-500">›</span>
+          </button>
+
+          <button
             onClick={openHistory}
             className="w-full px-5 py-3 bg-gray-800 hover:bg-gray-700 rounded-2xl font-semibold flex items-center gap-3 border border-gray-700"
           >
             <span className="text-2xl">📚</span>
-            <div className="text-left">
-              <p className="text-sm font-bold">過去の食事履歴</p>
-              <p className="text-xs text-gray-400">これまでの記録とアドバイスを確認</p>
+            <div className="text-left flex-1">
+              <p className="text-sm font-bold">食事履歴（リスト表示）</p>
+              <p className="text-xs text-gray-400">全記録を写真付き一覧で確認</p>
             </div>
+            <span className="text-gray-500">›</span>
           </button>
         </div>
+      )}
+
+      {/* カレンダーモード */}
+      {mode === "calendar" && (
+        <MealCalendarView onBack={() => setMode("home")} />
+      )}
+
+      {/* 目標設定モード */}
+      {mode === "goal" && (
+        <MealGoalView onBack={() => setMode("home")} />
       )}
 
       {/* 分析中 */}
@@ -2304,6 +2339,475 @@ function NutritionCell({
         {value !== null && value !== undefined ? value : "-"}
         <span className="text-[10px] font-normal text-gray-400 ml-0.5">{unit}</span>
       </p>
+    </div>
+  );
+}
+
+// ==================== 食事カレンダー ====================
+type CalendarMeal = {
+  id: string;
+  image_url: string;
+  menu_name: string | null;
+  meal_type: string | null;
+  calories: number | null;
+  protein_g: number | null;
+  carbs_g: number | null;
+  fat_g: number | null;
+  advice: string | null;
+  score: number | null;
+  created_at: string;
+};
+
+type CalendarDayData = {
+  meals: CalendarMeal[];
+  totalCalories: number;
+  totalProtein: number;
+  totalCarbs: number;
+  totalFat: number;
+  avgScore: number;
+};
+
+type CalendarGoal = {
+  goal_type: string;
+  target_calories: number;
+  target_protein_g: number;
+};
+
+type CalendarData = {
+  year: number;
+  month: number;
+  days: Record<string, CalendarDayData>;
+  stats: {
+    recordedDays: number;
+    totalMeals: number;
+    avgCalPerDay: number;
+    avgProteinPerDay: number;
+  } | null;
+  goal: CalendarGoal | null;
+};
+
+function MealCalendarView({ onBack }: { onBack: () => void }) {
+  const now = new Date();
+  const [year, setYear] = useState(now.getFullYear());
+  const [month, setMonth] = useState(now.getMonth() + 1);
+  const [data, setData] = useState<CalendarData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const deviceId = getDeviceId();
+      const res = await fetch(
+        `/api/meal/calendar?deviceId=${encodeURIComponent(deviceId || "")}&year=${year}&month=${month}`
+      );
+      const d = await res.json();
+      if (res.ok) setData(d);
+    } catch {
+      setData(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [year, month]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const prevMonth = () => {
+    let newMonth = month - 1;
+    let newYear = year;
+    if (newMonth < 1) {
+      newMonth = 12;
+      newYear -= 1;
+    }
+    setMonth(newMonth);
+    setYear(newYear);
+    setSelectedDay(null);
+  };
+  const nextMonth = () => {
+    let newMonth = month + 1;
+    let newYear = year;
+    if (newMonth > 12) {
+      newMonth = 1;
+      newYear += 1;
+    }
+    setMonth(newMonth);
+    setYear(newYear);
+    setSelectedDay(null);
+  };
+
+  // カレンダーのマス目計算
+  const firstDay = new Date(year, month - 1, 1).getDay(); // 0=日
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const cells: Array<{ day: number | null }> = [];
+  for (let i = 0; i < firstDay; i++) cells.push({ day: null });
+  for (let d = 1; d <= daysInMonth; d++) cells.push({ day: d });
+  while (cells.length % 7 !== 0) cells.push({ day: null });
+
+  const today = new Date();
+  const isToday = (d: number) =>
+    today.getFullYear() === year && today.getMonth() + 1 === month && today.getDate() === d;
+
+  const getDayData = (d: number) => data?.days[String(d)];
+
+  const targetCal = data?.goal?.target_calories;
+
+  const colorForCalories = (cal: number): string => {
+    if (!targetCal) return "bg-emerald-500/40";
+    const ratio = cal / targetCal;
+    if (ratio < 0.5) return "bg-blue-500/40";
+    if (ratio <= 1.1) return "bg-emerald-500/50";
+    if (ratio <= 1.3) return "bg-amber-500/50";
+    return "bg-red-500/50";
+  };
+
+  const selectedDayData = selectedDay ? getDayData(selectedDay) : null;
+
+  return (
+    <div className="w-full max-w-md space-y-3">
+      <button
+        onClick={onBack}
+        className="text-xs text-emerald-400"
+      >
+        ← 食事メニューに戻る
+      </button>
+
+      {/* 月切り替え */}
+      <div className="flex items-center justify-between bg-gray-900 border border-gray-800 rounded-2xl px-4 py-3">
+        <button onClick={prevMonth} className="text-xl px-3">‹</button>
+        <p className="text-base font-bold">
+          {year}年 {month}月
+        </p>
+        <button onClick={nextMonth} className="text-xl px-3">›</button>
+      </div>
+
+      {loading && <div className="text-center text-gray-400 py-8">読み込み中...</div>}
+
+      {/* 統計カード */}
+      {data?.stats && data.stats.recordedDays > 0 && (
+        <div className="bg-gradient-to-br from-emerald-500/10 to-green-600/5 border border-emerald-500/30 rounded-2xl p-4">
+          <p className="text-xs text-emerald-300 mb-2">📊 今月の記録</p>
+          <div className="grid grid-cols-2 gap-3">
+            <StatCell label="記録日数" value={`${data.stats.recordedDays}日`} />
+            <StatCell label="記録食事" value={`${data.stats.totalMeals}件`} />
+            <StatCell label="1日平均" value={`${data.stats.avgCalPerDay}kcal`} />
+            <StatCell label="タンパク質/日" value={`${data.stats.avgProteinPerDay}g`} />
+          </div>
+          {data.goal && (
+            <p className="text-[10px] text-gray-400 mt-2">
+              🎯 目標: {data.goal.target_calories}kcal / タンパク質{data.goal.target_protein_g}g
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* カレンダーグリッド */}
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3">
+        <div className="grid grid-cols-7 gap-1 mb-2">
+          {["日", "月", "火", "水", "木", "金", "土"].map((d, i) => (
+            <p
+              key={d}
+              className={`text-center text-[10px] font-bold ${
+                i === 0 ? "text-red-400" : i === 6 ? "text-blue-400" : "text-gray-400"
+              }`}
+            >
+              {d}
+            </p>
+          ))}
+        </div>
+        <div className="grid grid-cols-7 gap-1">
+          {cells.map((c, i) => {
+            if (c.day === null) return <div key={i} className="aspect-square" />;
+            const dayData = getDayData(c.day);
+            const hasData = !!dayData;
+            const cal = dayData?.totalCalories || 0;
+            const isSel = selectedDay === c.day;
+            return (
+              <button
+                key={i}
+                onClick={() => setSelectedDay(hasData ? c.day : null)}
+                className={`aspect-square rounded-md text-[10px] flex flex-col items-center justify-center gap-0.5 border ${
+                  isToday(c.day!)
+                    ? "border-blue-400"
+                    : isSel
+                    ? "border-emerald-400"
+                    : "border-gray-800"
+                } ${hasData ? colorForCalories(cal) : "bg-gray-950"}`}
+              >
+                <span className={`font-bold ${hasData ? "text-white" : "text-gray-500"}`}>
+                  {c.day}
+                </span>
+                {hasData && (
+                  <span className="text-[9px] font-semibold leading-none text-white/90">
+                    {cal}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+        <div className="mt-3 flex items-center justify-around text-[9px] text-gray-400">
+          <div className="flex items-center gap-1"><span className="w-2 h-2 bg-blue-500/40 rounded" />少</div>
+          <div className="flex items-center gap-1"><span className="w-2 h-2 bg-emerald-500/50 rounded" />適量</div>
+          <div className="flex items-center gap-1"><span className="w-2 h-2 bg-amber-500/50 rounded" />やや多</div>
+          <div className="flex items-center gap-1"><span className="w-2 h-2 bg-red-500/50 rounded" />過剰</div>
+        </div>
+      </div>
+
+      {/* 日付選択時の詳細 */}
+      {selectedDayData && selectedDay !== null && (
+        <div className="bg-gray-900 border border-emerald-500/40 rounded-2xl p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-base font-bold">
+              {month}月{selectedDay}日の食事
+            </p>
+            <button onClick={() => setSelectedDay(null)} className="text-gray-500 text-lg">
+              ✕
+            </button>
+          </div>
+
+          <div className="grid grid-cols-4 gap-2">
+            <DayStat label="カロリー" value={`${selectedDayData.totalCalories}`} unit="kcal" target={targetCal} current={selectedDayData.totalCalories} />
+            <DayStat label="P" value={selectedDayData.totalProtein.toFixed(0)} unit="g" />
+            <DayStat label="C" value={selectedDayData.totalCarbs.toFixed(0)} unit="g" />
+            <DayStat label="F" value={selectedDayData.totalFat.toFixed(0)} unit="g" />
+          </div>
+
+          {selectedDayData.meals.map((m) => (
+            <div key={m.id} className="bg-gray-800 rounded-xl overflow-hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={m.image_url} alt={m.menu_name || ""} className="w-full aspect-video object-cover" />
+              <div className="p-2.5 space-y-1">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-bold">{m.menu_name || "判定不能"}</p>
+                  {m.meal_type && (
+                    <span className="text-[10px] px-2 py-0.5 bg-emerald-600/30 text-emerald-300 rounded-full">
+                      {m.meal_type}
+                    </span>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-x-2 text-[10px] text-gray-400">
+                  {m.calories !== null && <span>🔥{m.calories}kcal</span>}
+                  {m.protein_g !== null && <span>P{m.protein_g}g</span>}
+                  {m.carbs_g !== null && <span>C{m.carbs_g}g</span>}
+                  {m.fat_g !== null && <span>F{m.fat_g}g</span>}
+                  {m.score !== null && <span>⭐{m.score}</span>}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!loading && data?.stats && data.stats.recordedDays === 0 && (
+        <div className="text-center text-gray-500 py-10">
+          この月はまだ記録がありません
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StatCell({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="bg-gray-900/50 rounded-lg px-2 py-2">
+      <p className="text-[10px] text-gray-500">{label}</p>
+      <p className="text-sm font-bold text-emerald-300">{value}</p>
+    </div>
+  );
+}
+
+function DayStat({
+  label,
+  value,
+  unit,
+  target,
+  current,
+}: {
+  label: string;
+  value: string;
+  unit: string;
+  target?: number;
+  current?: number;
+}) {
+  const achieved = target && current ? Math.min(100, (current / target) * 100) : 0;
+  return (
+    <div className="bg-gray-800 rounded-lg px-2 py-2 text-center">
+      <p className="text-[10px] text-gray-500">{label}</p>
+      <p className="text-sm font-bold text-white">
+        {value}
+        <span className="text-[10px] font-normal text-gray-400 ml-0.5">{unit}</span>
+      </p>
+      {target && (
+        <div className="h-1 bg-gray-700 rounded-full overflow-hidden mt-1">
+          <div
+            className={`h-full ${
+              achieved >= 110 ? "bg-red-500" : achieved >= 90 ? "bg-amber-500" : "bg-emerald-500"
+            }`}
+            style={{ width: `${achieved}%` }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ==================== 目標設定 ====================
+function MealGoalView({ onBack }: { onBack: () => void }) {
+  const [goalType, setGoalType] = useState<"diet" | "maintain" | "muscle">("maintain");
+  const [calories, setCalories] = useState(1800);
+  const [protein, setProtein] = useState(60);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      try {
+        const deviceId = getDeviceId();
+        const res = await fetch(`/api/goals?deviceId=${encodeURIComponent(deviceId || "")}`);
+        const data = await res.json();
+        if (data.goal) {
+          setGoalType(data.goal.goal_type);
+          setCalories(data.goal.target_calories);
+          setProtein(Number(data.goal.target_protein_g));
+        }
+      } catch { /* ignore */ }
+      setLoading(false);
+    })();
+  }, []);
+
+  const presets = {
+    diet: { label: "🥗 ダイエット", desc: "体重を減らしたい", cal: 1500, prot: 70 },
+    maintain: { label: "⚖️ 体重維持", desc: "今の体重をキープ", cal: 1800, prot: 60 },
+    muscle: { label: "💪 筋肉増量", desc: "筋肉をつけたい", cal: 2400, prot: 120 },
+  };
+
+  const applyPreset = (t: "diet" | "maintain" | "muscle") => {
+    setGoalType(t);
+    setCalories(presets[t].cal);
+    setProtein(presets[t].prot);
+  };
+
+  const save = async () => {
+    setSaving(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/goals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          deviceId: getDeviceId(),
+          goalType,
+          targetCalories: calories,
+          targetProteinG: protein,
+        }),
+      });
+      if (!res.ok) throw new Error("保存失敗");
+      setMessage("✅ 目標を保存しました！");
+    } catch (e) {
+      setMessage(e instanceof Error ? `⚠️ ${e.message}` : "⚠️ 保存失敗");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) return <div className="text-center text-gray-400 py-10">読み込み中...</div>;
+
+  return (
+    <div className="w-full max-w-md space-y-4">
+      <button onClick={onBack} className="text-xs text-emerald-400">
+        ← 食事メニューに戻る
+      </button>
+
+      <div className="bg-gradient-to-br from-indigo-500/10 to-purple-600/5 border border-indigo-500/30 rounded-2xl p-4">
+        <p className="text-sm font-bold text-indigo-300 mb-1">🎯 あなたの目標</p>
+        <p className="text-xs text-gray-400">
+          目標を設定すると、カレンダーで達成度が色分け表示され、AIが食事と姿勢を連動してアドバイスできるようになります。
+        </p>
+      </div>
+
+      {/* プリセット */}
+      <div className="space-y-2">
+        <p className="text-xs text-gray-500">目標タイプ</p>
+        {(["diet", "maintain", "muscle"] as const).map((t) => {
+          const preset = presets[t];
+          const active = goalType === t;
+          return (
+            <button
+              key={t}
+              onClick={() => applyPreset(t)}
+              className={`w-full px-4 py-3 rounded-2xl text-left flex items-center justify-between border-2 ${
+                active
+                  ? "bg-indigo-600/20 border-indigo-500"
+                  : "bg-gray-900 border-gray-800"
+              }`}
+            >
+              <div>
+                <p className="text-sm font-bold">{preset.label}</p>
+                <p className="text-xs text-gray-400">{preset.desc}</p>
+              </div>
+              <p className="text-[10px] text-gray-500">
+                {preset.cal}kcal / P{preset.prot}g
+              </p>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* カロリー入力 */}
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 space-y-3">
+        <div>
+          <p className="text-xs text-gray-400 mb-1">1日の目標カロリー</p>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              value={calories}
+              onChange={(e) => setCalories(parseInt(e.target.value) || 0)}
+              className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"
+              min={800}
+              max={4000}
+              step={50}
+            />
+            <span className="text-sm text-gray-400">kcal</span>
+          </div>
+        </div>
+        <div>
+          <p className="text-xs text-gray-400 mb-1">1日の目標タンパク質</p>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              value={protein}
+              onChange={(e) => setProtein(parseInt(e.target.value) || 0)}
+              className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"
+              min={20}
+              max={250}
+              step={5}
+            />
+            <span className="text-sm text-gray-400">g</span>
+          </div>
+        </div>
+      </div>
+
+      {message && (
+        <div className={`rounded-xl px-4 py-2.5 text-sm ${
+          message.startsWith("✅")
+            ? "bg-emerald-500/20 border border-emerald-500/40 text-emerald-300"
+            : "bg-red-500/20 border border-red-500/40 text-red-300"
+        }`}>
+          {message}
+        </div>
+      )}
+
+      <button
+        onClick={save}
+        disabled={saving}
+        className="w-full px-4 py-3.5 bg-gradient-to-r from-indigo-600 to-purple-600 disabled:opacity-50 rounded-2xl font-bold"
+      >
+        {saving ? "保存中..." : "目標を保存"}
+      </button>
     </div>
   );
 }

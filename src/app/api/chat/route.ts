@@ -169,7 +169,10 @@ async function buildUserContext(deviceId: string): Promise<UserContextResult> {
   }
   const userId = users[0].id;
 
-  const [symptomRes, postureRes, chatRes] = await Promise.all([
+  // 過去7日間の食事履歴も取得（ガイコツ先生が食事×姿勢を総合判断）
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  const [symptomRes, postureRes, chatRes, mealRes, goalRes] = await Promise.all([
     supabase
       .from("symptom_selections")
       .select("symptom_id, created_at")
@@ -188,6 +191,18 @@ async function buildUserContext(deviceId: string): Promise<UserContextResult> {
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(10),
+    supabase
+      .from("meal_records")
+      .select("menu_name, meal_type, calories, protein_g, carbs_g, fat_g, score, created_at")
+      .eq("user_id", userId)
+      .gte("created_at", sevenDaysAgo)
+      .order("created_at", { ascending: false })
+      .limit(30),
+    supabase
+      .from("nutrition_goals")
+      .select("goal_type, target_calories, target_protein_g")
+      .eq("user_id", userId)
+      .maybeSingle(),
   ]);
 
   const parts: string[] = [];
@@ -231,10 +246,63 @@ async function buildUserContext(deviceId: string): Promise<UserContextResult> {
     parts.push(`【過去の相談内容】${topics}`);
   }
 
+  // 過去7日間の食事データを整形
+  const meals = mealRes.data || [];
+  if (meals.length > 0) {
+    // 日別にグループ化
+    const byDate: Record<string, { menu: string[]; totalCal: number; totalProtein: number; scores: number[] }> = {};
+    meals.forEach((m) => {
+      const d = new Date(m.created_at).toLocaleDateString("ja-JP", {
+        month: "numeric",
+        day: "numeric",
+      });
+      if (!byDate[d]) byDate[d] = { menu: [], totalCal: 0, totalProtein: 0, scores: [] };
+      if (m.menu_name) byDate[d].menu.push(m.menu_name);
+      if (m.calories) byDate[d].totalCal += m.calories;
+      if (m.protein_g) byDate[d].totalProtein += Number(m.protein_g);
+      if (m.score) byDate[d].scores.push(m.score);
+    });
+
+    const mealLines = Object.entries(byDate)
+      .slice(0, 7)
+      .map(([date, data]) => {
+        const avgScore =
+          data.scores.length > 0
+            ? Math.round(data.scores.reduce((a, b) => a + b, 0) / data.scores.length)
+            : 0;
+        return `${date}: ${data.menu.slice(0, 3).join("/")} (計${data.totalCal}kcal / P${data.totalProtein.toFixed(0)}g / 平均スコア${avgScore})`;
+      })
+      .join("\n");
+
+    // 平均カロリー
+    const totalDays = Object.keys(byDate).length;
+    const totalCal = Object.values(byDate).reduce((s, d) => s + d.totalCal, 0);
+    const avgCal = totalDays > 0 ? Math.round(totalCal / totalDays) : 0;
+    const totalProtein = Object.values(byDate).reduce((s, d) => s + d.totalProtein, 0);
+    const avgProtein = totalDays > 0 ? (totalProtein / totalDays).toFixed(1) : "0";
+
+    parts.push(
+      `【過去7日間の食事記録(${meals.length}件)】\n${mealLines}\n1日平均: ${avgCal}kcal / タンパク質${avgProtein}g`
+    );
+  }
+
+  // 栄養目標
+  const goal = goalRes.data;
+  if (goal) {
+    const goalTypeLabel: Record<string, string> = {
+      diet: "ダイエット（減量）",
+      maintain: "体重維持",
+      muscle: "筋肉増量",
+    };
+    parts.push(
+      `【ユーザーの栄養目標】${goalTypeLabel[goal.goal_type] || goal.goal_type} / 目標カロリー${goal.target_calories}kcal / タンパク質${goal.target_protein_g}g`
+    );
+  }
+
   const contextText =
     parts.length === 0
       ? ""
-      : `\n\n【このユーザーの過去データ】\nこのユーザーはリピーターです。過去のデータを参考にして、より的確なアドバイスをしてください。\n${parts.join("\n")}`;
+      : `\n\n【このユーザーの過去データ】\nこのユーザーはリピーターです。過去のデータを参考にして、より的確なアドバイスをしてください。\n${parts.join("\n")}\n\n【食事×姿勢×痛みの総合アドバイスについて】\n上記の食事データがある場合は、食事内容と姿勢・痛みの関連性にも触れてください。例: タンパク質不足→筋肉量低下→姿勢悪化、糖質過多→炎症→慢性痛、カフェイン摂取→交感神経優位→肩こり悪化 など。ただし専門用語ではなく日常語で説明してください。`;
 
   return { contextText, latestPostureImageUrl, latestPostureDate };
 }
