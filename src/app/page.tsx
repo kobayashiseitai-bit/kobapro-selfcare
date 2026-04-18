@@ -191,6 +191,9 @@ function RegisterScreen({ onComplete }: { onComplete: () => void }) {
   const [age, setAge] = useState("");
   const [painAreas, setPainAreas] = useState<string[]>([]);
   const [concerns, setConcerns] = useState("");
+  const [agreedPrivacy, setAgreedPrivacy] = useState(false);
+  const [agreedTerms, setAgreedTerms] = useState(false);
+  const [agreedHealth, setAgreedHealth] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -203,6 +206,10 @@ function RegisterScreen({ onComplete }: { onComplete: () => void }) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) { setError("お名前を入力してください"); return; }
+    if (!agreedPrivacy || !agreedTerms || !agreedHealth) {
+      setError("プライバシーポリシー・利用規約・ヘルスケア注意事項への同意が必要です");
+      return;
+    }
     setSaving(true);
     setError("");
     try {
@@ -317,18 +324,87 @@ function RegisterScreen({ onComplete }: { onComplete: () => void }) {
             </div>
           </div>
 
+          {/* ヘルスケア免責 */}
+          <div className="card-accent-amber p-4">
+            <p className="text-sm font-bold text-amber-300 mb-1.5">
+              ⚠️ ご利用前に必ずお読みください
+            </p>
+            <p className="text-xs text-gray-200 leading-relaxed">
+              本アプリは、整体師の一般的な知見に基づくセルフケア情報を提供するものであり、
+              医療行為・診断・治療を目的とするものではありません。
+              重篤な痛みやしびれ、急激な体調変化がある場合は必ず医療機関を受診してください。
+              妊娠中の方、持病のある方はかかりつけ医にご相談のうえご利用ください。
+            </p>
+          </div>
+
+          {/* 同意チェックボックス */}
+          <div className="space-y-2.5">
+            <label className="flex items-start gap-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={agreedPrivacy}
+                onChange={(e) => setAgreedPrivacy(e.target.checked)}
+                className="mt-0.5 w-5 h-5 accent-emerald-500"
+              />
+              <span className="text-xs text-gray-200 leading-relaxed flex-1">
+                <a
+                  href="/privacy"
+                  target="_blank"
+                  rel="noopener"
+                  className="text-emerald-400 underline"
+                >
+                  プライバシーポリシー
+                </a>
+                を読み、内容に同意します
+              </span>
+            </label>
+
+            <label className="flex items-start gap-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={agreedTerms}
+                onChange={(e) => setAgreedTerms(e.target.checked)}
+                className="mt-0.5 w-5 h-5 accent-emerald-500"
+              />
+              <span className="text-xs text-gray-200 leading-relaxed flex-1">
+                <a
+                  href="/terms"
+                  target="_blank"
+                  rel="noopener"
+                  className="text-emerald-400 underline"
+                >
+                  利用規約
+                </a>
+                を読み、内容に同意します
+              </span>
+            </label>
+
+            <label className="flex items-start gap-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={agreedHealth}
+                onChange={(e) => setAgreedHealth(e.target.checked)}
+                className="mt-0.5 w-5 h-5 accent-emerald-500"
+              />
+              <span className="text-xs text-gray-200 leading-relaxed flex-1">
+                本アプリが医療行為ではないことを理解し、
+                重篤な症状がある場合は医療機関を受診することに同意します
+              </span>
+            </label>
+          </div>
+
           {error && <p className="text-red-400 text-sm text-center">{error}</p>}
 
           <button
             type="submit"
-            disabled={saving}
-            className="btn-3d w-full py-4 bg-gradient-to-b from-blue-400 via-blue-600 to-purple-800 rounded-2xl font-bold text-lg shadow-[0_10px_30px_rgba(79,70,229,0.5)] disabled:opacity-50"
+            disabled={saving || !agreedPrivacy || !agreedTerms || !agreedHealth}
+            className="btn-primary w-full py-4 text-lg disabled:opacity-50"
           >
             {saving ? "登録中..." : "はじめる"}
           </button>
 
-          <p className="text-center text-gray-600 text-xs">
-            入力された情報はセルフケアの改善に活用されます
+          <p className="text-center text-gray-500 text-[11px]">
+            入力された情報はセルフケアの改善に活用されます。いつでも設定画面から削除できます。
           </p>
         </form>
       </div>
@@ -355,6 +431,7 @@ function HomeScreen({
   const [reminderAlert, setReminderAlert] = useState<string | null>(null);
   const [showReminderSetting, setShowReminderSetting] = useState(false);
   const [profileComplete, setProfileComplete] = useState<boolean | null>(null);
+  const [showMenu, setShowMenu] = useState(false);
 
   // 痛み予測を取得 + プロフィール完成度チェック
   useEffect(() => {
@@ -510,7 +587,7 @@ function HomeScreen({
         <div className="w-12" />
         <h1 className="text-lg font-extrabold tracking-[0.2em]">ZERO-PAIN</h1>
         <button
-          onClick={() => onNavigate("subscription")}
+          onClick={() => setShowMenu(true)}
           aria-label="メニュー"
           className="w-12 h-10 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 active:scale-95 transition"
         >
@@ -530,6 +607,83 @@ function HomeScreen({
           </svg>
         </button>
       </header>
+
+      {/* ハンバーガーメニュー展開シート */}
+      {showMenu && (
+        <div
+          className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm flex items-start justify-end"
+          onClick={() => setShowMenu(false)}
+        >
+          <div
+            className="w-72 max-w-full h-full bg-gray-950 border-l border-white/10 p-4 space-y-2 overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-base font-bold">メニュー</p>
+              <button
+                onClick={() => setShowMenu(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5"
+                aria-label="閉じる"
+              >
+                ✕
+              </button>
+            </div>
+
+            <button
+              onClick={() => { setShowMenu(false); onNavigate("subscription"); }}
+              className="card-base w-full text-left p-3 flex items-center gap-3 active:scale-[0.98] transition"
+            >
+              <span className="text-2xl">👑</span>
+              <div className="flex-1">
+                <p className="text-sm font-bold text-white">プラン管理</p>
+                <p className="text-[11px] text-gray-400">サブスク状態・利用回数</p>
+              </div>
+              <span className="text-gray-500">›</span>
+            </button>
+
+            <a
+              href="/settings"
+              className="card-base w-full text-left p-3 flex items-center gap-3 active:scale-[0.98] transition"
+            >
+              <span className="text-2xl">⚙️</span>
+              <div className="flex-1">
+                <p className="text-sm font-bold text-white">設定</p>
+                <p className="text-[11px] text-gray-400">アカウント・データ管理</p>
+              </div>
+              <span className="text-gray-500">›</span>
+            </a>
+
+            <a
+              href="/privacy"
+              className="card-base w-full text-left p-3 flex items-center gap-3 active:scale-[0.98] transition"
+            >
+              <span className="text-2xl">🔒</span>
+              <div className="flex-1">
+                <p className="text-sm font-bold text-white">プライバシーポリシー</p>
+                <p className="text-[11px] text-gray-400">データ取扱いについて</p>
+              </div>
+              <span className="text-gray-500">›</span>
+            </a>
+
+            <a
+              href="/terms"
+              className="card-base w-full text-left p-3 flex items-center gap-3 active:scale-[0.98] transition"
+            >
+              <span className="text-2xl">📄</span>
+              <div className="flex-1">
+                <p className="text-sm font-bold text-white">利用規約</p>
+                <p className="text-[11px] text-gray-400">本アプリの利用条件</p>
+              </div>
+              <span className="text-gray-500">›</span>
+            </a>
+
+            <div className="pt-4 text-center">
+              <p className="text-[11px] text-gray-500">ZERO-PAIN</p>
+              <p className="text-[11px] text-gray-600">© 2026 小林整体</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex-1 px-4 py-5 space-y-5 max-w-md w-full mx-auto">
         {/* リマインダーアラート */}
