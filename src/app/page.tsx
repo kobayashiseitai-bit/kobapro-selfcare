@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useEffect, useCallback } from "react";
+import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import { addRecord, getRecords, deleteRecord, Landmark, PostureRecord } from "./lib/storage";
 import { analyzeFrontPosture, analyzeSidePosture, drawDiagnosisOverlay, drawSideDiagnosisOverlay, addLandmarkFrame, clearLandmarkBuffer } from "./lib/postureAnalysis";
 import { getStretchesBySymptom } from "./lib/stretches";
@@ -595,6 +595,9 @@ function HomeScreen({
             </div>
           </button>
         )}
+
+        {/* 今日の食事ダッシュボード（週間カレンダー + 区分別サマリ） */}
+        <TodayMealDashboard onGoToMealMode={onGoToMealMode} onOpenMeal={() => onNavigate("meal")} />
 
         {/* リマインダー設定 */}
         <div className="flex items-center justify-between">
@@ -1894,6 +1897,205 @@ function HistoryScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   );
 }
 
+// ==================== 今日の食事ダッシュボード（ホーム画面用） ====================
+type TodayMealType = "朝食" | "昼食" | "夕食" | "間食";
+interface TodayDataShape {
+  date: string;
+  byMealType: Record<
+    string,
+    {
+      meals: Array<{
+        id: string;
+        image_url: string;
+        menu_name: string | null;
+        calories: number | null;
+      }>;
+      totals: { calories: number; protein_g: number; carbs_g: number; fat_g: number };
+    }
+  >;
+  total: { calories: number; protein_g: number; carbs_g: number; fat_g: number };
+  goal: {
+    target_calories: number;
+    target_protein_g: number;
+    target_carbs_g: number | null;
+    target_fat_g: number | null;
+  } | null;
+}
+
+function TodayMealDashboard({
+  onGoToMealMode,
+  onOpenMeal,
+}: {
+  onGoToMealMode: (mode: "home" | "goal" | "calendar") => void;
+  onOpenMeal: () => void;
+}) {
+  const today = new Date();
+  const [selectedDateOffset, setSelectedDateOffset] = useState(0); // 0=今日、-1=昨日、+1=明日
+  const [data, setData] = useState<TodayDataShape | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const selectedDate = useMemo(() => {
+    const d = new Date(today);
+    d.setDate(d.getDate() + selectedDateOffset);
+    return d;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDateOffset]);
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      try {
+        const deviceId = getDeviceId();
+        const y = selectedDate.getFullYear();
+        const m = String(selectedDate.getMonth() + 1).padStart(2, "0");
+        const d = String(selectedDate.getDate()).padStart(2, "0");
+        const res = await fetch(
+          `/api/meal/today?deviceId=${encodeURIComponent(deviceId || "")}&date=${y}-${m}-${d}`
+        );
+        const json = await res.json();
+        if (res.ok) setData(json);
+      } catch {
+        setData(null);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [selectedDate]);
+
+  // 7日分のカレンダー（今日を中心に±3日）
+  const weekDays = useMemo(() => {
+    const days: Array<{ date: Date; offset: number }> = [];
+    for (let i = -3; i <= 3; i++) {
+      const d = new Date(today);
+      d.setDate(d.getDate() + i);
+      days.push({ date: d, offset: i });
+    }
+    return days;
+    // 今日は起動時の固定値でOK
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const goal = data?.goal;
+  const totalCal = data?.total.calories || 0;
+  const targetCal = goal?.target_calories || 0;
+  const calProgress = targetCal > 0 ? Math.min(100, (totalCal / targetCal) * 100) : 0;
+
+  const mealTypes: Array<{ key: TodayMealType; emoji: string; color: string }> = [
+    { key: "朝食", emoji: "🌅", color: "amber" },
+    { key: "昼食", emoji: "☀️", color: "yellow" },
+    { key: "夕食", emoji: "🌙", color: "indigo" },
+    { key: "間食", emoji: "🍩", color: "pink" },
+  ];
+
+  const dayLabels = ["日", "月", "火", "水", "木", "金", "土"];
+
+  return (
+    <div className="bg-gradient-to-br from-emerald-500/10 to-green-600/5 border border-emerald-500/30 rounded-2xl p-3 space-y-3">
+      {/* 週間カレンダー（横7日分） */}
+      <div className="flex items-center justify-between gap-1">
+        {weekDays.map((d) => {
+          const isSelected = d.offset === selectedDateOffset;
+          const isToday = d.offset === 0;
+          const dayOfWeek = dayLabels[d.date.getDay()];
+          return (
+            <button
+              key={d.offset}
+              onClick={() => setSelectedDateOffset(d.offset)}
+              className={`flex-1 py-2 rounded-xl transition ${
+                isSelected
+                  ? "bg-emerald-500 text-white"
+                  : isToday
+                  ? "bg-emerald-500/20 border border-emerald-500/40 text-emerald-300"
+                  : "text-gray-400"
+              }`}
+            >
+              <p className="text-[10px] font-semibold">{isToday ? "今日" : dayOfWeek}</p>
+              <p className="text-sm font-extrabold">{d.date.getDate()}</p>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* 摂取カロリー プログレスバー */}
+      <div className="bg-gray-900/50 rounded-xl px-3 py-2.5">
+        <div className="flex items-baseline justify-between mb-1.5">
+          <p className="text-xs text-gray-400">摂取カロリー</p>
+          {targetCal > 0 ? (
+            <p className="text-[10px] text-gray-400">目標 {targetCal} kcal</p>
+          ) : (
+            <button
+              onClick={() => onGoToMealMode("goal")}
+              className="text-[10px] text-indigo-400"
+            >
+              目標を設定 →
+            </button>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xl font-extrabold text-emerald-300">{totalCal}</span>
+          <span className="text-xs text-gray-400">kcal</span>
+          {targetCal > 0 && (
+            <>
+              <div className="flex-1 h-2 bg-gray-800 rounded-full overflow-hidden mx-2">
+                <div
+                  className={`h-full ${
+                    calProgress > 110
+                      ? "bg-red-500"
+                      : calProgress >= 90
+                      ? "bg-emerald-500"
+                      : "bg-blue-500"
+                  }`}
+                  style={{ width: `${calProgress}%` }}
+                />
+              </div>
+              <span className="text-[10px] text-gray-400">{Math.round(calProgress)}%</span>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* 食事区分別サマリ（4つの枠） */}
+      <div className="grid grid-cols-2 gap-2">
+        {mealTypes.map(({ key, emoji }) => {
+          const m = data?.byMealType[key];
+          const recorded = (m?.meals.length || 0) > 0;
+          const kcal = m?.totals.calories || 0;
+          return (
+            <button
+              key={key}
+              onClick={onOpenMeal}
+              className={`rounded-xl px-3 py-2.5 text-left transition ${
+                recorded
+                  ? "bg-gray-900 border border-emerald-500/30"
+                  : "bg-gray-900/50 border border-gray-800 border-dashed"
+              }`}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-lg">{emoji}</span>
+                {recorded ? (
+                  <span className="text-[10px] text-emerald-400 font-bold">✓ 記録済</span>
+                ) : (
+                  <span className="text-[10px] text-gray-500">未記録</span>
+                )}
+              </div>
+              <p className="text-xs font-bold text-gray-300">{key}</p>
+              {recorded ? (
+                <p className="text-xs text-gray-400 mt-0.5">{kcal} kcal</p>
+              ) : (
+                <p className="text-[10px] text-gray-500 mt-0.5">タップで撮影</p>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {loading && (
+        <p className="text-[10px] text-center text-gray-500">読み込み中...</p>
+      )}
+    </div>
+  );
+}
+
 // ==================== 食事記録画面 ====================
 type MealAnalysis = {
   menu_name?: string;
@@ -2084,6 +2286,16 @@ function MealScreen({
   const [mode, setMode] = useState<"home" | "analyzing" | "result" | "history" | "calendar" | "goal">(
     initialMode === "goal" || initialMode === "calendar" ? initialMode : "home"
   );
+  const [selectedMealType, setSelectedMealType] = useState<"朝食" | "昼食" | "夕食" | "間食">(
+    () => {
+      // 時刻に応じた初期値
+      const h = new Date().getHours();
+      if (h >= 4 && h < 10) return "朝食";
+      if (h >= 10 && h < 15) return "昼食";
+      if (h >= 15 && h < 22) return "夕食";
+      return "間食";
+    }
+  );
 
   // 画面表示後にinitialModeを消費（戻ったときにhomeに戻るように）
   useEffect(() => {
@@ -2114,7 +2326,11 @@ function MealScreen({
       const res = await fetch("/api/meal", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageData: compressedDataUrl, deviceId }),
+        body: JSON.stringify({
+          imageData: compressedDataUrl,
+          deviceId,
+          mealType: selectedMealType,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -2208,12 +2424,40 @@ function MealScreen({
             className="hidden"
           />
 
+          {/* 食事区分の選択（撮影前に必ず選ぶ） */}
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4">
+            <p className="text-xs text-gray-400 mb-2.5">📍 どの食事を記録しますか？</p>
+            <div className="grid grid-cols-4 gap-2">
+              {(
+                [
+                  { type: "朝食", emoji: "🌅", color: "amber" },
+                  { type: "昼食", emoji: "☀️", color: "yellow" },
+                  { type: "夕食", emoji: "🌙", color: "indigo" },
+                  { type: "間食", emoji: "🍩", color: "pink" },
+                ] as const
+              ).map(({ type, emoji }) => (
+                <button
+                  key={type}
+                  onClick={() => setSelectedMealType(type)}
+                  className={`py-2.5 rounded-xl font-bold flex flex-col items-center gap-0.5 border-2 transition ${
+                    selectedMealType === type
+                      ? "bg-emerald-600 border-emerald-400 text-white"
+                      : "bg-gray-800 border-gray-700 text-gray-400"
+                  }`}
+                >
+                  <span className="text-xl">{emoji}</span>
+                  <span className="text-xs">{type}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           <button
             onClick={() => fileInputRef.current?.click()}
             className="btn-3d w-full px-5 py-6 bg-gradient-to-b from-emerald-400 via-emerald-600 to-green-800 rounded-2xl font-semibold flex items-center justify-center gap-3 shadow-[0_10px_30px_rgba(16,185,129,0.5)]"
           >
             <span className="text-3xl">📷</span>
-            <span className="text-lg">食事を撮影する</span>
+            <span className="text-lg">{selectedMealType}を撮影する</span>
           </button>
 
           {/* プロフィール & 目標（最重要なので目立たせる） */}

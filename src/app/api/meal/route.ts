@@ -161,7 +161,7 @@ async function buildUserContext(deviceId: string): Promise<string> {
 
 export async function POST(req: NextRequest) {
   try {
-    const { imageData, deviceId } = await req.json();
+    const { imageData, deviceId, mealType: userMealType } = await req.json();
 
     if (!imageData || !deviceId) {
       return NextResponse.json(
@@ -169,6 +169,11 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    // ユーザーが明示的に指定した場合の食事区分（朝食/昼食/夕食/間食）
+    const validMealTypes = ["朝食", "昼食", "夕食", "間食"];
+    const explicitMealType =
+      userMealType && validMealTypes.includes(userMealType) ? userMealType : null;
 
     const supabase = getSupabase();
 
@@ -313,13 +318,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 5. Supabaseに保存
+    // 5. Supabaseに保存（ユーザー指定の食事区分を優先）
     const { data: savedRecord } = await supabase
       .from("meal_records")
       .insert({
         user_id: userId,
         image_url: imageUrl,
-        meal_type: analysis.meal_type || null,
+        meal_type: explicitMealType || analysis.meal_type || null,
         menu_name: analysis.menu_name || null,
         calories: analysis.calories ?? null,
         protein_g: analysis.protein_g ?? null,
