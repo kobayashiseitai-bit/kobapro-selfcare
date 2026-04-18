@@ -579,8 +579,13 @@ function HomeScreen({
             <div className="flex items-start gap-3">
               <span className="text-3xl">{riskIcons[prediction.riskLevel] || "✅"}</span>
               <div className="flex-1">
-                <p className="text-base font-bold text-white mb-1.5 flex items-center gap-1">
-                  <span className="text-lg">🦴</span>
+                <p className="text-base font-bold text-white mb-1.5 flex items-center gap-1.5">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/icon-skeleton-sensei.png"
+                    alt="ガイコツ先生"
+                    className="w-6 h-6 object-contain drop-shadow"
+                  />
                   <span>ガイコツ先生の痛み予測</span>
                 </p>
                 <p className="text-sm font-bold text-white">{prediction.prediction}</p>
@@ -693,7 +698,13 @@ function HomeScreen({
             {/* 上部: NEWバナー訴求 */}
             <div className="bg-gradient-to-r from-lime-400 via-green-400 to-emerald-400 px-4 py-3 flex items-center justify-between">
               <p className="text-base font-extrabold text-green-900 flex items-center gap-1.5 drop-shadow-sm">
-                🦴 ガイコツ先生の食事分析
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/icon-skeleton-sensei.png"
+                  alt="ガイコツ先生"
+                  className="w-6 h-6 object-contain"
+                />
+                ガイコツ先生の食事分析
               </p>
               <span className="text-[10px] font-extrabold text-white bg-red-500 px-2 py-0.5 rounded-full shadow-sm">
                 NEW
@@ -2263,7 +2274,17 @@ function MealScreen({
             />
           )}
           <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-5">
-            <div className="animate-pulse text-emerald-300 text-lg mb-2">🦴 ガイコツ先生が分析中...</div>
+            <div className="flex items-center justify-center gap-2 mb-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/icon-skeleton-sensei.png"
+                alt="ガイコツ先生"
+                className="w-8 h-8 object-contain animate-pulse"
+              />
+              <span className="animate-pulse text-emerald-300 text-lg font-bold">
+                ガイコツ先生が分析中...
+              </span>
+            </div>
             <p className="text-xs text-gray-400">
               メニュー識別 → 栄養素計算 → あなた専用のアドバイス生成中
             </p>
@@ -3074,7 +3095,15 @@ function MealGoalView({ onBack }: { onBack: () => void }) {
       {/* AI分析結果 */}
       {rec && (
         <div className="bg-gradient-to-br from-emerald-500/10 to-green-600/5 border border-emerald-500/40 rounded-2xl p-4 space-y-3">
-          <p className="text-sm font-bold text-emerald-300">🦴 ガイコツ先生があなた専用に計算した推奨値</p>
+          <p className="text-sm font-bold text-emerald-300 flex items-center gap-1.5">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/icon-skeleton-sensei.png"
+              alt="ガイコツ先生"
+              className="w-6 h-6 object-contain"
+            />
+            ガイコツ先生があなた専用に計算した推奨値
+          </p>
           <div className="grid grid-cols-2 gap-2">
             <InfoCell label="BMI" value={`${rec.bmi}`} sub={rec.bmiCategory} />
             <InfoCell label="基礎代謝" value={`${rec.bmr}`} sub="kcal/日" />
@@ -3155,18 +3184,27 @@ function SaveSuccessModal({
         className="w-full max-w-sm bg-gradient-to-br from-emerald-500 via-emerald-600 to-green-700 rounded-3xl p-6 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* 大きなチェックマーク */}
-        <div className="flex justify-center mb-4">
-          <div className="w-24 h-24 rounded-full bg-white/20 border-4 border-white flex items-center justify-center shadow-lg">
+        {/* ガイコツ先生の顔 + チェックマーク */}
+        <div className="flex justify-center mb-4 relative">
+          <div className="w-28 h-28 rounded-full bg-white border-4 border-white flex items-center justify-center shadow-lg overflow-hidden">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/icon-skeleton-sensei.png"
+              alt="ガイコツ先生"
+              className="w-24 h-24 object-contain"
+            />
+          </div>
+          {/* 右下に小さなチェックマークバッジ */}
+          <div className="absolute bottom-0 right-[calc(50%-3.5rem)] w-10 h-10 rounded-full bg-emerald-500 border-4 border-white flex items-center justify-center shadow-md">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 24 24"
               fill="none"
               stroke="white"
-              strokeWidth="3.5"
+              strokeWidth="4"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="w-14 h-14"
+              className="w-5 h-5"
             >
               <polyline points="20 6 9 17 4 12" />
             </svg>
@@ -3185,8 +3223,14 @@ function SaveSuccessModal({
         {/* ガイコツ先生の計算結果サマリ */}
         {recommendation && (
           <div className="bg-white/15 backdrop-blur-sm rounded-2xl p-4 space-y-2.5 mb-5">
-            <p className="text-xs text-emerald-100 font-semibold text-center">
-              🦴 ガイコツ先生があなた専用に算出
+            <p className="text-xs text-emerald-100 font-semibold text-center flex items-center justify-center gap-1.5">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/icon-skeleton-sensei.png"
+                alt="ガイコツ先生"
+                className="w-5 h-5 object-contain"
+              />
+              ガイコツ先生があなた専用に算出
             </p>
             <div className="grid grid-cols-2 gap-2">
               <div className="bg-white/20 rounded-xl px-3 py-2 text-center">
