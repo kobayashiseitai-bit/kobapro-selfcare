@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 
+// Resend メール通知: 2026-04-18 環境変数適用版
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
