@@ -64,6 +64,21 @@ img, video, canvas {
   border-bottom-width: 1px;
 }
 
+/* フェードイン + スケールインアニメーション（モーダル用） */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.animate-fade-in > div {
+  animation: fade-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 /* 3Dカード（症状アイコン用） */
 .card-3d {
   transform: perspective(600px) rotateX(2deg);

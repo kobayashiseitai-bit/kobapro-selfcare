@@ -2787,6 +2787,7 @@ function MealGoalView({ onBack }: { onBack: () => void }) {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [data, setData] = useState<ProfileData | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   // 入力値
   const [age, setAge] = useState<number | "">("");
@@ -2856,8 +2857,12 @@ function MealGoalView({ onBack }: { onBack: () => void }) {
         const detail = resData.detail ? `\n詳細: ${resData.detail}` : "";
         throw new Error(`${errMsg}${detail}`);
       }
-      setMessage("✅ プロフィールと目標を保存しました！AIもパワーアップ 💪");
-      await load();
+      await load(); // 最新の推奨値を取得
+      setShowSuccessModal(true); // 全画面モーダルで保存成功を表示
+      // 画面上にスクロール（インラインメッセージも見えるように）
+      if (typeof window !== "undefined") {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
     } catch (e) {
       setMessage(e instanceof Error ? `⚠️ ${e.message}` : "⚠️ 保存失敗");
     } finally {
@@ -2876,7 +2881,15 @@ function MealGoalView({ onBack }: { onBack: () => void }) {
   const weights = data?.weights || [];
 
   return (
-    <div className="w-full max-w-md space-y-4">
+    <div className="w-full max-w-md space-y-4 relative">
+      {/* 保存成功モーダル */}
+      {showSuccessModal && (
+        <SaveSuccessModal
+          recommendation={rec}
+          onClose={() => setShowSuccessModal(false)}
+        />
+      )}
+
       <button onClick={onBack} className="text-xs text-emerald-400">
         ← 食事メニューに戻る
       </button>
@@ -3121,6 +3134,100 @@ function MealGoalView({ onBack }: { onBack: () => void }) {
       >
         {saving ? "保存中..." : "保存する"}
       </button>
+    </div>
+  );
+}
+
+// ==================== 保存成功モーダル ====================
+function SaveSuccessModal({
+  recommendation,
+  onClose,
+}: {
+  recommendation: ProfileData["recommendation"] | null | undefined;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-sm bg-gradient-to-br from-emerald-500 via-emerald-600 to-green-700 rounded-3xl p-6 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* 大きなチェックマーク */}
+        <div className="flex justify-center mb-4">
+          <div className="w-24 h-24 rounded-full bg-white/20 border-4 border-white flex items-center justify-center shadow-lg">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="white"
+              strokeWidth="3.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="w-14 h-14"
+            >
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </div>
+        </div>
+
+        <h2 className="text-2xl font-extrabold text-white text-center mb-2 drop-shadow">
+          保存しました！
+        </h2>
+        <p className="text-sm text-emerald-50 text-center mb-4 leading-relaxed">
+          AIがあなた専用のプランを
+          <br />
+          計算しました 💪
+        </p>
+
+        {/* AI計算結果のサマリ */}
+        {recommendation && (
+          <div className="bg-white/15 backdrop-blur-sm rounded-2xl p-4 space-y-2.5 mb-5">
+            <p className="text-xs text-emerald-100 font-semibold text-center">
+              🤖 あなた専用の推奨値
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="bg-white/20 rounded-xl px-3 py-2 text-center">
+                <p className="text-[10px] text-emerald-50">1日の摂取カロリー</p>
+                <p className="text-xl font-extrabold text-white">
+                  {recommendation.recommendedCalories}
+                  <span className="text-xs font-normal ml-0.5">kcal</span>
+                </p>
+              </div>
+              <div className="bg-white/20 rounded-xl px-3 py-2 text-center">
+                <p className="text-[10px] text-emerald-50">タンパク質</p>
+                <p className="text-xl font-extrabold text-white">
+                  {recommendation.recommendedProteinG}
+                  <span className="text-xs font-normal ml-0.5">g</span>
+                </p>
+              </div>
+              <div className="bg-white/20 rounded-xl px-3 py-2 text-center">
+                <p className="text-[10px] text-emerald-50">BMI</p>
+                <p className="text-base font-extrabold text-white">
+                  {recommendation.bmi}
+                  <span className="text-[10px] font-normal ml-1">{recommendation.bmiCategory}</span>
+                </p>
+              </div>
+              <div className="bg-white/20 rounded-xl px-3 py-2 text-center">
+                <p className="text-[10px] text-emerald-50">基礎代謝</p>
+                <p className="text-base font-extrabold text-white">
+                  {recommendation.bmr}
+                  <span className="text-[10px] font-normal ml-0.5">kcal</span>
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <button
+          onClick={onClose}
+          className="w-full py-3.5 bg-white rounded-2xl font-extrabold text-emerald-700 text-base shadow-md active:scale-95 transition"
+        >
+          OK
+        </button>
+      </div>
     </div>
   );
 }
