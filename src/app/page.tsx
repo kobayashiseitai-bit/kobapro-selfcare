@@ -506,13 +506,13 @@ function HomeScreen({
   return (
     <main className="fixed inset-0 bg-gray-950 text-white flex flex-col overflow-y-auto">
       {/* ヘッダー */}
-      <header className="sticky top-0 z-10 bg-gray-950/95 backdrop-blur-sm border-b border-gray-800/50 px-4 py-3 flex items-center justify-between">
+      <header className="sticky top-0 z-10 bg-gray-950/90 backdrop-blur-xl border-b border-white/5 px-4 py-3 flex items-center justify-between">
         <div className="w-12" />
-        <h1 className="text-lg font-bold tracking-wide">ZERO-PAIN</h1>
+        <h1 className="text-lg font-extrabold tracking-[0.2em]">ZERO-PAIN</h1>
         <button
           onClick={() => onNavigate("subscription")}
           aria-label="メニュー"
-          className="w-12 h-10 flex items-center justify-center rounded-xl bg-gray-900 hover:bg-gray-800 border border-gray-800 active:scale-95 transition"
+          className="w-12 h-10 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 active:scale-95 transition"
         >
           {/* 3本線のハンバーガーアイコン */}
           <svg
@@ -534,63 +534,71 @@ function HomeScreen({
       <div className="flex-1 px-4 py-5 space-y-5 max-w-md w-full mx-auto">
         {/* リマインダーアラート */}
         {reminderAlert && (
-          <div className="bg-gradient-to-r from-orange-500/20 to-amber-500/10 border border-orange-500/30 rounded-2xl px-4 py-3">
-            <p className="text-sm text-orange-300 font-semibold">⏰ {reminderAlert}</p>
+          <div className="card-accent-amber px-4 py-3">
+            <p className="text-sm text-amber-200 font-semibold">⏰ {reminderAlert}</p>
             <button
               onClick={() => { setReminderAlert(null); onSelectSymptom("neck"); }}
-              className="mt-2 px-4 py-2 bg-orange-600 rounded-xl text-xs font-bold"
+              className="mt-2 px-4 py-2 bg-amber-600 rounded-xl text-xs font-bold text-white"
             >
               今すぐストレッチする
             </button>
           </div>
         )}
 
-        {/* プロフィール未完成バナー（インディゴ系で統一、大きく目立つ） */}
+        {/* プロフィール未完成バナー */}
         {profileComplete === false && (
           <button
             onClick={() => onGoToMealMode("goal")}
-            className="btn-3d w-full rounded-2xl overflow-hidden shadow-[0_10px_30px_rgba(99,102,241,0.45)] text-left bg-gradient-to-br from-indigo-500 via-indigo-600 to-indigo-800 relative"
+            className="card-accent-indigo w-full text-left relative overflow-hidden transition active:scale-[0.99]"
           >
-            <span className="absolute top-2 right-2 text-[10px] font-extrabold text-white bg-red-500 px-2 py-0.5 rounded-full shadow-sm z-10">
-              未設定
-            </span>
+            <span className="badge-new absolute top-3 right-3 z-10">未設定</span>
             <div className="px-5 py-5 flex items-center gap-4">
-              <span className="text-5xl drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)]">👤</span>
+              <span className="text-5xl">👤</span>
               <div className="flex-1 min-w-0">
-                <p className="text-lg font-extrabold drop-shadow-sm text-white leading-tight">
-                  ガイコツ先生があなた専用に計算
+                <p className="text-lg font-bold text-white leading-tight">
+                  ガイコツ先生が<br />あなた専用に計算
                 </p>
-                <p className="text-sm font-semibold text-indigo-100 mt-1 leading-snug">
-                  身長・体重・目標を入力で<br />
-                  最適カロリーを自動算出
+                <p className="text-sm text-indigo-200 mt-1.5 leading-snug">
+                  身長・体重で最適カロリー算出
                 </p>
               </div>
-              <span className="text-3xl text-white opacity-80">›</span>
+              <span className="text-2xl text-indigo-300">›</span>
             </div>
           </button>
         )}
 
-        {/* AI痛み予測カード */}
+        {/* ガイコツ先生の痛み予測カード */}
         {prediction && (
           <button
             onClick={() => prediction.symptomId ? onSelectSymptom(prediction.symptomId) : onNavigate("ai-counsel")}
-            className={`w-full bg-gradient-to-r ${riskColors[prediction.riskLevel] || riskColors.low} border rounded-2xl px-4 py-4 text-left`}
+            className="card-base w-full text-left p-4 relative overflow-hidden active:scale-[0.99] transition"
           >
-            <div className="flex items-start gap-3">
-              <span className="text-3xl">{riskIcons[prediction.riskLevel] || "✅"}</span>
-              <div className="flex-1">
-                <p className="text-base font-bold text-white mb-1.5 flex items-center gap-2">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src="/icon-skeleton-sensei-face.png"
-                    alt="ガイコツ先生"
-                    className="w-9 h-9 object-contain drop-shadow"
-                  />
+            <span
+              className={`absolute left-0 top-0 bottom-0 w-1 ${
+                prediction.riskLevel === "high"
+                  ? "bg-red-500"
+                  : prediction.riskLevel === "medium"
+                  ? "bg-amber-500"
+                  : "bg-emerald-500"
+              }`}
+            />
+            <div className="flex items-start gap-3 pl-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/icon-skeleton-sensei-face.png"
+                alt="ガイコツ先生"
+                className="w-11 h-11 object-contain flex-shrink-0"
+              />
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] text-gray-400 font-bold mb-1 tracking-wide flex items-center gap-1.5">
+                  <span>{riskIcons[prediction.riskLevel] || "✅"}</span>
                   <span>ガイコツ先生の痛み予測</span>
                 </p>
-                <p className="text-sm font-bold text-white">{prediction.prediction}</p>
-                {prediction.detail && <p className="text-xs text-gray-300 mt-1">{prediction.detail}</p>}
-                <p className="text-xs text-blue-400 mt-2">タップしてケアを開始 →</p>
+                <p className="text-base font-bold text-white leading-tight">{prediction.prediction}</p>
+                {prediction.detail && (
+                  <p className="text-sm text-gray-300 mt-1.5 leading-relaxed">{prediction.detail}</p>
+                )}
+                <p className="text-xs text-emerald-400 mt-2 font-semibold">タップしてケアを開始 →</p>
               </div>
             </div>
           </button>
@@ -638,26 +646,26 @@ function HomeScreen({
 
         {/* Step 1: 姿勢チェック */}
         <div className="space-y-3">
-          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Step 1 · 姿勢チェック</h2>
+          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Step 1 · 姿勢チェック</h2>
           <button
             onClick={() => onNavigate("check")}
-            className="btn-3d w-full px-5 py-5 bg-gradient-to-b from-orange-400 via-orange-600 to-amber-800 rounded-2xl font-semibold flex items-center gap-4 shadow-[0_10px_30px_rgba(234,88,12,0.5)]"
+            className="btn-primary w-full px-5 py-5 flex items-center gap-4"
           >
-            <span className="text-4xl drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)]">🧍</span>
+            <span className="text-4xl">🧍</span>
             <div className="text-left">
-              <p className="text-base font-bold drop-shadow-sm">ZERO-PAIN AIで姿勢スキャン</p>
-              <p className="text-xs font-normal opacity-80">スマホを置いて全身撮影 → 歪みを自動診断</p>
+              <p className="text-base font-bold">ZERO-PAIN AIで姿勢スキャン</p>
+              <p className="text-sm text-emerald-50/90 mt-0.5">スマホを置いて全身撮影 → 歪みを自動診断</p>
             </div>
           </button>
           <button
             onClick={() => onNavigate("history")}
             disabled={records.length === 0}
-            className="btn-3d w-full px-5 py-3.5 bg-gradient-to-b from-indigo-500 via-indigo-700 to-indigo-900 disabled:from-gray-800 disabled:to-gray-900 disabled:opacity-40 rounded-2xl font-semibold flex items-center gap-3 shadow-[0_10px_24px_rgba(67,56,202,0.4)]"
+            className="btn-neutral w-full px-5 py-3.5 flex items-center gap-3 disabled:opacity-40"
           >
-            <span className="text-xl drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)]">📊</span>
+            <span className="text-xl">📊</span>
             <div className="text-left">
-              <p className="text-sm font-semibold">過去の記録を見る</p>
-              <p className="text-[11px] text-indigo-300">
+              <p className="text-sm font-bold">過去の記録を見る</p>
+              <p className="text-[11px] text-gray-400">
                 {records.length > 0 ? `${records.length}件の記録` : "まだ記録がありません"}
               </p>
             </div>
@@ -666,73 +674,54 @@ function HomeScreen({
 
         {/* Step 2: AIカウンセリング */}
         <div className="space-y-3">
-          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Step 2 · AI相談</h2>
+          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Step 2 · AI相談</h2>
 
           {/* パーソナルトレーナー統合ボタン */}
           <button
             onClick={() => onNavigate("ai-counsel")}
-            className="btn-3d w-full rounded-2xl overflow-hidden shadow-[0_10px_30px_rgba(79,70,229,0.5)] text-left"
+            className="btn-secondary w-full text-left flex items-center gap-3 px-4 overflow-hidden aspect-[3722/1152] relative"
           >
-            {/* 上部: パーソナルトレーナー訴求 */}
-            <div className="bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 px-4 py-3">
-              <p className="text-base font-extrabold text-gray-900 flex items-center gap-1.5 drop-shadow-sm">
-                ✨ あなた専用のパーソナルトレーナー
-              </p>
-              <p className="text-xs font-semibold text-amber-900 mt-0.5">
-                使うほど賢くなる、あなた専属の相談相手
-              </p>
-            </div>
-            {/* 下部: ガイコツ先生ボタン */}
-            <div className="bg-gradient-to-b from-blue-400 via-blue-600 to-purple-800 flex items-center gap-3 px-4 overflow-hidden aspect-[3722/1152]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/icon-skeleton-sensei.png" alt="ガイコツ先生" className="h-full w-auto drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)] -my-2" />
-              <div className="flex-1 min-w-0">
-                <p className="text-base font-bold drop-shadow-sm text-white">ガイコツ先生に相談する</p>
-                <p className="text-xs font-normal opacity-80 text-white">症状を聞き取り最適なケアを提案</p>
-              </div>
+            <span className="badge-accent absolute top-3 right-3 text-[11px] !bg-amber-500/90 !text-amber-950">
+              ✨ パーソナルトレーナー
+            </span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/icon-skeleton-sensei.png" alt="ガイコツ先生" className="h-full w-auto drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)] -my-2" />
+            <div className="flex-1 min-w-0">
+              <p className="text-base font-bold text-white leading-tight">ガイコツ先生に相談</p>
+              <p className="text-sm text-indigo-100 mt-1">症状を聞き取り最適なケアを提案</p>
             </div>
           </button>
         </div>
 
         {/* Step 3: 食事記録 */}
         <div className="space-y-3">
-          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Step 3 · 食事を撮って相談</h2>
+          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Step 3 · 食事を撮って相談</h2>
           <button
             onClick={() => onNavigate("meal")}
-            className="btn-3d w-full rounded-2xl overflow-hidden shadow-[0_10px_30px_rgba(16,185,129,0.5)] text-left"
+            className="btn-primary w-full text-left flex items-center gap-4 px-5 py-5 relative overflow-hidden"
           >
-            {/* 上部: NEWバナー訴求 */}
-            <div className="bg-gradient-to-r from-lime-400 via-green-400 to-emerald-400 px-4 py-3 flex items-center justify-between">
-              <p className="text-base font-extrabold text-green-900 flex items-center gap-2 drop-shadow-sm">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/icon-skeleton-sensei-face.png"
-                  alt="ガイコツ先生"
-                  className="w-8 h-8 object-contain"
-                />
+            <span className="badge-new absolute top-3 right-3">NEW</span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/icon-skeleton-sensei-face.png"
+              alt="ガイコツ先生"
+              className="w-12 h-12 object-contain flex-shrink-0"
+            />
+            <div className="flex-1 min-w-0">
+              <p className="text-base font-bold text-white leading-tight">
                 ガイコツ先生の食事分析
               </p>
-              <span className="text-[10px] font-extrabold text-white bg-red-500 px-2 py-0.5 rounded-full shadow-sm">
-                NEW
-              </span>
+              <p className="text-sm text-emerald-50/90 mt-1 leading-snug">
+                写真1枚で栄養×姿勢ケアを診断
+              </p>
             </div>
-            {/* 下部: メインボタン */}
-            <div className="bg-gradient-to-b from-emerald-500 via-emerald-600 to-green-800 flex items-center gap-4 px-5 py-5">
-              <span className="text-5xl drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)]">📷</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-base font-bold drop-shadow-sm text-white">食事の写真でガイコツ先生が栄養診断</p>
-                <p className="text-xs font-normal opacity-90 text-white mt-0.5">
-                  カロリー・栄養素 × 姿勢ケアを同時にアドバイス
-                </p>
-              </div>
-              <span className="text-2xl text-white opacity-70">›</span>
-            </div>
+            <span className="text-2xl text-white/80">›</span>
           </button>
         </div>
 
         {/* Step 4: 症状選択 */}
         <div>
-          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Step 4 · セルフケアメニュー</h2>
+          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Step 4 · セルフケアメニュー</h2>
           <div className="grid grid-cols-2 gap-3">
             {SYMPTOMS.map((symptom) => (
               <button
@@ -1916,8 +1905,9 @@ function DailyTipCard() {
   if (!tip) return null;
 
   return (
-    <div className="bg-gradient-to-br from-yellow-500/10 to-amber-500/5 border border-amber-500/30 rounded-2xl p-4">
-      <div className="flex items-start gap-3">
+    <div className="card-base p-4 relative overflow-hidden">
+      <span className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500/70" />
+      <div className="flex items-start gap-3 pl-2">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/icon-skeleton-sensei-face.png"
@@ -1925,14 +1915,14 @@ function DailyTipCard() {
           className="w-12 h-12 object-contain flex-shrink-0"
         />
         <div className="flex-1 min-w-0">
-          <p className="text-[10px] text-amber-300 font-bold mb-0.5">
-            🌱 ガイコツ先生の今日の一言
+          <p className="text-[11px] text-amber-400 font-bold mb-1 tracking-wide">
+            🌱 今日の一言
           </p>
-          <p className="text-sm font-extrabold text-white mb-1 flex items-center gap-1">
+          <p className="text-base font-bold text-white mb-1.5 flex items-center gap-1.5 leading-tight">
             <span className="text-xl">{tip.emoji}</span>
             <span>{tip.title}</span>
           </p>
-          <p className="text-xs text-gray-200 leading-relaxed">{tip.body}</p>
+          <p className="text-sm text-gray-300 leading-relaxed">{tip.body}</p>
         </div>
       </div>
     </div>
@@ -1963,7 +1953,7 @@ function PFCCircleChart({
         className="rounded-full border-2 border-dashed border-gray-700 flex items-center justify-center"
         style={{ width: size, height: size }}
       >
-        <span className="text-[9px] text-gray-500 text-center leading-tight">
+        <span className="text-[11px] text-gray-500 text-center leading-tight">
           PFC
           <br />
           データ
@@ -2035,8 +2025,8 @@ function PFCCircleChart({
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-[8px] text-gray-400 leading-none">PFC</span>
-        <span className="text-[10px] font-bold text-white leading-none mt-0.5">
+        <span className="text-[11px] text-gray-400 leading-none">PFC</span>
+        <span className="text-[11px] font-bold text-white leading-none mt-0.5">
           {Math.round(pRatio * 100)}:{Math.round(cRatio * 100)}:{Math.round(fRatio * 100)}
         </span>
       </div>
@@ -2137,7 +2127,7 @@ function TodayMealDashboard({
   const dayLabels = ["日", "月", "火", "水", "木", "金", "土"];
 
   return (
-    <div className="bg-gradient-to-br from-emerald-500/10 to-green-600/5 border border-emerald-500/30 rounded-2xl p-3 space-y-3">
+    <div className="card-accent-emerald p-4 space-y-3 relative overflow-hidden">
       {/* 週間カレンダー（横7日分） */}
       <div className="flex items-center justify-between gap-1">
         {weekDays.map((d) => {
@@ -2156,7 +2146,7 @@ function TodayMealDashboard({
                   : "text-gray-400"
               }`}
             >
-              <p className="text-[10px] font-semibold">{isToday ? "今日" : dayOfWeek}</p>
+              <p className="text-[11px] font-semibold">{isToday ? "今日" : dayOfWeek}</p>
               <p className="text-sm font-extrabold">{d.date.getDate()}</p>
             </button>
           );
@@ -2175,13 +2165,13 @@ function TodayMealDashboard({
         {/* 右: カロリー + PFC数値 */}
         <div className="space-y-1.5">
           <div className="flex items-baseline justify-between">
-            <p className="text-[10px] text-gray-400">摂取カロリー</p>
+            <p className="text-[11px] text-gray-400">摂取カロリー</p>
             {targetCal > 0 ? (
-              <p className="text-[9px] text-gray-400">目標 {targetCal}kcal</p>
+              <p className="text-[11px] text-gray-400">目標 {targetCal}kcal</p>
             ) : (
               <button
                 onClick={() => onGoToMealMode("goal")}
-                className="text-[10px] text-indigo-400 font-bold"
+                className="text-[11px] text-indigo-400 font-bold"
               >
                 目標を設定 →
               </button>
@@ -2189,7 +2179,7 @@ function TodayMealDashboard({
           </div>
           <div className="flex items-baseline gap-1.5">
             <span className="text-2xl font-extrabold text-emerald-300 leading-none">{totalCal}</span>
-            <span className="text-[10px] text-gray-400">kcal</span>
+            <span className="text-[11px] text-gray-400">kcal</span>
           </div>
           {targetCal > 0 && (
             <div className="flex items-center gap-1.5">
@@ -2205,13 +2195,13 @@ function TodayMealDashboard({
                   style={{ width: `${calProgress}%` }}
                 />
               </div>
-              <span className="text-[9px] text-gray-400 whitespace-nowrap">
+              <span className="text-[11px] text-gray-400 whitespace-nowrap">
                 {Math.round(calProgress)}%
               </span>
             </div>
           )}
           {/* PFC各数値 */}
-          <div className="flex items-center gap-2 text-[9px] pt-0.5">
+          <div className="flex items-center gap-2 text-[11px] pt-0.5">
             <span className="text-emerald-400 font-bold">
               P {Math.round(data?.total.protein_g || 0)}g
             </span>
@@ -2244,16 +2234,16 @@ function TodayMealDashboard({
               <div className="flex items-center justify-between mb-1">
                 <span className="text-lg">{emoji}</span>
                 {recorded ? (
-                  <span className="text-[10px] text-emerald-400 font-bold">✓ 記録済</span>
+                  <span className="text-[11px] text-emerald-400 font-bold">✓ 記録済</span>
                 ) : (
-                  <span className="text-[10px] text-gray-500">未記録</span>
+                  <span className="text-[11px] text-gray-500">未記録</span>
                 )}
               </div>
               <p className="text-xs font-bold text-gray-300">{key}</p>
               {recorded ? (
                 <p className="text-xs text-gray-400 mt-0.5">{kcal} kcal</p>
               ) : (
-                <p className="text-[10px] text-gray-500 mt-0.5">タップで撮影</p>
+                <p className="text-[11px] text-gray-500 mt-0.5">タップで撮影</p>
               )}
             </button>
           );
@@ -2261,7 +2251,7 @@ function TodayMealDashboard({
       </div>
 
       {loading && (
-        <p className="text-[10px] text-center text-gray-500">読み込み中...</p>
+        <p className="text-[11px] text-center text-gray-500">読み込み中...</p>
       )}
     </div>
   );
@@ -2649,8 +2639,8 @@ function MealScreen({
       {/* ホーム（撮影ボタン） */}
       {mode === "home" && (
         <div className="w-full max-w-md space-y-4">
-          <div className="bg-gradient-to-br from-emerald-500/20 to-green-600/10 border border-emerald-500/30 rounded-2xl p-5">
-            <p className="text-sm text-emerald-200 leading-relaxed">
+          <div className="card-accent-emerald p-5">
+            <p className="text-sm text-emerald-100 leading-relaxed">
               📸 食事の写真を撮るだけで、ガイコツ先生がメニュー・カロリー・栄養バランスを分析し、あなたの姿勢や痛みに合わせたアドバイスをお伝えします。
             </p>
           </div>
@@ -2713,53 +2703,53 @@ function MealScreen({
 
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="btn-3d w-full px-5 py-6 bg-gradient-to-b from-emerald-400 via-emerald-600 to-green-800 rounded-2xl font-semibold flex items-center justify-center gap-3 shadow-[0_10px_30px_rgba(16,185,129,0.5)]"
+            className="btn-primary w-full px-5 py-6 flex items-center justify-center gap-3"
           >
             <span className="text-3xl">📷</span>
-            <span className="text-lg">{selectedMealType}を撮影する</span>
+            <span className="text-lg font-bold">{selectedMealType}を撮影する</span>
           </button>
 
-          {/* プロフィール & 目標（最重要なので目立たせる） */}
+          {/* プロフィール & 目標（重要） */}
           <button
             onClick={() => setMode("goal")}
-            className="w-full px-5 py-4 bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-2xl font-semibold flex items-center gap-3 shadow-[0_8px_20px_rgba(99,102,241,0.35)]"
+            className="btn-secondary w-full px-5 py-4 flex items-center gap-3"
           >
             <span className="text-3xl">👤</span>
             <div className="text-left flex-1">
               <p className="text-base font-bold">プロフィール &amp; 目標</p>
-              <p className="text-xs text-indigo-100 mt-0.5">身長・体重 → ガイコツ先生が最適プラン計算</p>
+              <p className="text-sm text-indigo-100 mt-0.5">身長・体重から最適プラン計算</p>
             </div>
             <span className="text-white/70 text-xl">›</span>
           </button>
 
-          {/* カレンダー・履歴はニュートラルで統一 */}
+          {/* カレンダー・履歴はニュートラル */}
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={() => setMode("calendar")}
-              className="px-3 py-4 bg-gray-900 hover:bg-gray-800 rounded-2xl font-semibold flex flex-col items-center gap-1 border border-gray-800"
+              className="btn-neutral px-3 py-4 flex flex-col items-center gap-1"
             >
               <span className="text-2xl">📅</span>
               <p className="text-sm font-bold">カレンダー</p>
-              <p className="text-[10px] text-gray-400 text-center leading-tight">日別カロリー推移</p>
+              <p className="text-[11px] text-gray-400 text-center leading-tight">日別カロリー推移</p>
             </button>
 
             <button
               onClick={openHistory}
-              className="px-3 py-4 bg-gray-900 hover:bg-gray-800 rounded-2xl font-semibold flex flex-col items-center gap-1 border border-gray-800"
+              className="btn-neutral px-3 py-4 flex flex-col items-center gap-1"
             >
               <span className="text-2xl">📚</span>
               <p className="text-sm font-bold">履歴</p>
-              <p className="text-[10px] text-gray-400 text-center leading-tight">全記録を一覧で確認</p>
+              <p className="text-[11px] text-gray-400 text-center leading-tight">全記録を一覧で確認</p>
             </button>
           </div>
 
           {/* MYセット（1タップで記録） */}
           {mySets.length > 0 && (
-            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 space-y-2">
+            <div className="card-base p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-bold text-emerald-300">⭐ MYセット（1タップ記録）</p>
-                <p className="text-[10px] text-gray-500">
-                  {selectedMealType}として記録されます
+                <p className="text-sm font-bold text-amber-400">⭐ MYセット（1タップ記録）</p>
+                <p className="text-[11px] text-gray-400">
+                  {selectedMealType}として記録
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-2">
@@ -2767,14 +2757,14 @@ function MealScreen({
                   <button
                     key={s.id}
                     onClick={() => useMySet(s.id)}
-                    className="px-3 py-2.5 bg-gray-800 hover:bg-gray-700 rounded-xl text-left border border-gray-700 active:scale-95 transition"
+                    className="btn-neutral px-3 py-2.5 text-left active:scale-95 transition"
                   >
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-lg">{s.icon || "🍽️"}</span>
                       <p className="text-xs font-bold truncate">{s.name}</p>
                     </div>
-                    <p className="text-[10px] text-gray-400 truncate">{s.menu_name}</p>
-                    <p className="text-[10px] text-emerald-400 font-bold">
+                    <p className="text-[11px] text-gray-400 truncate">{s.menu_name}</p>
+                    <p className="text-[11px] text-emerald-400 font-bold">
                       {s.calories || "-"}kcal / P{s.protein_g || 0}g
                     </p>
                   </button>
@@ -2870,8 +2860,8 @@ function MealScreen({
           </div>
 
           {analysis.advice && (
-            <div className="bg-gradient-to-br from-blue-500/10 to-indigo-600/10 border border-blue-500/30 rounded-2xl p-4">
-              <p className="text-xs text-blue-300 mb-2">💬 ガイコツ先生より</p>
+            <div className="card-accent-indigo p-4">
+              <p className="text-xs text-indigo-300 mb-2 font-bold">💬 ガイコツ先生より</p>
               <p className="text-sm text-gray-200 whitespace-pre-wrap leading-relaxed">
                 {analysis.advice}
               </p>
@@ -2881,13 +2871,13 @@ function MealScreen({
           <div className="flex gap-2">
             <button
               onClick={resetToHome}
-              className="flex-1 px-4 py-3 bg-gray-800 hover:bg-gray-700 rounded-xl text-sm font-semibold"
+              className="btn-neutral flex-1 px-4 py-3 text-sm"
             >
               もう1枚撮る
             </button>
             <button
               onClick={() => onNavigate("home")}
-              className="flex-1 px-4 py-3 bg-emerald-600 hover:bg-emerald-700 rounded-xl text-sm font-semibold"
+              className="btn-primary flex-1 px-4 py-3 text-sm"
             >
               ホームへ
             </button>
@@ -2896,9 +2886,9 @@ function MealScreen({
           {/* MYセットに保存ボタン */}
           <button
             onClick={() => setShowSaveSetModal(true)}
-            className="w-full px-4 py-3 bg-amber-600/20 hover:bg-amber-600/30 border border-amber-500/50 rounded-xl text-sm font-bold text-amber-300 flex items-center justify-center gap-2"
+            className="card-accent-amber w-full px-4 py-3 text-sm font-bold text-amber-300 flex items-center justify-center gap-2 transition active:scale-[0.99]"
           >
-            ⭐ この食事をMYセットに保存（次回1タップで記録）
+            ⭐ この食事をMYセットに保存
           </button>
         </div>
       )}
@@ -2952,7 +2942,7 @@ function MealScreen({
                       })}
                     </p>
                     {r.meal_type && (
-                      <span className="text-[10px] px-2 py-0.5 bg-emerald-600/30 text-emerald-300 rounded-full">
+                      <span className="text-[11px] px-2 py-0.5 bg-emerald-600/30 text-emerald-300 rounded-full">
                         {r.meal_type}
                       </span>
                     )}
@@ -2991,10 +2981,10 @@ function NutritionCell({
 }) {
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-xl px-2 py-2 text-center">
-      <p className="text-[10px] text-gray-500">{label}</p>
+      <p className="text-[11px] text-gray-500">{label}</p>
       <p className="text-sm font-bold text-white mt-0.5">
         {value !== null && value !== undefined ? value : "-"}
-        <span className="text-[10px] font-normal text-gray-400 ml-0.5">{unit}</span>
+        <span className="text-[11px] font-normal text-gray-400 ml-0.5">{unit}</span>
       </p>
     </div>
   );
@@ -3152,7 +3142,7 @@ function MealCalendarView({ onBack }: { onBack: () => void }) {
             <StatCell label="タンパク質/日" value={`${data.stats.avgProteinPerDay}g`} />
           </div>
           {data.goal && (
-            <p className="text-[10px] text-gray-400 mt-2">
+            <p className="text-[11px] text-gray-400 mt-2">
               🎯 目標: {data.goal.target_calories}kcal / タンパク質{data.goal.target_protein_g}g
             </p>
           )}
@@ -3165,7 +3155,7 @@ function MealCalendarView({ onBack }: { onBack: () => void }) {
           {["日", "月", "火", "水", "木", "金", "土"].map((d, i) => (
             <p
               key={d}
-              className={`text-center text-[10px] font-bold ${
+              className={`text-center text-[11px] font-bold ${
                 i === 0 ? "text-red-400" : i === 6 ? "text-blue-400" : "text-gray-400"
               }`}
             >
@@ -3184,7 +3174,7 @@ function MealCalendarView({ onBack }: { onBack: () => void }) {
               <button
                 key={i}
                 onClick={() => setSelectedDay(hasData ? c.day : null)}
-                className={`aspect-square rounded-md text-[10px] flex flex-col items-center justify-center gap-0.5 border ${
+                className={`aspect-square rounded-md text-[11px] flex flex-col items-center justify-center gap-0.5 border ${
                   isToday(c.day!)
                     ? "border-blue-400"
                     : isSel
@@ -3196,7 +3186,7 @@ function MealCalendarView({ onBack }: { onBack: () => void }) {
                   {c.day}
                 </span>
                 {hasData && (
-                  <span className="text-[9px] font-semibold leading-none text-white/90">
+                  <span className="text-[11px] font-semibold leading-none text-white/90">
                     {cal}
                   </span>
                 )}
@@ -3204,7 +3194,7 @@ function MealCalendarView({ onBack }: { onBack: () => void }) {
             );
           })}
         </div>
-        <div className="mt-3 flex items-center justify-around text-[9px] text-gray-400">
+        <div className="mt-3 flex items-center justify-around text-[11px] text-gray-400">
           <div className="flex items-center gap-1"><span className="w-2 h-2 bg-blue-500/40 rounded" />少</div>
           <div className="flex items-center gap-1"><span className="w-2 h-2 bg-emerald-500/50 rounded" />適量</div>
           <div className="flex items-center gap-1"><span className="w-2 h-2 bg-amber-500/50 rounded" />やや多</div>
@@ -3269,7 +3259,7 @@ function MealCalendarView({ onBack }: { onBack: () => void }) {
                     />
                     <div className="p-2.5 space-y-1">
                       <p className="text-sm font-bold">{m.menu_name || "判定不能"}</p>
-                      <div className="flex flex-wrap gap-x-2 text-[10px] text-gray-400">
+                      <div className="flex flex-wrap gap-x-2 text-[11px] text-gray-400">
                         {m.calories !== null && <span>🔥{m.calories}kcal</span>}
                         {m.protein_g !== null && <span>P{m.protein_g}g</span>}
                         {m.carbs_g !== null && <span>C{m.carbs_g}g</span>}
@@ -3297,7 +3287,7 @@ function MealCalendarView({ onBack }: { onBack: () => void }) {
 function StatCell({ label, value }: { label: string; value: string }) {
   return (
     <div className="bg-gray-900/50 rounded-lg px-2 py-2">
-      <p className="text-[10px] text-gray-500">{label}</p>
+      <p className="text-[11px] text-gray-500">{label}</p>
       <p className="text-sm font-bold text-emerald-300">{value}</p>
     </div>
   );
@@ -3319,10 +3309,10 @@ function DayStat({
   const achieved = target && current ? Math.min(100, (current / target) * 100) : 0;
   return (
     <div className="bg-gray-800 rounded-lg px-2 py-2 text-center">
-      <p className="text-[10px] text-gray-500">{label}</p>
+      <p className="text-[11px] text-gray-500">{label}</p>
       <p className="text-sm font-bold text-white">
         {value}
-        <span className="text-[10px] font-normal text-gray-400 ml-0.5">{unit}</span>
+        <span className="text-[11px] font-normal text-gray-400 ml-0.5">{unit}</span>
       </p>
       {target && (
         <div className="h-1 bg-gray-700 rounded-full overflow-hidden mt-1">
@@ -3494,15 +3484,15 @@ function MealGoalView({ onBack }: { onBack: () => void }) {
         ← 食事メニューに戻る
       </button>
 
-      <div className="bg-gradient-to-br from-indigo-500/10 to-purple-600/5 border border-indigo-500/30 rounded-2xl p-4">
+      <div className="card-accent-indigo p-4">
         <p className="text-sm font-bold text-indigo-300 mb-1">👤 プロフィール & 目標</p>
-        <p className="text-xs text-gray-400">
+        <p className="text-xs text-gray-300 leading-relaxed">
           身長・体重・目標を入力するとガイコツ先生が科学的根拠に基づいてあなた専用のプランを自動計算します。
         </p>
       </div>
 
       {/* 基本情報 */}
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 space-y-3">
+      <div className="card-base p-4 space-y-3">
         <p className="text-sm font-bold text-white">👤 基本情報</p>
 
         {/* 性別 */}
@@ -3592,7 +3582,7 @@ function MealGoalView({ onBack }: { onBack: () => void }) {
                 }`}
               >
                 <span className="font-bold">{opt.label}</span>
-                <span className="text-[10px] text-gray-400">{opt.desc}</span>
+                <span className="text-[11px] text-gray-400">{opt.desc}</span>
               </button>
             ))}
           </div>
@@ -3600,7 +3590,7 @@ function MealGoalView({ onBack }: { onBack: () => void }) {
       </div>
 
       {/* 目標 */}
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 space-y-3">
+      <div className="card-base p-4 space-y-3">
         <p className="text-sm font-bold text-white">🎯 目標</p>
 
         <div className="grid grid-cols-3 gap-2">
@@ -3671,9 +3661,9 @@ function MealGoalView({ onBack }: { onBack: () => void }) {
         )}
       </div>
 
-      {/* AI分析結果 */}
+      {/* ガイコツ先生の計算結果 */}
       {rec && (
-        <div className="bg-gradient-to-br from-emerald-500/10 to-green-600/5 border border-emerald-500/40 rounded-2xl p-4 space-y-3">
+        <div className="card-accent-emerald p-4 space-y-3">
           <p className="text-sm font-bold text-emerald-300 flex items-center gap-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -3727,8 +3717,8 @@ function MealGoalView({ onBack }: { onBack: () => void }) {
         <div
           className={`rounded-xl px-4 py-2.5 text-sm ${
             message.startsWith("✅")
-              ? "bg-emerald-500/20 border border-emerald-500/40 text-emerald-300"
-              : "bg-red-500/20 border border-red-500/40 text-red-300"
+              ? "card-accent-emerald text-emerald-200"
+              : "bg-red-500/10 border border-red-500/30 text-red-300"
           }`}
         >
           {message}
@@ -3738,7 +3728,7 @@ function MealGoalView({ onBack }: { onBack: () => void }) {
       <button
         onClick={save}
         disabled={saving}
-        className="btn-3d w-full px-4 py-4 bg-gradient-to-b from-indigo-500 via-indigo-600 to-indigo-800 disabled:opacity-50 rounded-2xl font-bold text-base shadow-[0_8px_24px_rgba(99,102,241,0.45)]"
+        className="btn-secondary w-full px-4 py-4 text-base disabled:opacity-50"
       >
         {saving ? "保存中..." : "保存する"}
       </button>
@@ -3813,31 +3803,31 @@ function SaveSuccessModal({
             </p>
             <div className="grid grid-cols-2 gap-2">
               <div className="bg-white/20 rounded-xl px-3 py-2 text-center">
-                <p className="text-[10px] text-emerald-50">1日の摂取カロリー</p>
+                <p className="text-[11px] text-emerald-50">1日の摂取カロリー</p>
                 <p className="text-xl font-extrabold text-white">
                   {recommendation.recommendedCalories}
                   <span className="text-xs font-normal ml-0.5">kcal</span>
                 </p>
               </div>
               <div className="bg-white/20 rounded-xl px-3 py-2 text-center">
-                <p className="text-[10px] text-emerald-50">タンパク質</p>
+                <p className="text-[11px] text-emerald-50">タンパク質</p>
                 <p className="text-xl font-extrabold text-white">
                   {recommendation.recommendedProteinG}
                   <span className="text-xs font-normal ml-0.5">g</span>
                 </p>
               </div>
               <div className="bg-white/20 rounded-xl px-3 py-2 text-center">
-                <p className="text-[10px] text-emerald-50">BMI</p>
+                <p className="text-[11px] text-emerald-50">BMI</p>
                 <p className="text-base font-extrabold text-white">
                   {recommendation.bmi}
-                  <span className="text-[10px] font-normal ml-1">{recommendation.bmiCategory}</span>
+                  <span className="text-[11px] font-normal ml-1">{recommendation.bmiCategory}</span>
                 </p>
               </div>
               <div className="bg-white/20 rounded-xl px-3 py-2 text-center">
-                <p className="text-[10px] text-emerald-50">基礎代謝</p>
+                <p className="text-[11px] text-emerald-50">基礎代謝</p>
                 <p className="text-base font-extrabold text-white">
                   {recommendation.bmr}
-                  <span className="text-[10px] font-normal ml-0.5">kcal</span>
+                  <span className="text-[11px] font-normal ml-0.5">kcal</span>
                 </p>
               </div>
             </div>
@@ -3915,7 +3905,7 @@ function SaveMySetModal({
           </div>
         </div>
 
-        <div className="bg-gray-800 rounded-lg px-3 py-2 text-[10px] text-gray-400">
+        <div className="bg-gray-800 rounded-lg px-3 py-2 text-[11px] text-gray-400">
           {analysis.menu_name} / 🔥{analysis.calories || 0}kcal / P{analysis.protein_g || 0}g
         </div>
 
@@ -3956,10 +3946,10 @@ function InfoCell({
         highlight ? "bg-emerald-600/20 border border-emerald-500" : "bg-gray-900/50"
       }`}
     >
-      <p className="text-[10px] text-gray-400">{label}</p>
+      <p className="text-[11px] text-gray-400">{label}</p>
       <p className={`text-base font-extrabold ${highlight ? "text-emerald-300" : "text-white"}`}>
         {value}
-        {sub && <span className="text-[10px] font-normal text-gray-400 ml-0.5">{sub}</span>}
+        {sub && <span className="text-[11px] font-normal text-gray-400 ml-0.5">{sub}</span>}
       </p>
     </div>
   );
@@ -4001,9 +3991,9 @@ function WeightChart({
   const diff = Number((lastWeight - firstWeight).toFixed(1));
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4">
+    <div className="card-base p-4">
       <div className="flex items-center justify-between mb-2">
-        <p className="text-sm font-bold">📉 体重の推移</p>
+        <p className="text-sm font-bold text-white">📉 体重の推移</p>
         <p className={`text-xs font-bold ${diff < 0 ? "text-emerald-400" : diff > 0 ? "text-amber-400" : "text-gray-400"}`}>
           {diff > 0 ? "+" : ""}
           {diff} kg
@@ -4036,7 +4026,7 @@ function WeightChart({
           <circle key={i} cx={p.x} cy={p.y} r="3" fill="#10b981" />
         ))}
       </svg>
-      <p className="text-[10px] text-gray-500 text-center mt-1">
+      <p className="text-[11px] text-gray-500 text-center mt-1">
         {new Date(weights[0].recorded_at).toLocaleDateString("ja-JP")} 〜{" "}
         {new Date(weights[weights.length - 1].recorded_at).toLocaleDateString("ja-JP")}
       </p>
@@ -4154,15 +4144,9 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
         {state && (
           <>
             {/* 現在のステータス */}
-            <div
-              className={`rounded-2xl p-5 border ${
-                state.isPaid
-                  ? "bg-gradient-to-br from-amber-500/20 to-yellow-600/10 border-amber-500/40"
-                  : "bg-gray-900 border-gray-800"
-              }`}
-            >
-              <p className="text-xs text-gray-400 mb-1">現在のプラン</p>
-              <p className="text-lg font-bold">{statusLabel[state.status]}</p>
+            <div className={state.isPaid ? "card-accent-amber p-5" : "card-base p-5"}>
+              <p className="text-xs text-gray-400 mb-1 tracking-wide">現在のプラン</p>
+              <p className="text-lg font-bold text-white">{statusLabel[state.status]}</p>
               {state.trialEndsAt && state.status === "trial" && (
                 <p className="text-xs text-amber-300 mt-2">
                   トライアル終了: {formatDate(state.trialEndsAt)}
@@ -4177,8 +4161,8 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
 
             {/* 今月の利用状況 */}
             {!state.isPaid && (
-              <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4">
-                <p className="text-xs text-gray-400 mb-3">今月の利用状況</p>
+              <div className="card-base p-4">
+                <p className="text-xs text-gray-400 mb-3 font-bold tracking-wide">今月の利用状況</p>
                 <UsageRow
                   label="姿勢診断"
                   usage={state.usage.posture}
@@ -4200,8 +4184,8 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
             {/* プラン案内（無料プラン時のみ） */}
             {!state.isPaid && (
               <>
-                <div className="bg-gradient-to-br from-amber-500/10 to-yellow-600/5 border border-amber-500/30 rounded-2xl p-5 space-y-3">
-                  <p className="text-base font-extrabold text-amber-300">
+                <div className="card-accent-amber p-5 space-y-3">
+                  <p className="text-base font-bold text-amber-300">
                     👑 プレミアムプランで全機能開放
                   </p>
                   <ul className="text-sm text-gray-200 space-y-1.5">
@@ -4218,7 +4202,7 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
                   <button
                     onClick={() => callAction("start_trial")}
                     disabled={acting}
-                    className="btn-3d w-full px-5 py-4 bg-gradient-to-b from-amber-400 via-amber-500 to-yellow-600 disabled:opacity-50 rounded-2xl font-bold shadow-[0_10px_30px_rgba(245,158,11,0.5)]"
+                    className="btn-primary w-full px-5 py-4 disabled:opacity-50"
                   >
                     🎁 7日間無料で試す
                   </button>
@@ -4228,31 +4212,31 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
                 <button
                   onClick={() => callAction("subscribe", "monthly")}
                   disabled={acting}
-                  className="w-full px-5 py-4 bg-gray-900 hover:bg-gray-800 border-2 border-gray-700 disabled:opacity-50 rounded-2xl text-left flex items-center justify-between"
+                  className="card-base w-full px-5 py-4 text-left flex items-center justify-between disabled:opacity-50 active:scale-[0.99] transition"
                 >
                   <div>
-                    <p className="text-sm font-bold">月額プラン</p>
+                    <p className="text-sm font-bold text-white">月額プラン</p>
                     <p className="text-xs text-gray-400 mt-0.5">いつでも解約可能</p>
                   </div>
-                  <p className="text-lg font-extrabold">
+                  <p className="text-lg font-extrabold text-white">
                     ¥1,280<span className="text-xs font-normal text-gray-400">/月</span>
                   </p>
                 </button>
 
-                {/* 年額プラン */}
+                {/* 年額プラン（おすすめ） */}
                 <button
                   onClick={() => callAction("subscribe", "yearly")}
                   disabled={acting}
-                  className="w-full px-5 py-4 bg-gradient-to-br from-indigo-600/30 to-purple-600/20 hover:from-indigo-600/40 border-2 border-indigo-500 disabled:opacity-50 rounded-2xl text-left flex items-center justify-between relative overflow-hidden"
+                  className="card-accent-indigo w-full px-5 py-4 text-left flex items-center justify-between disabled:opacity-50 active:scale-[0.99] transition relative overflow-hidden"
                 >
-                  <span className="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg">
+                  <span className="absolute top-0 right-0 bg-red-500 text-white text-[11px] font-extrabold px-2 py-0.5 rounded-bl-xl">
                     2ヶ月分お得
                   </span>
                   <div>
-                    <p className="text-sm font-bold">年額プラン ⭐ おすすめ</p>
+                    <p className="text-sm font-bold text-white">年額プラン ⭐ おすすめ</p>
                     <p className="text-xs text-indigo-300 mt-0.5">月額換算 ¥1,067（17%オフ）</p>
                   </div>
-                  <p className="text-lg font-extrabold">
+                  <p className="text-lg font-extrabold text-white">
                     ¥12,800<span className="text-xs font-normal text-gray-400">/年</span>
                   </p>
                 </button>
@@ -4268,14 +4252,14 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
                   }
                 }}
                 disabled={acting}
-                className="w-full px-4 py-3 bg-gray-900 hover:bg-gray-800 border border-gray-700 rounded-xl text-sm text-gray-400"
+                className="btn-neutral w-full px-4 py-3 text-sm text-gray-400"
               >
                 解約する
               </button>
             )}
 
             {/* 注意書き */}
-            <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-3 text-[11px] text-gray-500 leading-relaxed">
+            <div className="card-base px-4 py-3 text-[11px] text-gray-500 leading-relaxed">
               ℹ️ 現在は開発中のため、実際の決済は発生しません。App Storeリリース時にApple App Store経由の課金に切り替わります。解約・返金はApp Storeの規約に従います。
             </div>
           </>

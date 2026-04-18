@@ -52,7 +52,124 @@ img, video, canvas {
   user-select: none;
 }
 
-/* 3Dボタン共通 */
+/* ==========================================================
+   ZERO-PAIN Design System v2
+   カラーシステム: エメラルド / インディゴ / アンバー の3色に統一
+   背景階層: gray-950 (base) > gray-900/60 (card) > gray-800 (elevated)
+   ========================================================== */
+
+:root {
+  --color-accent: 16 185 129; /* emerald-500 */
+  --color-info: 99 102 241; /* indigo-500 */
+  --color-warning: 245 158 11; /* amber-500 */
+  --color-danger: 239 68 68; /* red-500 */
+  --color-bg-card: rgba(17, 24, 39, 0.6); /* gray-900/60 */
+  --color-bg-elevated: rgba(31, 41, 55, 0.95); /* gray-800 */
+  --color-border: rgba(255, 255, 255, 0.06);
+  --color-border-strong: rgba(255, 255, 255, 0.1);
+}
+
+/* 標準カード（情報表示の基本） */
+.card-base {
+  background: var(--color-bg-card);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--color-border);
+  border-radius: 1rem;
+}
+
+/* アクセントカード（エメラルド系・食事健康） */
+.card-accent-emerald {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(17, 24, 39, 0.8));
+  border: 1px solid rgba(16, 185, 129, 0.18);
+  border-radius: 1rem;
+}
+
+/* アクセントカード（インディゴ系・AI/データ） */
+.card-accent-indigo {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(17, 24, 39, 0.8));
+  border: 1px solid rgba(99, 102, 241, 0.22);
+  border-radius: 1rem;
+}
+
+/* アクセントカード（アンバー系・プレミアム/注意） */
+.card-accent-amber {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.08), rgba(17, 24, 39, 0.8));
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-radius: 1rem;
+}
+
+/* プライマリボタン（主要CTA：エメラルド） */
+.btn-primary {
+  background: linear-gradient(to bottom, rgb(16, 185, 129), rgb(5, 150, 105));
+  color: white;
+  border-radius: 1rem;
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transition: all 0.15s ease;
+  font-weight: 700;
+}
+.btn-primary:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* セカンダリボタン（インディゴ） */
+.btn-secondary {
+  background: linear-gradient(to bottom, rgb(99, 102, 241), rgb(79, 70, 229));
+  color: white;
+  border-radius: 1rem;
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transition: all 0.15s ease;
+  font-weight: 700;
+}
+.btn-secondary:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+/* ニュートラルボタン（グレー・サブアクション） */
+.btn-neutral {
+  background: rgb(31, 41, 55);
+  color: rgb(229, 231, 235);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1rem;
+  transition: all 0.15s ease;
+  font-weight: 600;
+}
+.btn-neutral:hover:not(:disabled) {
+  background: rgb(55, 65, 81);
+}
+.btn-neutral:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+/* バッジ（NEW・数値等） */
+.badge-new {
+  display: inline-flex;
+  align-items: center;
+  background: rgb(239, 68, 68);
+  color: white;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  letter-spacing: 0.02em;
+}
+.badge-accent {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(16, 185, 129, 0.2);
+  color: rgb(110, 231, 183);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 9999px;
+}
+
+/* 3Dボタン（既存互換用・CTAで使用） */
 .btn-3d {
   transform: translateY(0) perspective(800px) rotateX(2deg);
   transition: all 0.15s ease;
