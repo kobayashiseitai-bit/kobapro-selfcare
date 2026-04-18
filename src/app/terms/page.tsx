@@ -136,7 +136,11 @@ export default function TermsPage() {
 
         <section>
           <h2 className="text-base font-bold text-white mb-2">第11条（お問い合わせ）</h2>
-          <p>本規約に関するお問い合わせは、アプリ内サポート窓口までお願いいたします。</p>
+          <p>
+            本規約に関するお問い合わせは、
+            <a href="/support" className="text-emerald-400 underline">アプリ内のサポート画面</a>
+            からお願いいたします。
+          </p>
         </section>
 
         <div className="pt-6 pb-12 text-center">

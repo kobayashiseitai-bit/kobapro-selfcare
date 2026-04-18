@@ -28,7 +28,7 @@ export default function PrivacyPage() {
           <h2 className="text-base font-bold text-white mb-2">1. 事業者情報</h2>
           <ul className="space-y-1 pl-4 list-disc text-gray-300">
             <li>事業者名: TopBank, Inc.（有限会社トップバンク）</li>
-            <li>お問い合わせ: アプリ内サポート窓口</li>
+            <li>お問い合わせ: アプリ内の<a href="/support" className="text-emerald-400 underline">サポート画面</a>からお問い合わせください</li>
           </ul>
         </section>
 
@@ -159,7 +159,9 @@ export default function PrivacyPage() {
         <section>
           <h2 className="text-base font-bold text-white mb-2">12. お問い合わせ</h2>
           <p className="text-gray-300">
-            本プライバシーポリシーおよびデータ取扱いに関するご質問は、アプリ内サポート窓口までお問い合わせください。
+            本プライバシーポリシーおよびデータ取扱いに関するご質問は、
+            <a href="/support" className="text-emerald-400 underline">アプリ内のサポート画面</a>
+            からお問い合わせください。
           </p>
         </section>
 

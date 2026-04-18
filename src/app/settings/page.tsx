@@ -136,6 +136,23 @@ export default function SettingsPage() {
           </p>
         </section>
 
+        {/* サポート */}
+        <section>
+          <p className="text-[11px] text-gray-400 font-bold tracking-wide mb-2 px-1">
+            💬 サポート
+          </p>
+          <Link
+            href="/support"
+            className="card-accent-emerald flex items-center justify-between p-4 active:scale-[0.99] transition"
+          >
+            <div>
+              <p className="text-sm font-bold text-white">FAQ・お問い合わせ</p>
+              <p className="text-[11px] text-emerald-200 mt-0.5">ご質問・ご意見はこちらから</p>
+            </div>
+            <span className="text-emerald-300 text-xl">›</span>
+          </Link>
+        </section>
+
         {/* 法務情報リンク */}
         <section>
           <p className="text-[11px] text-gray-400 font-bold tracking-wide mb-2 px-1">

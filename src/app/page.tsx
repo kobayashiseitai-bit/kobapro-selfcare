@@ -654,6 +654,18 @@ function HomeScreen({
             </a>
 
             <a
+              href="/support"
+              className="card-base w-full text-left p-3 flex items-center gap-3 active:scale-[0.98] transition"
+            >
+              <span className="text-2xl">💬</span>
+              <div className="flex-1">
+                <p className="text-sm font-bold text-white">サポート</p>
+                <p className="text-[11px] text-gray-400">FAQ・お問い合わせ</p>
+              </div>
+              <span className="text-gray-500">›</span>
+            </a>
+
+            <a
               href="/privacy"
               className="card-base w-full text-left p-3 flex items-center gap-3 active:scale-[0.98] transition"
             >

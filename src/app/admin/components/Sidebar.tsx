@@ -8,6 +8,7 @@ const links = [
   { href: "/admin/chats", label: "チャットログ", icon: "💬", color: "from-pink-500 to-rose-400" },
   { href: "/admin/symptoms", label: "症状統計", icon: "📈", color: "from-amber-500 to-yellow-400" },
   { href: "/admin/posture", label: "姿勢記録", icon: "🧍", color: "from-emerald-500 to-green-400" },
+  { href: "/admin/support", label: "サポート", icon: "📮", color: "from-red-500 to-pink-400" },
 ];
 
 export default function Sidebar() {
