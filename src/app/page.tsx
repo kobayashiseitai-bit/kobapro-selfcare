@@ -749,6 +749,7 @@ function AiCounselScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Scre
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [recommendedId, setRecommendedId] = useState<string | null>(null);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   // ストリーミングAPIを呼び出す共通関数
@@ -802,21 +803,62 @@ function AiCounselScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Scre
     return { cleanText, recommendedSymptomId };
   };
 
-  // 初回メッセージ
+  // 初期ロード：過去のチャット履歴を復元 or 初回メッセージ送信
   useEffect(() => {
-    async function firstMessage() {
+    async function initChat() {
+      // 1. まず過去のチャット履歴を取得
+      try {
+        const deviceId = getDeviceId();
+        const res = await fetch(
+          `/api/chat/history?deviceId=${encodeURIComponent(deviceId || "")}`
+        );
+        const data = await res.json();
+
+        if (data.hasHistory && data.messages && data.messages.length > 0) {
+          // 履歴がある場合：そのまま表示して続きから会話
+          const restored: ChatMessage[] = data.messages
+            .filter((m: { role: string }) => m.role === "user" || m.role === "assistant")
+            .map((m: { role: "user" | "assistant"; content: string }) => ({
+              role: m.role,
+              content: m.content,
+            }));
+          setMessages(restored);
+
+          // 前回から時間が経っている場合、さりげなく「お久しぶり」的な軽い挨拶を足す
+          if (data.resumeMode === "previous" && data.daysSinceLast > 0) {
+            const welcomeBack =
+              data.daysSinceLast === 1
+                ? "おかえりなさい！昨日以来ですね。その後お体の調子はいかがですか？"
+                : `おかえりなさい！${data.daysSinceLast}日ぶりですね。その後お体の調子はいかがですか？`;
+            setMessages([
+              ...restored,
+              { role: "assistant" as const, content: welcomeBack },
+            ]);
+          } else if (data.resumeMode === "same_day" && data.hoursSinceLast >= 1) {
+            const welcomeBack = `先ほどに続きですね。お体の調子はいかがですか？`;
+            setMessages([
+              ...restored,
+              { role: "assistant" as const, content: welcomeBack },
+            ]);
+          }
+          // continue（30分以内）なら完全に続きから。追加メッセージなし
+          setHistoryLoaded(true);
+          return;
+        }
+      } catch {
+        // 履歴取得失敗時は通常の初回メッセージにフォールバック
+      }
+
+      // 2. 履歴がない or 失敗：初回メッセージをAIに生成させる
       setLoading(true);
-      // 空のアシスタントメッセージを追加
       setMessages([{ role: "assistant", content: "" }]);
       let streamedText = "";
       try {
         const result = await streamChat([], (delta) => {
           streamedText += delta;
-          // recommendationタグはストリーミング中は除外
           const display = streamedText.replace(/<recommendation>[\s\S]*$/, "");
           setMessages([{ role: "assistant", content: display }]);
         });
-        // 完了時にクリーンテキストで上書き
         if (result.cleanText) {
           setMessages([{ role: "assistant", content: result.cleanText }]);
         }
@@ -825,8 +867,9 @@ function AiCounselScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Scre
         setMessages([{ role: "assistant", content: fallback }]);
       }
       setLoading(false);
+      setHistoryLoaded(true);
     }
-    firstMessage();
+    initChat();
   }, []);
 
   useEffect(() => {
