@@ -112,6 +112,12 @@ const SYMPTOMS = [
 export default function Home() {
   const [screen, setScreen] = useState<Screen>("loading");
   const [selectedSymptomId, setSelectedSymptomId] = useState<string | null>(null);
+  const [mealInitialMode, setMealInitialMode] = useState<"home" | "goal" | "calendar" | null>(null);
+
+  const goToMealWithMode = (mode: "home" | "goal" | "calendar") => {
+    setMealInitialMode(mode);
+    setScreen("meal");
+  };
 
   // 初回チェック: ユーザー登録済みかどうか
   useEffect(() => {
@@ -150,12 +156,18 @@ export default function Home() {
   return (
     <>
       {screen === "register" && <RegisterScreen onComplete={() => setScreen("home")} />}
-      {screen === "home" && <HomeScreen onNavigate={setScreen} onSelectSymptom={goToSelfcare} />}
+      {screen === "home" && <HomeScreen onNavigate={setScreen} onSelectSymptom={goToSelfcare} onGoToMealMode={goToMealWithMode} />}
       {screen === "ai-counsel" && <AiCounselScreen onNavigate={setScreen} onSelectSymptom={goToSelfcare} />}
       {screen === "selfcare" && <SelfcareScreen onNavigate={setScreen} initialSymptomId={selectedSymptomId} />}
       {screen === "check" && <CheckScreen onNavigate={setScreen} />}
       {screen === "history" && <HistoryScreen onNavigate={setScreen} />}
-      {screen === "meal" && <MealScreen onNavigate={setScreen} />}
+      {screen === "meal" && (
+        <MealScreen
+          onNavigate={setScreen}
+          initialMode={mealInitialMode}
+          onModeConsumed={() => setMealInitialMode(null)}
+        />
+      )}
       {screen === "subscription" && <SubscriptionScreen onNavigate={setScreen} />}
     </>
   );
@@ -326,7 +338,15 @@ function RegisterScreen({ onComplete }: { onComplete: () => void }) {
 
 
 // ==================== ホーム画面 ====================
-function HomeScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Screen) => void; onSelectSymptom: (id: string) => void }) {
+function HomeScreen({
+  onNavigate,
+  onSelectSymptom,
+  onGoToMealMode,
+}: {
+  onNavigate: (s: Screen) => void;
+  onSelectSymptom: (id: string) => void;
+  onGoToMealMode: (mode: "home" | "goal" | "calendar") => void;
+}) {
   const records = getRecords(SELF_ID);
   const [prediction, setPrediction] = useState<{
     prediction: string; detail?: string; riskLevel: string; symptomId: string | null;
@@ -511,20 +531,34 @@ function HomeScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Screen) =
           </div>
         )}
 
-        {/* プロフィール未完成バナー */}
+        {/* プロフィール未完成バナー（大きく・直接プロフィール画面へ） */}
         {profileComplete === false && (
           <button
-            onClick={() => onNavigate("meal")}
-            className="w-full bg-gradient-to-r from-indigo-500/20 to-purple-600/15 border border-indigo-500/40 rounded-2xl px-4 py-3 text-left"
+            onClick={() => onGoToMealMode("goal")}
+            className="btn-3d w-full rounded-2xl overflow-hidden shadow-[0_10px_30px_rgba(99,102,241,0.5)] text-left"
           >
-            <div className="flex items-start gap-3">
-              <span className="text-2xl">👤</span>
-              <div className="flex-1">
-                <p className="text-sm font-bold text-indigo-300">AIがあなた専用に計算します</p>
-                <p className="text-xs text-gray-300 mt-0.5">
-                  身長・体重・目標を入力すると、最適な摂取カロリー・タンパク質をAIが自動計算 →
+            {/* 上部：NEWバナー */}
+            <div className="bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-300 px-4 py-2.5 flex items-center justify-between">
+              <p className="text-sm font-extrabold text-amber-900 flex items-center gap-1.5 drop-shadow-sm">
+                ✨ 最初の設定で精度が劇的UP
+              </p>
+              <span className="text-[10px] font-extrabold text-white bg-red-500 px-2 py-0.5 rounded-full shadow-sm">
+                未設定
+              </span>
+            </div>
+            {/* 下部：メインボタン */}
+            <div className="bg-gradient-to-br from-indigo-500 via-purple-600 to-indigo-700 px-5 py-5 flex items-center gap-4">
+              <span className="text-5xl drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)]">👤</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-lg font-extrabold drop-shadow-sm text-white leading-tight">
+                  AIがあなた専用に計算します
+                </p>
+                <p className="text-sm font-semibold text-indigo-100 mt-1 leading-snug">
+                  身長・体重・目標を入力で<br />
+                  最適カロリーを自動算出
                 </p>
               </div>
+              <span className="text-3xl text-white opacity-90">›</span>
             </div>
           </button>
         )}
@@ -2020,8 +2054,26 @@ async function compressImageToBase64(input: File, maxSize = 512): Promise<string
   }
 }
 
-function MealScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
-  const [mode, setMode] = useState<"home" | "analyzing" | "result" | "history" | "calendar" | "goal">("home");
+function MealScreen({
+  onNavigate,
+  initialMode,
+  onModeConsumed,
+}: {
+  onNavigate: (s: Screen) => void;
+  initialMode?: "home" | "goal" | "calendar" | null;
+  onModeConsumed?: () => void;
+}) {
+  const [mode, setMode] = useState<"home" | "analyzing" | "result" | "history" | "calendar" | "goal">(
+    initialMode === "goal" || initialMode === "calendar" ? initialMode : "home"
+  );
+
+  // 画面表示後にinitialModeを消費（戻ったときにhomeに戻るように）
+  useEffect(() => {
+    if (initialMode && onModeConsumed) {
+      onModeConsumed();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<MealAnalysis | null>(null);
   const [analysisImageUrl, setAnalysisImageUrl] = useState<string | null>(null);
