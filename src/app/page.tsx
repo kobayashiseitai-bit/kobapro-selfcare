@@ -845,16 +845,32 @@ function HomeScreen({
           {/* パーソナルトレーナー統合ボタン */}
           <button
             onClick={() => onNavigate("ai-counsel")}
-            className="btn-secondary w-full text-left flex items-center gap-3 px-4 overflow-hidden aspect-[3722/1152] relative"
+            className="w-full rounded-2xl overflow-hidden text-left shadow-[0_8px_24px_rgba(99,102,241,0.35)] active:scale-[0.99] transition"
           >
-            <span className="badge-accent absolute top-3 right-3 text-[11px] !bg-amber-500/90 !text-amber-950">
-              ✨ パーソナルトレーナー
-            </span>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/icon-skeleton-sensei.png" alt="ガイコツ先生" className="h-full w-auto drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)] -my-2" />
-            <div className="flex-1 min-w-0">
-              <p className="text-base font-bold text-white leading-tight">ガイコツ先生に相談</p>
-              <p className="text-sm text-indigo-100 mt-1">お悩みを聞き取り最適なケアを提案</p>
+            {/* 上段: パーソナルトレーナー訴求バー（独立・重ならない） */}
+            <div className="bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 px-4 py-2 flex items-center gap-1.5">
+              <span className="text-sm">✨</span>
+              <p className="text-xs font-extrabold text-amber-950 tracking-wide">
+                あなた専用のパーソナルトレーナー
+              </p>
+            </div>
+            {/* 下段: ガイコツ先生 + タイトル */}
+            <div className="bg-gradient-to-br from-indigo-500 via-indigo-600 to-indigo-800 flex items-center gap-3 px-4 py-4">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/icon-skeleton-sensei.png"
+                alt="ガイコツ先生"
+                className="w-20 h-20 object-contain drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)] flex-shrink-0"
+              />
+              <div className="flex-1 min-w-0">
+                <p className="text-base font-bold text-white leading-tight">
+                  ガイコツ先生に相談
+                </p>
+                <p className="text-sm text-indigo-100 mt-1 leading-snug">
+                  お悩みを聞き取り最適なケアを提案
+                </p>
+              </div>
+              <span className="text-xl text-indigo-300">›</span>
             </div>
           </button>
         </div>
