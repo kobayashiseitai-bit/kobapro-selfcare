@@ -39,9 +39,13 @@ export async function GET(req: NextRequest) {
     }
     const userId = users[0].id;
 
-    // 月の開始と終了
-    const start = new Date(year, month - 1, 1).toISOString();
-    const end = new Date(year, month, 1).toISOString();
+    // 月の開始と終了（JSTベース）
+    const mm = String(month).padStart(2, "0");
+    const nextMonthDate = new Date(Date.UTC(year, month, 1)); // UTC翌月1日
+    const ny = nextMonthDate.getUTCFullYear();
+    const nm = String(nextMonthDate.getUTCMonth() + 1).padStart(2, "0");
+    const start = new Date(`${year}-${mm}-01T00:00:00+09:00`).toISOString();
+    const end = new Date(`${ny}-${nm}-01T00:00:00+09:00`).toISOString();
 
     // 食事データ取得
     const [mealRes, goalRes] = await Promise.all([
@@ -88,8 +92,9 @@ export async function GET(req: NextRequest) {
     const days: Record<string, DayData> = {};
 
     meals.forEach((m) => {
-      const d = new Date(m.created_at);
-      const dayKey = String(d.getDate());
+      // JSTの日付を取得（UTC+9 を加算してから UTC日付を読む）
+      const d = new Date(new Date(m.created_at).getTime() + 9 * 60 * 60 * 1000);
+      const dayKey = String(d.getUTCDate());
       if (!days[dayKey]) {
         days[dayKey] = {
           meals: [],

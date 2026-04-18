@@ -19,15 +19,29 @@ export async function GET(req: NextRequest) {
   try {
     const deviceId = req.nextUrl.searchParams.get("deviceId");
     const dateParam = req.nextUrl.searchParams.get("date");
+    // クライアントから直接 UTC の ISO 文字列を受け取る（タイムゾーン問題を解消）
+    const startParam = req.nextUrl.searchParams.get("start");
+    const endParam = req.nextUrl.searchParams.get("end");
     if (!deviceId) {
       return NextResponse.json({ error: "deviceId required" }, { status: 400 });
     }
 
-    // 日付範囲（JST想定でUTC日付境界を使う。簡易版）
-    const base = dateParam ? new Date(dateParam) : new Date();
-    const start = new Date(base.getFullYear(), base.getMonth(), base.getDate());
-    const end = new Date(start);
-    end.setDate(end.getDate() + 1);
+    // 日付範囲の決定ロジック
+    let start: Date;
+    let end: Date;
+
+    if (startParam && endParam) {
+      // 新方式: クライアントがUTC ISO文字列で範囲を送信（最優先）
+      start = new Date(startParam);
+      end = new Date(endParam);
+    } else {
+      // 旧方式フォールバック: date=YYYY-MM-DD をJSTとして解釈
+      const dateStr = dateParam || new Date().toISOString().slice(0, 10);
+      // JSTの指定日0:00〜翌0:00 をUTCで表現
+      start = new Date(`${dateStr}T00:00:00+09:00`);
+      end = new Date(start);
+      end.setUTCDate(end.getUTCDate() + 1);
+    }
 
     const supabase = getSupabase();
     const { data: users } = await supabase

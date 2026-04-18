@@ -2304,15 +2304,20 @@ function TodayMealDashboard({
   }, [selectedDateOffset]);
 
   useEffect(() => {
-    (async () => {
+    const fetchData = async () => {
       setLoading(true);
       try {
         const deviceId = getDeviceId();
-        const y = selectedDate.getFullYear();
-        const m = String(selectedDate.getMonth() + 1).padStart(2, "0");
-        const d = String(selectedDate.getDate()).padStart(2, "0");
+        // クライアントのローカルタイムゾーンで「その日の0:00〜翌日0:00」を計算
+        const startLocal = new Date(selectedDate);
+        startLocal.setHours(0, 0, 0, 0);
+        const endLocal = new Date(startLocal);
+        endLocal.setDate(endLocal.getDate() + 1);
         const res = await fetch(
-          `/api/meal/today?deviceId=${encodeURIComponent(deviceId || "")}&date=${y}-${m}-${d}`
+          `/api/meal/today?deviceId=${encodeURIComponent(deviceId || "")}&start=${encodeURIComponent(
+            startLocal.toISOString()
+          )}&end=${encodeURIComponent(endLocal.toISOString())}`,
+          { cache: "no-store" }
         );
         const json = await res.json();
         if (res.ok) setData(json);
@@ -2321,7 +2326,19 @@ function TodayMealDashboard({
       } finally {
         setLoading(false);
       }
-    })();
+    };
+    fetchData();
+
+    // 画面に戻ってきたとき自動リフレッシュ（食事記録後にホームに戻った時など）
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") fetchData();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("focus", fetchData);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("focus", fetchData);
+    };
   }, [selectedDate]);
 
   // 7日分のカレンダー（今日を中心に±3日）
