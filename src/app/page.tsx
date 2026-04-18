@@ -2008,8 +2008,8 @@ function MealScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
     setError(null);
     setMode("analyzing");
     try {
-      // 圧縮してbase64化
-      const compressedDataUrl = await compressImageToBase64(file, 512);
+      // 圧縮してbase64化（パッケージの文字/ラベルを読み取るため768pxに）
+      const compressedDataUrl = await compressImageToBase64(file, 768);
       setPreviewUrl(compressedDataUrl);
 
       const deviceId = getDeviceId();
