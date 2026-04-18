@@ -334,8 +334,9 @@ function HomeScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Screen) =
   const [reminderHours, setReminderHours] = useState<number | null>(null);
   const [reminderAlert, setReminderAlert] = useState<string | null>(null);
   const [showReminderSetting, setShowReminderSetting] = useState(false);
+  const [profileComplete, setProfileComplete] = useState<boolean | null>(null);
 
-  // 痛み予測を取得
+  // 痛み予測を取得 + プロフィール完成度チェック
   useEffect(() => {
     const deviceId = getDeviceId();
     if (!deviceId) return;
@@ -346,6 +347,15 @@ function HomeScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Screen) =
     })
       .then((r) => r.json())
       .then((d) => { if (d.prediction) setPrediction(d); })
+      .catch(() => {});
+
+    fetch("/api/user-profile", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ deviceId }),
+    })
+      .then((r) => r.json())
+      .then((d) => { setProfileComplete(d.profileComplete === true); })
       .catch(() => {});
   }, []);
 
@@ -499,6 +509,24 @@ function HomeScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Screen) =
               今すぐストレッチする
             </button>
           </div>
+        )}
+
+        {/* プロフィール未完成バナー */}
+        {profileComplete === false && (
+          <button
+            onClick={() => onNavigate("meal")}
+            className="w-full bg-gradient-to-r from-indigo-500/20 to-purple-600/15 border border-indigo-500/40 rounded-2xl px-4 py-3 text-left"
+          >
+            <div className="flex items-start gap-3">
+              <span className="text-2xl">👤</span>
+              <div className="flex-1">
+                <p className="text-sm font-bold text-indigo-300">AIがあなた専用に計算します</p>
+                <p className="text-xs text-gray-300 mt-0.5">
+                  身長・体重・目標を入力すると、最適な摂取カロリー・タンパク質をAIが自動計算 →
+                </p>
+              </div>
+            </div>
+          </button>
         )}
 
         {/* AI痛み予測カード */}
@@ -2132,14 +2160,14 @@ function MealScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
 
           <button
             onClick={() => setMode("goal")}
-            className="w-full px-5 py-3 bg-gray-800 hover:bg-gray-700 rounded-2xl font-semibold flex items-center gap-3 border border-gray-700"
+            className="w-full px-5 py-3 bg-gradient-to-br from-indigo-600/30 to-purple-600/20 hover:from-indigo-600/40 border border-indigo-500/50 rounded-2xl font-semibold flex items-center gap-3"
           >
-            <span className="text-2xl">🎯</span>
+            <span className="text-2xl">👤</span>
             <div className="text-left flex-1">
-              <p className="text-sm font-bold">目標設定</p>
-              <p className="text-xs text-gray-400">ダイエット・体重維持・筋肉増量</p>
+              <p className="text-sm font-bold">プロフィール & 目標</p>
+              <p className="text-xs text-indigo-300">身長・体重・目標 → AIが最適プラン自動計算</p>
             </div>
-            <span className="text-gray-500">›</span>
+            <span className="text-indigo-300">›</span>
           </button>
 
           <button
@@ -2653,60 +2681,121 @@ function DayStat({
   );
 }
 
-// ==================== 目標設定 ====================
+// ==================== プロフィール＆目標設定 ====================
+type ProfileData = {
+  profile: {
+    name: string | null;
+    age: number | null;
+    height_cm: number | null;
+    weight_kg: number | null;
+    gender: "male" | "female" | "other" | null;
+    activity_level: "sedentary" | "light" | "moderate" | "active" | "very_active" | null;
+  } | null;
+  goal: {
+    goal_type: "diet" | "maintain" | "muscle";
+    target_calories: number;
+    target_protein_g: number;
+    target_weight_kg: number | null;
+    target_period_weeks: number | null;
+  } | null;
+  weights: Array<{ weight_kg: number; recorded_at: string }>;
+  recommendation: {
+    bmi: number;
+    bmiCategory: string;
+    bmr: number;
+    tdee: number;
+    recommendedCalories: number;
+    recommendedProteinG: number;
+    recommendedCarbsG: number;
+    recommendedFatG: number;
+    weeklyWeightChange: number;
+    estimatedWeeksToGoal: number | null;
+  } | null;
+};
+
+const ACTIVITY_OPTIONS: Array<{
+  value: "sedentary" | "light" | "moderate" | "active" | "very_active";
+  label: string;
+  desc: string;
+}> = [
+  { value: "sedentary", label: "💺 運動なし", desc: "1日中座り仕事" },
+  { value: "light", label: "🚶 軽め", desc: "週1〜2回運動" },
+  { value: "moderate", label: "🏃 普通", desc: "週3〜4回運動" },
+  { value: "active", label: "💪 活発", desc: "週5回以上運動" },
+  { value: "very_active", label: "🔥 アスリート", desc: "毎日激しい運動" },
+];
+
 function MealGoalView({ onBack }: { onBack: () => void }) {
-  const [goalType, setGoalType] = useState<"diet" | "maintain" | "muscle">("maintain");
-  const [calories, setCalories] = useState(1800);
-  const [protein, setProtein] = useState(60);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [data, setData] = useState<ProfileData | null>(null);
 
-  useEffect(() => {
-    (async () => {
-      setLoading(true);
-      try {
-        const deviceId = getDeviceId();
-        const res = await fetch(`/api/goals?deviceId=${encodeURIComponent(deviceId || "")}`);
-        const data = await res.json();
-        if (data.goal) {
-          setGoalType(data.goal.goal_type);
-          setCalories(data.goal.target_calories);
-          setProtein(Number(data.goal.target_protein_g));
-        }
-      } catch { /* ignore */ }
-      setLoading(false);
-    })();
+  // 入力値
+  const [age, setAge] = useState<number | "">("");
+  const [heightCm, setHeightCm] = useState<number | "">("");
+  const [weightKg, setWeightKg] = useState<number | "">("");
+  const [gender, setGender] = useState<"male" | "female" | "other">("male");
+  const [activityLevel, setActivityLevel] = useState<
+    "sedentary" | "light" | "moderate" | "active" | "very_active"
+  >("moderate");
+  const [goalType, setGoalType] = useState<"diet" | "maintain" | "muscle">("maintain");
+  const [targetWeight, setTargetWeight] = useState<number | "">("");
+  const [targetPeriod, setTargetPeriod] = useState<number | "">(12); // 週
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const deviceId = getDeviceId();
+      const res = await fetch(`/api/profile?deviceId=${encodeURIComponent(deviceId || "")}`);
+      const d: ProfileData = await res.json();
+      setData(d);
+      if (d.profile) {
+        if (d.profile.age) setAge(d.profile.age);
+        if (d.profile.height_cm) setHeightCm(d.profile.height_cm);
+        if (d.profile.weight_kg) setWeightKg(Number(d.profile.weight_kg));
+        if (d.profile.gender) setGender(d.profile.gender);
+        if (d.profile.activity_level) setActivityLevel(d.profile.activity_level);
+      }
+      if (d.goal) {
+        setGoalType(d.goal.goal_type);
+        if (d.goal.target_weight_kg) setTargetWeight(Number(d.goal.target_weight_kg));
+        if (d.goal.target_period_weeks) setTargetPeriod(d.goal.target_period_weeks);
+      }
+    } catch { /* ignore */ }
+    setLoading(false);
   }, []);
 
-  const presets = {
-    diet: { label: "🥗 ダイエット", desc: "体重を減らしたい", cal: 1500, prot: 70 },
-    maintain: { label: "⚖️ 体重維持", desc: "今の体重をキープ", cal: 1800, prot: 60 },
-    muscle: { label: "💪 筋肉増量", desc: "筋肉をつけたい", cal: 2400, prot: 120 },
-  };
-
-  const applyPreset = (t: "diet" | "maintain" | "muscle") => {
-    setGoalType(t);
-    setCalories(presets[t].cal);
-    setProtein(presets[t].prot);
-  };
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const save = async () => {
+    if (!age || !heightCm || !weightKg) {
+      setMessage("⚠️ 年齢・身長・体重を入力してください");
+      return;
+    }
     setSaving(true);
     setMessage(null);
     try {
-      const res = await fetch("/api/goals", {
+      const res = await fetch("/api/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           deviceId: getDeviceId(),
+          age: Number(age),
+          heightCm: Number(heightCm),
+          weightKg: Number(weightKg),
+          gender,
+          activityLevel,
           goalType,
-          targetCalories: calories,
-          targetProteinG: protein,
+          targetWeightKg: targetWeight ? Number(targetWeight) : undefined,
+          targetPeriodWeeks: targetPeriod ? Number(targetPeriod) : undefined,
         }),
       });
       if (!res.ok) throw new Error("保存失敗");
-      setMessage("✅ 目標を保存しました！");
+      setMessage("✅ プロフィールと目標を保存しました！AIもパワーアップ 💪");
+      await load();
     } catch (e) {
       setMessage(e instanceof Error ? `⚠️ ${e.message}` : "⚠️ 保存失敗");
     } finally {
@@ -2714,7 +2803,15 @@ function MealGoalView({ onBack }: { onBack: () => void }) {
     }
   };
 
-  if (loading) return <div className="text-center text-gray-400 py-10">読み込み中...</div>;
+  if (loading)
+    return (
+      <div className="text-center text-gray-400 py-10 w-full max-w-md">
+        読み込み中...
+      </div>
+    );
+
+  const rec = data?.recommendation;
+  const weights = data?.weights || [];
 
   return (
     <div className="w-full max-w-md space-y-4">
@@ -2723,80 +2820,234 @@ function MealGoalView({ onBack }: { onBack: () => void }) {
       </button>
 
       <div className="bg-gradient-to-br from-indigo-500/10 to-purple-600/5 border border-indigo-500/30 rounded-2xl p-4">
-        <p className="text-sm font-bold text-indigo-300 mb-1">🎯 あなたの目標</p>
+        <p className="text-sm font-bold text-indigo-300 mb-1">👤 プロフィール & 目標</p>
         <p className="text-xs text-gray-400">
-          目標を設定すると、カレンダーで達成度が色分け表示され、AIが食事と姿勢を連動してアドバイスできるようになります。
+          身長・体重・目標を入力するとAIが科学的根拠に基づいてあなた専用のプランを自動計算します。
         </p>
       </div>
 
-      {/* プリセット */}
-      <div className="space-y-2">
-        <p className="text-xs text-gray-500">目標タイプ</p>
-        {(["diet", "maintain", "muscle"] as const).map((t) => {
-          const preset = presets[t];
-          const active = goalType === t;
-          return (
-            <button
-              key={t}
-              onClick={() => applyPreset(t)}
-              className={`w-full px-4 py-3 rounded-2xl text-left flex items-center justify-between border-2 ${
-                active
-                  ? "bg-indigo-600/20 border-indigo-500"
-                  : "bg-gray-900 border-gray-800"
-              }`}
-            >
-              <div>
-                <p className="text-sm font-bold">{preset.label}</p>
-                <p className="text-xs text-gray-400">{preset.desc}</p>
-              </div>
-              <p className="text-[10px] text-gray-500">
-                {preset.cal}kcal / P{preset.prot}g
-              </p>
-            </button>
-          );
-        })}
+      {/* 基本情報 */}
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 space-y-3">
+        <p className="text-sm font-bold text-white">👤 基本情報</p>
+
+        {/* 性別 */}
+        <div>
+          <p className="text-xs text-gray-400 mb-1.5">性別</p>
+          <div className="grid grid-cols-3 gap-2">
+            {(["male", "female", "other"] as const).map((g) => (
+              <button
+                key={g}
+                onClick={() => setGender(g)}
+                className={`py-2 rounded-lg text-sm font-bold ${
+                  gender === g
+                    ? "bg-indigo-600 text-white"
+                    : "bg-gray-800 text-gray-400 border border-gray-700"
+                }`}
+              >
+                {g === "male" ? "男性" : g === "female" ? "女性" : "その他"}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 年齢 */}
+        <div>
+          <p className="text-xs text-gray-400 mb-1.5">年齢</p>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              value={age}
+              onChange={(e) => setAge(e.target.value === "" ? "" : parseInt(e.target.value))}
+              className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"
+              min={15}
+              max={99}
+              placeholder="例: 45"
+            />
+            <span className="text-sm text-gray-400">歳</span>
+          </div>
+        </div>
+
+        {/* 身長 */}
+        <div>
+          <p className="text-xs text-gray-400 mb-1.5">身長</p>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              value={heightCm}
+              onChange={(e) => setHeightCm(e.target.value === "" ? "" : parseInt(e.target.value))}
+              className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"
+              min={100}
+              max={220}
+              placeholder="例: 170"
+            />
+            <span className="text-sm text-gray-400">cm</span>
+          </div>
+        </div>
+
+        {/* 体重 */}
+        <div>
+          <p className="text-xs text-gray-400 mb-1.5">体重（現在）</p>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              value={weightKg}
+              onChange={(e) => setWeightKg(e.target.value === "" ? "" : parseFloat(e.target.value))}
+              className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"
+              min={30}
+              max={200}
+              step={0.1}
+              placeholder="例: 68.5"
+            />
+            <span className="text-sm text-gray-400">kg</span>
+          </div>
+        </div>
+
+        {/* 活動レベル */}
+        <div>
+          <p className="text-xs text-gray-400 mb-1.5">活動レベル</p>
+          <div className="space-y-1.5">
+            {ACTIVITY_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => setActivityLevel(opt.value)}
+                className={`w-full px-3 py-2 rounded-lg text-left flex items-center justify-between text-xs ${
+                  activityLevel === opt.value
+                    ? "bg-indigo-600/30 border border-indigo-500"
+                    : "bg-gray-800 border border-gray-700 text-gray-300"
+                }`}
+              >
+                <span className="font-bold">{opt.label}</span>
+                <span className="text-[10px] text-gray-400">{opt.desc}</span>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
-      {/* カロリー入力 */}
+      {/* 目標 */}
       <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 space-y-3">
-        <div>
-          <p className="text-xs text-gray-400 mb-1">1日の目標カロリー</p>
-          <div className="flex items-center gap-2">
-            <input
-              type="number"
-              value={calories}
-              onChange={(e) => setCalories(parseInt(e.target.value) || 0)}
-              className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"
-              min={800}
-              max={4000}
-              step={50}
-            />
-            <span className="text-sm text-gray-400">kcal</span>
-          </div>
+        <p className="text-sm font-bold text-white">🎯 目標</p>
+
+        <div className="grid grid-cols-3 gap-2">
+          {(["diet", "maintain", "muscle"] as const).map((g) => {
+            const labels: Record<string, { emoji: string; label: string }> = {
+              diet: { emoji: "🥗", label: "減量" },
+              maintain: { emoji: "⚖️", label: "維持" },
+              muscle: { emoji: "💪", label: "増量" },
+            };
+            return (
+              <button
+                key={g}
+                onClick={() => setGoalType(g)}
+                className={`py-3 rounded-lg text-sm font-bold ${
+                  goalType === g
+                    ? "bg-indigo-600 text-white"
+                    : "bg-gray-800 text-gray-400 border border-gray-700"
+                }`}
+              >
+                <div className="text-2xl">{labels[g].emoji}</div>
+                <div className="text-xs mt-1">{labels[g].label}</div>
+              </button>
+            );
+          })}
         </div>
-        <div>
-          <p className="text-xs text-gray-400 mb-1">1日の目標タンパク質</p>
-          <div className="flex items-center gap-2">
-            <input
-              type="number"
-              value={protein}
-              onChange={(e) => setProtein(parseInt(e.target.value) || 0)}
-              className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"
-              min={20}
-              max={250}
-              step={5}
-            />
-            <span className="text-sm text-gray-400">g</span>
-          </div>
-        </div>
+
+        {/* 目標体重（維持以外） */}
+        {goalType !== "maintain" && (
+          <>
+            <div>
+              <p className="text-xs text-gray-400 mb-1.5">
+                目標体重（{goalType === "diet" ? "減らしたい体重" : "増やしたい体重"}）
+              </p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  value={targetWeight}
+                  onChange={(e) =>
+                    setTargetWeight(e.target.value === "" ? "" : parseFloat(e.target.value))
+                  }
+                  className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"
+                  min={30}
+                  max={200}
+                  step={0.1}
+                  placeholder="例: 65"
+                />
+                <span className="text-sm text-gray-400">kg</span>
+              </div>
+            </div>
+            <div>
+              <p className="text-xs text-gray-400 mb-1.5">達成目標期間</p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  value={targetPeriod}
+                  onChange={(e) =>
+                    setTargetPeriod(e.target.value === "" ? "" : parseInt(e.target.value))
+                  }
+                  className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"
+                  min={4}
+                  max={104}
+                  placeholder="例: 12"
+                />
+                <span className="text-sm text-gray-400">週</span>
+              </div>
+            </div>
+          </>
+        )}
       </div>
+
+      {/* AI分析結果 */}
+      {rec && (
+        <div className="bg-gradient-to-br from-emerald-500/10 to-green-600/5 border border-emerald-500/40 rounded-2xl p-4 space-y-3">
+          <p className="text-sm font-bold text-emerald-300">🤖 AIがあなた専用に計算した推奨値</p>
+          <div className="grid grid-cols-2 gap-2">
+            <InfoCell label="BMI" value={`${rec.bmi}`} sub={rec.bmiCategory} />
+            <InfoCell label="基礎代謝" value={`${rec.bmr}`} sub="kcal/日" />
+            <InfoCell label="1日総消費" value={`${rec.tdee}`} sub="kcal/日" />
+            <InfoCell
+              label="推奨摂取"
+              value={`${rec.recommendedCalories}`}
+              sub="kcal/日"
+              highlight
+            />
+          </div>
+          <div className="grid grid-cols-3 gap-2 mt-2">
+            <InfoCell label="タンパク質" value={`${rec.recommendedProteinG}`} sub="g" />
+            <InfoCell label="炭水化物" value={`${rec.recommendedCarbsG}`} sub="g" />
+            <InfoCell label="脂質" value={`${rec.recommendedFatG}`} sub="g" />
+          </div>
+          {rec.weeklyWeightChange !== 0 && (
+            <div className="text-xs text-gray-300 bg-gray-800/50 rounded-lg px-3 py-2 mt-2">
+              📈 予想ペース: 週{" "}
+              <span
+                className={
+                  rec.weeklyWeightChange < 0 ? "text-emerald-400 font-bold" : "text-blue-400 font-bold"
+                }
+              >
+                {rec.weeklyWeightChange > 0 ? "+" : ""}
+                {rec.weeklyWeightChange}kg
+              </span>
+              {rec.estimatedWeeksToGoal !== null && (
+                <span> / 目標達成まで 約{rec.estimatedWeeksToGoal}週</span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 体重履歴（グラフ） */}
+      {weights.length >= 2 && (
+        <WeightChart weights={weights} goalWeight={targetWeight ? Number(targetWeight) : null} />
+      )}
 
       {message && (
-        <div className={`rounded-xl px-4 py-2.5 text-sm ${
-          message.startsWith("✅")
-            ? "bg-emerald-500/20 border border-emerald-500/40 text-emerald-300"
-            : "bg-red-500/20 border border-red-500/40 text-red-300"
-        }`}>
+        <div
+          className={`rounded-xl px-4 py-2.5 text-sm ${
+            message.startsWith("✅")
+              ? "bg-emerald-500/20 border border-emerald-500/40 text-emerald-300"
+              : "bg-red-500/20 border border-red-500/40 text-red-300"
+          }`}
+        >
           {message}
         </div>
       )}
@@ -2806,8 +3057,113 @@ function MealGoalView({ onBack }: { onBack: () => void }) {
         disabled={saving}
         className="w-full px-4 py-3.5 bg-gradient-to-r from-indigo-600 to-purple-600 disabled:opacity-50 rounded-2xl font-bold"
       >
-        {saving ? "保存中..." : "目標を保存"}
+        {saving ? "保存中..." : "保存してAIに連携する"}
       </button>
+    </div>
+  );
+}
+
+function InfoCell({
+  label,
+  value,
+  sub,
+  highlight,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  highlight?: boolean;
+}) {
+  return (
+    <div
+      className={`rounded-lg px-3 py-2 ${
+        highlight ? "bg-emerald-600/20 border border-emerald-500" : "bg-gray-900/50"
+      }`}
+    >
+      <p className="text-[10px] text-gray-400">{label}</p>
+      <p className={`text-base font-extrabold ${highlight ? "text-emerald-300" : "text-white"}`}>
+        {value}
+        {sub && <span className="text-[10px] font-normal text-gray-400 ml-0.5">{sub}</span>}
+      </p>
+    </div>
+  );
+}
+
+// ==================== 体重グラフ ====================
+function WeightChart({
+  weights,
+  goalWeight,
+}: {
+  weights: Array<{ weight_kg: number; recorded_at: string }>;
+  goalWeight: number | null;
+}) {
+  if (weights.length < 2) return null;
+  const values = weights.map((w) => Number(w.weight_kg));
+  const min = Math.min(...values, goalWeight || Infinity) - 1;
+  const max = Math.max(...values, goalWeight || -Infinity) + 1;
+  const range = max - min || 1;
+
+  const width = 300;
+  const height = 120;
+  const paddingLeft = 35;
+  const paddingRight = 10;
+  const paddingTop = 10;
+  const paddingBottom = 20;
+  const chartW = width - paddingLeft - paddingRight;
+  const chartH = height - paddingTop - paddingBottom;
+
+  const points = values.map((v, i) => {
+    const x = paddingLeft + (i / (values.length - 1)) * chartW;
+    const y = paddingTop + ((max - v) / range) * chartH;
+    return { x, y, v };
+  });
+
+  const pathD = points.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ");
+
+  const firstWeight = values[0];
+  const lastWeight = values[values.length - 1];
+  const diff = Number((lastWeight - firstWeight).toFixed(1));
+
+  return (
+    <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4">
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-sm font-bold">📉 体重の推移</p>
+        <p className={`text-xs font-bold ${diff < 0 ? "text-emerald-400" : diff > 0 ? "text-amber-400" : "text-gray-400"}`}>
+          {diff > 0 ? "+" : ""}
+          {diff} kg
+        </p>
+      </div>
+      <svg viewBox={`0 0 ${width} ${height}`} className="w-full">
+        {/* Y軸ラベル */}
+        <text x={2} y={paddingTop + 10} fontSize="9" fill="#666">
+          {max.toFixed(1)}
+        </text>
+        <text x={2} y={height - paddingBottom + 3} fontSize="9" fill="#666">
+          {min.toFixed(1)}
+        </text>
+        {/* 目標ライン */}
+        {goalWeight && (
+          <line
+            x1={paddingLeft}
+            y1={paddingTop + ((max - goalWeight) / range) * chartH}
+            x2={paddingLeft + chartW}
+            y2={paddingTop + ((max - goalWeight) / range) * chartH}
+            stroke="#f59e0b"
+            strokeDasharray="3 3"
+            strokeWidth="1"
+          />
+        )}
+        {/* 折れ線 */}
+        <path d={pathD} stroke="#10b981" strokeWidth="2" fill="none" />
+        {/* 点 */}
+        {points.map((p, i) => (
+          <circle key={i} cx={p.x} cy={p.y} r="3" fill="#10b981" />
+        ))}
+      </svg>
+      <p className="text-[10px] text-gray-500 text-center mt-1">
+        {new Date(weights[0].recorded_at).toLocaleDateString("ja-JP")} 〜{" "}
+        {new Date(weights[weights.length - 1].recorded_at).toLocaleDateString("ja-JP")}
+      </p>
     </div>
   );
 }

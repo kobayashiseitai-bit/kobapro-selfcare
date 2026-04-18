@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     const supabase = getSupabase();
     const { data } = await supabase
       .from("users")
-      .select("id, name, prefecture, age")
+      .select("id, name, prefecture, age, height_cm, weight_kg, gender, activity_level")
       .eq("device_id", deviceId)
       .single();
 
@@ -28,9 +28,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ registered: false });
     }
 
+    const profileComplete = !!(
+      data.height_cm && data.weight_kg && data.gender && data.activity_level && data.age
+    );
+
     return NextResponse.json({
       registered: true,
       user: data,
+      profileComplete,
     });
   } catch {
     return NextResponse.json({ registered: false });

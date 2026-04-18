@@ -6,6 +6,15 @@ import {
   checkAndIncrementUsage,
   getUserIdByDeviceId,
 } from "../../lib/subscription";
+import {
+  calculateRecommendation,
+  GENDER_LABELS,
+  ACTIVITY_LABELS,
+  GOAL_LABELS,
+  type Gender,
+  type ActivityLevel,
+  type GoalType,
+} from "../../lib/nutrition";
 
 function getClient() {
   return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -162,12 +171,13 @@ async function buildUserContext(deviceId: string): Promise<UserContextResult> {
   const supabase = getSupabase();
   const { data: users } = await supabase
     .from("users")
-    .select("id")
+    .select("id, name, age, height_cm, weight_kg, gender, activity_level")
     .eq("device_id", deviceId);
   if (!users || users.length === 0) {
     return { contextText: "", latestPostureImageUrl: null, latestPostureDate: null };
   }
-  const userId = users[0].id;
+  const user = users[0];
+  const userId = user.id;
 
   // 過去7日間の食事履歴も取得（ガイコツ先生が食事×姿勢を総合判断）
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -200,7 +210,7 @@ async function buildUserContext(deviceId: string): Promise<UserContextResult> {
       .limit(30),
     supabase
       .from("nutrition_goals")
-      .select("goal_type, target_calories, target_protein_g")
+      .select("goal_type, target_calories, target_protein_g, target_weight_kg, target_period_weeks")
       .eq("user_id", userId)
       .maybeSingle(),
   ]);
@@ -289,20 +299,44 @@ async function buildUserContext(deviceId: string): Promise<UserContextResult> {
   // 栄養目標
   const goal = goalRes.data;
   if (goal) {
-    const goalTypeLabel: Record<string, string> = {
-      diet: "ダイエット（減量）",
-      maintain: "体重維持",
-      muscle: "筋肉増量",
-    };
+    const goalInfo = GOAL_LABELS[goal.goal_type as GoalType];
+    const goalLabel = goalInfo ? `${goalInfo.emoji} ${goalInfo.label}` : goal.goal_type;
     parts.push(
-      `【ユーザーの栄養目標】${goalTypeLabel[goal.goal_type] || goal.goal_type} / 目標カロリー${goal.target_calories}kcal / タンパク質${goal.target_protein_g}g`
+      `【ユーザーの栄養目標】${goalLabel} / 目標カロリー${goal.target_calories}kcal / タンパク質${goal.target_protein_g}g`
+    );
+  }
+
+  // ユーザーの身体プロフィール（プロフィール完成時のみ）
+  if (
+    user.height_cm &&
+    user.weight_kg &&
+    user.gender &&
+    user.activity_level &&
+    user.age
+  ) {
+    const rec = calculateRecommendation({
+      gender: user.gender as Gender,
+      heightCm: user.height_cm,
+      weightKg: Number(user.weight_kg),
+      age: user.age,
+      activityLevel: user.activity_level as ActivityLevel,
+      goalType: (goal?.goal_type as GoalType) || "maintain",
+      targetWeightKg: goal?.target_weight_kg ? Number(goal.target_weight_kg) : undefined,
+      targetPeriodWeeks: goal?.target_period_weeks || undefined,
+    });
+
+    const activityInfo = ACTIVITY_LABELS[user.activity_level as ActivityLevel];
+    parts.push(
+      `【ユーザーの身体情報】${GENDER_LABELS[user.gender as Gender]} / ${user.age}歳 / 身長${user.height_cm}cm / 体重${user.weight_kg}kg / 活動レベル: ${activityInfo?.label || user.activity_level}
+BMI: ${rec.bmi}（${rec.bmiCategory}）/ 基礎代謝: ${rec.bmr}kcal / 1日総消費: ${rec.tdee}kcal
+科学的に最適な推奨値: ${rec.recommendedCalories}kcal / タンパク質${rec.recommendedProteinG}g / 炭水化物${rec.recommendedCarbsG}g / 脂質${rec.recommendedFatG}g`
     );
   }
 
   const contextText =
     parts.length === 0
       ? ""
-      : `\n\n【このユーザーの過去データ】\nこのユーザーはリピーターです。過去のデータを参考にして、より的確なアドバイスをしてください。\n${parts.join("\n")}\n\n【食事×姿勢×痛みの総合アドバイスについて】\n上記の食事データがある場合は、食事内容と姿勢・痛みの関連性にも触れてください。例: タンパク質不足→筋肉量低下→姿勢悪化、糖質過多→炎症→慢性痛、カフェイン摂取→交感神経優位→肩こり悪化 など。ただし専門用語ではなく日常語で説明してください。`;
+      : `\n\n【このユーザーの過去データ】\nこのユーザーはリピーターです。過去のデータを参考にして、より的確なアドバイスをしてください。\n${parts.join("\n")}\n\n【食事×姿勢×痛みの総合アドバイスについて】\n上記の食事データがある場合は、食事内容と姿勢・痛みの関連性にも触れてください。例: タンパク質不足→筋肉量低下→姿勢悪化、糖質過多→炎症→慢性痛、カフェイン摂取→交感神経優位→肩こり悪化 など。ただし専門用語ではなく日常語で説明してください。\n\n【パーソナル対応について】\n身体情報（身長・体重・年齢）と推奨値がある場合は、必ずそれを踏まえた個別アドバイスをしてください。「あなたの場合は〇〇kcalが目安です」「タンパク質が〇g足りていません」など具体的に。体重や年齢の話題は相手を傷つけないよう配慮しつつ、プロフェッショナルな助言を心がけてください。`;
 
   return { contextText, latestPostureImageUrl, latestPostureDate };
 }
