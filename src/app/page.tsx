@@ -1897,6 +1897,111 @@ function HistoryScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   );
 }
 
+// ==================== PFC バランス円グラフ ====================
+function PFCCircleChart({
+  protein,
+  carbs,
+  fat,
+  size = 80,
+}: {
+  protein: number;
+  carbs: number;
+  fat: number;
+  size?: number;
+}) {
+  // PFCをカロリー換算（タンパク質4/炭水化物4/脂質9 kcal/g）
+  const pCal = protein * 4;
+  const cCal = carbs * 4;
+  const fCal = fat * 9;
+  const total = pCal + cCal + fCal;
+
+  if (total === 0) {
+    return (
+      <div
+        className="rounded-full border-2 border-dashed border-gray-700 flex items-center justify-center"
+        style={{ width: size, height: size }}
+      >
+        <span className="text-[9px] text-gray-500 text-center leading-tight">
+          PFC
+          <br />
+          データ
+          <br />
+          なし
+        </span>
+      </div>
+    );
+  }
+
+  const pRatio = pCal / total;
+  const cRatio = cCal / total;
+  const fRatio = fCal / total;
+
+  // 円グラフのセグメントを計算
+  const radius = size / 2 - 2;
+  const circumference = 2 * Math.PI * radius;
+
+  const pLen = pRatio * circumference;
+  const cLen = cRatio * circumference;
+  const fLen = fRatio * circumference;
+
+  return (
+    <div className="relative" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90">
+        {/* 背景 */}
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke="#1f2937"
+          strokeWidth="6"
+          fill="none"
+        />
+        {/* タンパク質（緑） */}
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke="#10b981"
+          strokeWidth="6"
+          fill="none"
+          strokeDasharray={`${pLen} ${circumference - pLen}`}
+          strokeLinecap="butt"
+        />
+        {/* 炭水化物（黄） */}
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke="#f59e0b"
+          strokeWidth="6"
+          fill="none"
+          strokeDasharray={`${cLen} ${circumference - cLen}`}
+          strokeDashoffset={-pLen}
+          strokeLinecap="butt"
+        />
+        {/* 脂質（赤） */}
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke="#f43f5e"
+          strokeWidth="6"
+          fill="none"
+          strokeDasharray={`${fLen} ${circumference - fLen}`}
+          strokeDashoffset={-(pLen + cLen)}
+          strokeLinecap="butt"
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-[8px] text-gray-400 leading-none">PFC</span>
+        <span className="text-[10px] font-bold text-white leading-none mt-0.5">
+          {Math.round(pRatio * 100)}:{Math.round(cRatio * 100)}:{Math.round(fRatio * 100)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 // ==================== 今日の食事ダッシュボード（ホーム画面用） ====================
 type TodayMealType = "朝食" | "昼食" | "夕食" | "間食";
 interface TodayDataShape {
@@ -2016,27 +2121,37 @@ function TodayMealDashboard({
         })}
       </div>
 
-      {/* 摂取カロリー プログレスバー */}
-      <div className="bg-gray-900/50 rounded-xl px-3 py-2.5">
-        <div className="flex items-baseline justify-between mb-1.5">
-          <p className="text-xs text-gray-400">摂取カロリー</p>
-          {targetCal > 0 ? (
-            <p className="text-[10px] text-gray-400">目標 {targetCal} kcal</p>
-          ) : (
-            <button
-              onClick={() => onGoToMealMode("goal")}
-              className="text-[10px] text-indigo-400"
-            >
-              目標を設定 →
-            </button>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xl font-extrabold text-emerald-300">{totalCal}</span>
-          <span className="text-xs text-gray-400">kcal</span>
+      {/* 摂取カロリー プログレスバー + PFC円グラフ */}
+      <div className="bg-gray-900/50 rounded-xl p-3 grid grid-cols-[auto_1fr] gap-3 items-center">
+        {/* 左: PFC円グラフ */}
+        <PFCCircleChart
+          protein={data?.total.protein_g || 0}
+          carbs={data?.total.carbs_g || 0}
+          fat={data?.total.fat_g || 0}
+          size={80}
+        />
+        {/* 右: カロリー + PFC数値 */}
+        <div className="space-y-1.5">
+          <div className="flex items-baseline justify-between">
+            <p className="text-[10px] text-gray-400">摂取カロリー</p>
+            {targetCal > 0 ? (
+              <p className="text-[9px] text-gray-400">目標 {targetCal}kcal</p>
+            ) : (
+              <button
+                onClick={() => onGoToMealMode("goal")}
+                className="text-[10px] text-indigo-400 font-bold"
+              >
+                目標を設定 →
+              </button>
+            )}
+          </div>
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-2xl font-extrabold text-emerald-300 leading-none">{totalCal}</span>
+            <span className="text-[10px] text-gray-400">kcal</span>
+          </div>
           {targetCal > 0 && (
-            <>
-              <div className="flex-1 h-2 bg-gray-800 rounded-full overflow-hidden mx-2">
+            <div className="flex items-center gap-1.5">
+              <div className="flex-1 h-1.5 bg-gray-800 rounded-full overflow-hidden">
                 <div
                   className={`h-full ${
                     calProgress > 110
@@ -2048,9 +2163,23 @@ function TodayMealDashboard({
                   style={{ width: `${calProgress}%` }}
                 />
               </div>
-              <span className="text-[10px] text-gray-400">{Math.round(calProgress)}%</span>
-            </>
+              <span className="text-[9px] text-gray-400 whitespace-nowrap">
+                {Math.round(calProgress)}%
+              </span>
+            </div>
           )}
+          {/* PFC各数値 */}
+          <div className="flex items-center gap-2 text-[9px] pt-0.5">
+            <span className="text-emerald-400 font-bold">
+              P {Math.round(data?.total.protein_g || 0)}g
+            </span>
+            <span className="text-amber-400 font-bold">
+              C {Math.round(data?.total.carbs_g || 0)}g
+            </span>
+            <span className="text-rose-400 font-bold">
+              F {Math.round(data?.total.fat_g || 0)}g
+            </span>
+          </div>
         </div>
       </div>
 
@@ -2917,36 +3046,64 @@ function MealCalendarView({ onBack }: { onBack: () => void }) {
             </button>
           </div>
 
-          <div className="grid grid-cols-4 gap-2">
-            <DayStat label="カロリー" value={`${selectedDayData.totalCalories}`} unit="kcal" target={targetCal} current={selectedDayData.totalCalories} />
-            <DayStat label="P" value={selectedDayData.totalProtein.toFixed(0)} unit="g" />
-            <DayStat label="C" value={selectedDayData.totalCarbs.toFixed(0)} unit="g" />
-            <DayStat label="F" value={selectedDayData.totalFat.toFixed(0)} unit="g" />
+          {/* PFC円グラフ付きサマリ */}
+          <div className="bg-gray-800 rounded-xl p-3 grid grid-cols-[auto_1fr] gap-3 items-center">
+            <PFCCircleChart
+              protein={selectedDayData.totalProtein}
+              carbs={selectedDayData.totalCarbs}
+              fat={selectedDayData.totalFat}
+              size={80}
+            />
+            <div className="grid grid-cols-4 gap-1">
+              <DayStat
+                label="kcal"
+                value={`${selectedDayData.totalCalories}`}
+                unit=""
+                target={targetCal}
+                current={selectedDayData.totalCalories}
+              />
+              <DayStat label="P" value={selectedDayData.totalProtein.toFixed(0)} unit="g" />
+              <DayStat label="C" value={selectedDayData.totalCarbs.toFixed(0)} unit="g" />
+              <DayStat label="F" value={selectedDayData.totalFat.toFixed(0)} unit="g" />
+            </div>
           </div>
 
-          {selectedDayData.meals.map((m) => (
-            <div key={m.id} className="bg-gray-800 rounded-xl overflow-hidden">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={m.image_url} alt={m.menu_name || ""} className="w-full aspect-video object-cover" />
-              <div className="p-2.5 space-y-1">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-bold">{m.menu_name || "判定不能"}</p>
-                  {m.meal_type && (
-                    <span className="text-[10px] px-2 py-0.5 bg-emerald-600/30 text-emerald-300 rounded-full">
-                      {m.meal_type}
-                    </span>
-                  )}
+          {/* 食事区分別にグループ化 */}
+          {(["朝食", "昼食", "夕食", "間食"] as const).map((mt) => {
+            const typeMeals = selectedDayData.meals.filter((m) => (m.meal_type || "間食") === mt);
+            if (typeMeals.length === 0) return null;
+            const emoji = mt === "朝食" ? "🌅" : mt === "昼食" ? "☀️" : mt === "夕食" ? "🌙" : "🍩";
+            const typeKcal = typeMeals.reduce((s, m) => s + (m.calories || 0), 0);
+            return (
+              <div key={mt} className="space-y-2">
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-lg">{emoji}</span>
+                  <p className="text-sm font-bold text-emerald-300">{mt}</p>
+                  <p className="text-xs text-gray-400 ml-auto">{typeKcal} kcal</p>
                 </div>
-                <div className="flex flex-wrap gap-x-2 text-[10px] text-gray-400">
-                  {m.calories !== null && <span>🔥{m.calories}kcal</span>}
-                  {m.protein_g !== null && <span>P{m.protein_g}g</span>}
-                  {m.carbs_g !== null && <span>C{m.carbs_g}g</span>}
-                  {m.fat_g !== null && <span>F{m.fat_g}g</span>}
-                  {m.score !== null && <span>⭐{m.score}</span>}
-                </div>
+                {typeMeals.map((m) => (
+                  <div key={m.id} className="bg-gray-800 rounded-xl overflow-hidden">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={m.image_url}
+                      alt={m.menu_name || ""}
+                      className="w-full aspect-video object-cover"
+                    />
+                    <div className="p-2.5 space-y-1">
+                      <p className="text-sm font-bold">{m.menu_name || "判定不能"}</p>
+                      <div className="flex flex-wrap gap-x-2 text-[10px] text-gray-400">
+                        {m.calories !== null && <span>🔥{m.calories}kcal</span>}
+                        {m.protein_g !== null && <span>P{m.protein_g}g</span>}
+                        {m.carbs_g !== null && <span>C{m.carbs_g}g</span>}
+                        {m.fat_g !== null && <span>F{m.fat_g}g</span>}
+                        {m.score !== null && <span>⭐{m.score}</span>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
