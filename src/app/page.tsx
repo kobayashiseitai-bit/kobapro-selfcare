@@ -2845,7 +2845,12 @@ function MealGoalView({ onBack }: { onBack: () => void }) {
           targetPeriodWeeks: targetPeriod ? Number(targetPeriod) : undefined,
         }),
       });
-      if (!res.ok) throw new Error("保存失敗");
+      const resData = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const errMsg = resData.error || "保存失敗";
+        const detail = resData.detail ? `\n詳細: ${resData.detail}` : "";
+        throw new Error(`${errMsg}${detail}`);
+      }
       setMessage("✅ プロフィールと目標を保存しました！AIもパワーアップ 💪");
       await load();
     } catch (e) {

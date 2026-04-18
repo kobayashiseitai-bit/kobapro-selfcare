@@ -132,15 +132,38 @@ export async function POST(req: NextRequest) {
     if (activityLevel !== undefined) userUpdates.activity_level = activityLevel;
 
     if (Object.keys(userUpdates).length > 0) {
-      await supabase.from("users").update(userUpdates).eq("id", user.id);
+      const { error: userUpdateErr } = await supabase
+        .from("users")
+        .update(userUpdates)
+        .eq("id", user.id);
+      if (userUpdateErr) {
+        console.error("users update failed:", userUpdateErr);
+        return NextResponse.json(
+          {
+            error: "users テーブルの更新に失敗",
+            detail: `${userUpdateErr.message} (SQLマイグレーションが未実行の可能性があります)`,
+          },
+          { status: 500 }
+        );
+      }
     }
 
     // 2. 体重が変わった or logWeight=true の場合、weight_records に記録
     if (weightKg !== undefined && (logWeight || Number(user.weight_kg) !== Number(weightKg))) {
-      await supabase.from("weight_records").insert({
+      const { error: wrErr } = await supabase.from("weight_records").insert({
         user_id: user.id,
         weight_kg: weightKg,
       });
+      if (wrErr) {
+        console.error("weight_records insert failed:", wrErr);
+        return NextResponse.json(
+          {
+            error: "体重記録の保存に失敗",
+            detail: `${wrErr.message} (weight_records テーブルが未作成の可能性があります)`,
+          },
+          { status: 500 }
+        );
+      }
     }
 
     // 3. 目標設定を更新（指定があれば）
@@ -182,9 +205,32 @@ export async function POST(req: NextRequest) {
         .maybeSingle();
 
       if (existingGoal) {
-        await supabase.from("nutrition_goals").update(payload).eq("id", existingGoal.id);
+        const { error: updErr } = await supabase
+          .from("nutrition_goals")
+          .update(payload)
+          .eq("id", existingGoal.id);
+        if (updErr) {
+          console.error("nutrition_goals update failed:", updErr);
+          return NextResponse.json(
+            {
+              error: "目標の更新に失敗",
+              detail: `${updErr.message} (target_weight_kg/target_period_weeks カラムが未追加の可能性)`,
+            },
+            { status: 500 }
+          );
+        }
       } else {
-        await supabase.from("nutrition_goals").insert(payload);
+        const { error: insErr } = await supabase.from("nutrition_goals").insert(payload);
+        if (insErr) {
+          console.error("nutrition_goals insert failed:", insErr);
+          return NextResponse.json(
+            {
+              error: "目標の新規作成に失敗",
+              detail: `${insErr.message} (target_weight_kg/target_period_weeks カラムが未追加の可能性)`,
+            },
+            { status: 500 }
+          );
+        }
       }
     }
 
