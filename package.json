@@ -20,6 +20,8 @@
     "@capacitor/status-bar": "^8.0.2",
     "@mediapipe/tasks-vision": "^0.10.34",
     "@supabase/supabase-js": "^2.103.0",
+    "heic-to": "^1.4.2",
+    "heic2any": "^0.0.4",
     "next": "14.2.35",
     "react": "^18",
     "react-dom": "^18",

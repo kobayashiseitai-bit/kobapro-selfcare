@@ -2,6 +2,10 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest } from "next/server";
 import { STRETCH_DATA } from "../../lib/stretches";
+import {
+  checkAndIncrementUsage,
+  getUserIdByDeviceId,
+} from "../../lib/subscription";
 
 function getClient() {
   return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -238,6 +242,35 @@ async function buildUserContext(deviceId: string): Promise<UserContextResult> {
 export async function POST(req: NextRequest) {
   try {
     const { messages, deviceId } = await req.json();
+
+    // 利用制限チェック（ユーザーメッセージ=初回以外をカウント）
+    const isFirst = !messages || messages.length === 0;
+    if (!isFirst && deviceId) {
+      const supabase = getSupabase();
+      const userId = await getUserIdByDeviceId(supabase, deviceId);
+      if (userId) {
+        const limitCheck = await checkAndIncrementUsage(
+          supabase,
+          userId,
+          "chat"
+        );
+        if (!limitCheck.allowed) {
+          return new Response(
+            JSON.stringify({
+              error: "limit_reached",
+              feature: "chat",
+              usage: limitCheck.usage,
+              limit: limitCheck.limit,
+              message: `無料プランのAIチャットは月${limitCheck.limit}回までです。無制限にするには有料プランにアップグレードしてください。`,
+            }),
+            {
+              status: 402,
+              headers: { "Content-Type": "application/json" },
+            }
+          );
+        }
+      }
+    }
 
     const { contextText, latestPostureImageUrl, latestPostureDate } =
       await buildUserContext(deviceId || "");

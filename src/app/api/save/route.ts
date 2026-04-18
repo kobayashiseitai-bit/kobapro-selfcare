@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
+import { checkAndIncrementUsage } from "../../lib/subscription";
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +53,24 @@ export async function POST(req: NextRequest) {
         recommended_symptom: payload.recommendedSymptom || null,
       });
     } else if (type === "posture") {
+      // 姿勢診断の利用制限チェック（無料プランは月3回まで）
+      const limitCheck = await checkAndIncrementUsage(
+        supabase,
+        userId,
+        "posture"
+      );
+      if (!limitCheck.allowed) {
+        return NextResponse.json(
+          {
+            error: "limit_reached",
+            feature: "posture",
+            usage: limitCheck.usage,
+            limit: limitCheck.limit,
+            message: `無料プランの姿勢診断は月${limitCheck.limit}回までです。`,
+          },
+          { status: 402 }
+        );
+      }
       await supabase.from("posture_records").insert({
         user_id: userId,
         landmarks: payload.landmarks,

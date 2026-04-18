@@ -38,7 +38,7 @@ const POSE_CONNECTIONS: [number, number][] = [
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type MediaPipeModules = { PoseLandmarker: any; FilesetResolver: any; DrawingUtils: any };
 
-type Screen = "loading" | "register" | "home" | "ai-counsel" | "selfcare" | "check" | "history";
+type Screen = "loading" | "register" | "home" | "ai-counsel" | "selfcare" | "check" | "history" | "meal" | "subscription";
 
 const PREFECTURES = [
   "北海道","青森県","岩手県","宮城県","秋田県","山形県","福島県",
@@ -155,6 +155,8 @@ export default function Home() {
       {screen === "selfcare" && <SelfcareScreen onNavigate={setScreen} initialSymptomId={selectedSymptomId} />}
       {screen === "check" && <CheckScreen onNavigate={setScreen} />}
       {screen === "history" && <HistoryScreen onNavigate={setScreen} />}
+      {screen === "meal" && <MealScreen onNavigate={setScreen} />}
+      {screen === "subscription" && <SubscriptionScreen onNavigate={setScreen} />}
     </>
   );
 }
@@ -322,50 +324,6 @@ function RegisterScreen({ onComplete }: { onComplete: () => void }) {
   );
 }
 
-// ==================== PWAインストールバナー ====================
-function InstallBanner() {
-  const [show, setShow] = useState(false);
-
-  useEffect(() => {
-    // Capacitor（iOS/Androidネイティブ）で起動済みなら表示しない
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const cap = (window as any).Capacitor;
-    if (cap?.isNativePlatform?.() === true) return;
-
-    // スタンドアロンモードで起動済みなら表示しない
-    const isStandalone = window.matchMedia("(display-mode: standalone)").matches
-      || ("standalone" in window.navigator && (window.navigator as unknown as { standalone: boolean }).standalone);
-    if (isStandalone) return;
-
-    // 一度閉じたら24時間非表示
-    const dismissed = localStorage.getItem("install_banner_dismissed");
-    if (dismissed && Date.now() - parseInt(dismissed) < 86400000) return;
-
-    setShow(true);
-  }, []);
-
-  if (!show) return null;
-
-  const dismiss = () => {
-    localStorage.setItem("install_banner_dismissed", String(Date.now()));
-    setShow(false);
-  };
-
-  return (
-    <div className="w-full max-w-md bg-blue-900/80 border border-blue-500 rounded-xl p-4 mb-4">
-      <div className="flex items-start gap-3">
-        <span className="text-2xl">📲</span>
-        <div className="flex-1">
-          <p className="font-bold text-sm mb-1">アプリをホーム画面に追加</p>
-          <p className="text-xs text-blue-200">
-            下の共有ボタン <span className="inline-block">⬆️</span> →「ホーム画面に追加」でアプリとして使えます
-          </p>
-        </div>
-        <button onClick={dismiss} className="text-gray-400 text-lg">✕</button>
-      </div>
-    </div>
-  );
-}
 
 // ==================== ホーム画面 ====================
 function HomeScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Screen) => void; onSelectSymptom: (id: string) => void }) {
@@ -518,13 +476,18 @@ function HomeScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Screen) =
   return (
     <main className="fixed inset-0 bg-gray-950 text-white flex flex-col overflow-y-auto">
       {/* ヘッダー */}
-      <header className="sticky top-0 z-10 bg-gray-950/95 backdrop-blur-sm border-b border-gray-800/50 px-4 py-3">
-        <h1 className="text-lg font-bold text-center">ZERO-PAIN</h1>
+      <header className="sticky top-0 z-10 bg-gray-950/95 backdrop-blur-sm border-b border-gray-800/50 px-4 py-3 flex items-center justify-between">
+        <div className="w-20" />
+        <h1 className="text-lg font-bold">ZERO-PAIN</h1>
+        <button
+          onClick={() => onNavigate("subscription")}
+          className="w-20 text-xs font-bold text-amber-400 hover:text-amber-300 flex items-center justify-end gap-1"
+        >
+          👑 <span>プラン</span>
+        </button>
       </header>
 
       <div className="flex-1 px-4 py-5 space-y-5 max-w-md w-full mx-auto">
-        <InstallBanner />
-
         {/* リマインダーアラート */}
         {reminderAlert && (
           <div className="bg-gradient-to-r from-orange-500/20 to-amber-500/10 border border-orange-500/30 rounded-2xl px-4 py-3">
@@ -545,9 +508,12 @@ function HomeScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Screen) =
             className={`w-full bg-gradient-to-r ${riskColors[prediction.riskLevel] || riskColors.low} border rounded-2xl px-4 py-4 text-left`}
           >
             <div className="flex items-start gap-3">
-              <span className="text-2xl">{riskIcons[prediction.riskLevel] || "✅"}</span>
+              <span className="text-3xl">{riskIcons[prediction.riskLevel] || "✅"}</span>
               <div className="flex-1">
-                <p className="text-xs text-gray-400 mb-1">🤖 AI痛み予測</p>
+                <p className="text-base font-bold text-white mb-1.5 flex items-center gap-1">
+                  <span className="text-lg">🤖</span>
+                  <span>AI痛み予測</span>
+                </p>
                 <p className="text-sm font-bold text-white">{prediction.prediction}</p>
                 {prediction.detail && <p className="text-xs text-gray-300 mt-1">{prediction.detail}</p>}
                 <p className="text-xs text-blue-400 mt-2">タップしてケアを開始 →</p>
@@ -648,9 +614,39 @@ function HomeScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Screen) =
           </button>
         </div>
 
-        {/* Step 3: 症状選択 */}
+        {/* Step 3: 食事記録 */}
+        <div className="space-y-3">
+          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Step 3 · 食事を撮って相談</h2>
+          <button
+            onClick={() => onNavigate("meal")}
+            className="btn-3d w-full rounded-2xl overflow-hidden shadow-[0_10px_30px_rgba(16,185,129,0.5)] text-left"
+          >
+            {/* 上部: NEWバナー訴求 */}
+            <div className="bg-gradient-to-r from-lime-400 via-green-400 to-emerald-400 px-4 py-3 flex items-center justify-between">
+              <p className="text-base font-extrabold text-green-900 flex items-center gap-1.5 drop-shadow-sm">
+                🍎 AI食事分析
+              </p>
+              <span className="text-[10px] font-extrabold text-white bg-red-500 px-2 py-0.5 rounded-full shadow-sm">
+                NEW
+              </span>
+            </div>
+            {/* 下部: メインボタン */}
+            <div className="bg-gradient-to-b from-emerald-500 via-emerald-600 to-green-800 flex items-center gap-4 px-5 py-5">
+              <span className="text-5xl drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)]">📷</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-base font-bold drop-shadow-sm text-white">食事の写真でAI栄養診断</p>
+                <p className="text-xs font-normal opacity-90 text-white mt-0.5">
+                  カロリー・栄養素 × 姿勢ケアを同時にアドバイス
+                </p>
+              </div>
+              <span className="text-2xl text-white opacity-70">›</span>
+            </div>
+          </button>
+        </div>
+
+        {/* Step 4: 症状選択 */}
         <div>
-          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Step 3 · セルフケアメニュー</h2>
+          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Step 4 · セルフケアメニュー</h2>
           <div className="grid grid-cols-2 gap-3">
             {SYMPTOMS.map((symptom) => (
               <button
@@ -1815,5 +1811,772 @@ function HistoryScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
         新しく撮影する
       </button>
     </main>
+  );
+}
+
+// ==================== 食事記録画面 ====================
+type MealAnalysis = {
+  menu_name?: string;
+  meal_type?: string;
+  calories?: number;
+  protein_g?: number;
+  carbs_g?: number;
+  fat_g?: number;
+  advice?: string;
+  score?: number;
+};
+
+type MealRecord = {
+  id: string;
+  image_url: string;
+  meal_type: string | null;
+  menu_name: string | null;
+  calories: number | null;
+  protein_g: number | null;
+  carbs_g: number | null;
+  fat_g: number | null;
+  advice: string | null;
+  score: number | null;
+  created_at: string;
+};
+
+// 画像を512pxに圧縮してbase64で返す（コスト削減のため）
+// iPhone HEIC自動変換（多段階フォールバック: ネイティブ→heic-to→heic2any）
+async function compressImageToBase64(input: File, maxSize = 512): Promise<string> {
+  let file: Blob = input;
+  const nameLower = input.name.toLowerCase();
+  const typeLower = (input.type || "").toLowerCase();
+  const isHeic =
+    nameLower.endsWith(".heic") ||
+    nameLower.endsWith(".heif") ||
+    typeLower.includes("heic") ||
+    typeLower.includes("heif");
+
+  // HEIC / HEIF は複数方式でJPEGへ変換を試行
+  if (isHeic) {
+    let converted: Blob | null = null;
+    const errors: string[] = [];
+
+    // 方式1: Safari等のネイティブサポートを試す（createImageBitmap→canvas）
+    try {
+      const bitmap = await createImageBitmap(input);
+      const canvas = document.createElement("canvas");
+      canvas.width = bitmap.width;
+      canvas.height = bitmap.height;
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.drawImage(bitmap, 0, 0);
+        bitmap.close?.();
+        converted = await new Promise<Blob | null>((r) =>
+          canvas.toBlob((b) => r(b), "image/jpeg", 0.9)
+        );
+      }
+    } catch (err) {
+      errors.push(`native: ${err instanceof Error ? err.message : String(err)}`);
+    }
+
+    // 方式2: heic-to（モダンで軽量）
+    if (!converted) {
+      try {
+        const heicToModule = await import("heic-to");
+        const result = await heicToModule.heicTo({
+          blob: input,
+          type: "image/jpeg",
+          quality: 0.9,
+        });
+        converted = result as Blob;
+      } catch (err) {
+        errors.push(`heic-to: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+
+    // 方式3: heic2any（旧実装・最終フォールバック）
+    if (!converted) {
+      try {
+        const heic2anyModule = await import("heic2any");
+        const result = await heic2anyModule.default({
+          blob: input,
+          toType: "image/jpeg",
+          quality: 0.9,
+        });
+        converted = Array.isArray(result) ? result[0] : (result as Blob);
+      } catch (err) {
+        errors.push(`heic2any: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+
+    if (!converted) {
+      console.error("HEIC conversion failed:", errors);
+      throw new Error(
+        `HEIC写真の変換に失敗しました。JPEG形式の写真をお試しください。\n詳細: ${errors.join(" / ")}`
+      );
+    }
+
+    file = converted;
+  }
+
+  // まず createImageBitmap で試す（最も高速で多くの形式に対応）
+  try {
+    const bitmap = await createImageBitmap(file);
+    let { width, height } = bitmap;
+    if (width > height) {
+      if (width > maxSize) {
+        height = Math.round((height * maxSize) / width);
+        width = maxSize;
+      }
+    } else {
+      if (height > maxSize) {
+        width = Math.round((width * maxSize) / height);
+        height = maxSize;
+      }
+    }
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("canvas context not available");
+    ctx.drawImage(bitmap, 0, 0, width, height);
+    bitmap.close?.();
+    return canvas.toDataURL("image/jpeg", 0.85);
+  } catch {
+    // フォールバック: URL.createObjectURL + HTMLImageElement
+    return new Promise<string>((resolve, reject) => {
+      const objectUrl = URL.createObjectURL(file);
+      const img = document.createElement("img");
+      img.onload = () => {
+        try {
+          let { naturalWidth: width, naturalHeight: height } = img;
+          if (!width || !height) {
+            URL.revokeObjectURL(objectUrl);
+            reject(new Error("画像の読み込みに失敗しました（サイズ取得不可）"));
+            return;
+          }
+          if (width > height) {
+            if (width > maxSize) {
+              height = Math.round((height * maxSize) / width);
+              width = maxSize;
+            }
+          } else {
+            if (height > maxSize) {
+              width = Math.round((width * maxSize) / height);
+              height = maxSize;
+            }
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            URL.revokeObjectURL(objectUrl);
+            reject(new Error("canvas contextが取得できません"));
+            return;
+          }
+          ctx.drawImage(img, 0, 0, width, height);
+          URL.revokeObjectURL(objectUrl);
+          resolve(canvas.toDataURL("image/jpeg", 0.85));
+        } catch (err) {
+          URL.revokeObjectURL(objectUrl);
+          reject(err instanceof Error ? err : new Error("画像圧縮に失敗しました"));
+        }
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        reject(
+          new Error(
+            "画像を読み込めませんでした。JPEG/PNG形式の写真をお試しください。"
+          )
+        );
+      };
+      img.src = objectUrl;
+    });
+  }
+}
+
+function MealScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
+  const [mode, setMode] = useState<"home" | "analyzing" | "result" | "history">("home");
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [analysis, setAnalysis] = useState<MealAnalysis | null>(null);
+  const [analysisImageUrl, setAnalysisImageUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [records, setRecords] = useState<MealRecord[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setError(null);
+    setMode("analyzing");
+    try {
+      // 圧縮してbase64化
+      const compressedDataUrl = await compressImageToBase64(file, 512);
+      setPreviewUrl(compressedDataUrl);
+
+      const deviceId = getDeviceId();
+      const res = await fetch("/api/meal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageData: compressedDataUrl, deviceId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (res.status === 402 && data.error === "limit_reached") {
+          throw new Error(`__LIMIT_REACHED__${data.message || "無料プランの上限に達しました"}`);
+        }
+        const detail = data.detail ? `\n詳細: ${data.detail}` : "";
+        throw new Error(`${data.error || "分析に失敗しました"}${detail}`);
+      }
+      setAnalysis(data.analysis);
+      setAnalysisImageUrl(data.imageUrl);
+      setMode("result");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(msg);
+      setMode("home");
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const openHistory = async () => {
+    setMode("history");
+    setLoadingHistory(true);
+    try {
+      const deviceId = getDeviceId();
+      const res = await fetch(`/api/meal?deviceId=${encodeURIComponent(deviceId || "")}`);
+      const data = await res.json();
+      setRecords(data.records || []);
+    } catch {
+      setRecords([]);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  const resetToHome = () => {
+    setMode("home");
+    setPreviewUrl(null);
+    setAnalysis(null);
+    setAnalysisImageUrl(null);
+    setError(null);
+  };
+
+  return (
+    <main className="fixed inset-0 bg-gray-950 overflow-y-auto text-white flex flex-col items-center p-4 pb-20">
+      <div className="flex items-center gap-3 mb-4 w-full max-w-md">
+        <button
+          onClick={() => onNavigate("home")}
+          className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm"
+        >
+          ← 戻る
+        </button>
+        <h1 className="text-lg font-bold">🍱 食事記録＆AI分析</h1>
+      </div>
+
+      {/* ホーム（撮影ボタン） */}
+      {mode === "home" && (
+        <div className="w-full max-w-md space-y-4">
+          <div className="bg-gradient-to-br from-emerald-500/20 to-green-600/10 border border-emerald-500/30 rounded-2xl p-5">
+            <p className="text-sm text-emerald-200 leading-relaxed">
+              📸 食事の写真を撮るだけで、AIがメニュー・カロリー・栄養バランスを分析し、あなたの姿勢や痛みに合わせたアドバイスをお伝えします。
+            </p>
+          </div>
+
+          {error && !error.startsWith("__LIMIT_REACHED__") && (
+            <div className="bg-red-500/20 border border-red-500/40 rounded-xl px-4 py-3 text-sm text-red-300">
+              ⚠️ {error}
+            </div>
+          )}
+          {error && error.startsWith("__LIMIT_REACHED__") && (
+            <div className="bg-gradient-to-br from-amber-500/20 to-yellow-600/10 border border-amber-500/40 rounded-2xl px-4 py-4 space-y-3">
+              <p className="text-sm text-amber-200">
+                🎁 {error.replace("__LIMIT_REACHED__", "")}
+              </p>
+              <button
+                onClick={() => onNavigate("subscription")}
+                className="w-full px-4 py-3 bg-gradient-to-r from-amber-500 to-yellow-600 rounded-xl text-sm font-bold"
+              >
+                👑 プラン画面を開く
+              </button>
+            </div>
+          )}
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="btn-3d w-full px-5 py-6 bg-gradient-to-b from-emerald-400 via-emerald-600 to-green-800 rounded-2xl font-semibold flex items-center justify-center gap-3 shadow-[0_10px_30px_rgba(16,185,129,0.5)]"
+          >
+            <span className="text-3xl">📷</span>
+            <span className="text-lg">食事を撮影する</span>
+          </button>
+
+          <button
+            onClick={openHistory}
+            className="w-full px-5 py-3 bg-gray-800 hover:bg-gray-700 rounded-2xl font-semibold flex items-center gap-3 border border-gray-700"
+          >
+            <span className="text-2xl">📚</span>
+            <div className="text-left">
+              <p className="text-sm font-bold">過去の食事履歴</p>
+              <p className="text-xs text-gray-400">これまでの記録とアドバイスを確認</p>
+            </div>
+          </button>
+        </div>
+      )}
+
+      {/* 分析中 */}
+      {mode === "analyzing" && (
+        <div className="w-full max-w-md space-y-4 text-center">
+          {previewUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={previewUrl}
+              alt="分析中"
+              className="w-full aspect-square object-cover rounded-2xl"
+            />
+          )}
+          <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-5">
+            <div className="animate-pulse text-emerald-300 text-lg mb-2">🤖 AI分析中...</div>
+            <p className="text-xs text-gray-400">
+              メニュー識別 → 栄養素計算 → あなた専用のアドバイス生成中
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* 結果表示 */}
+      {mode === "result" && analysis && (
+        <div className="w-full max-w-md space-y-4">
+          {analysisImageUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={analysisImageUrl}
+              alt={analysis.menu_name || "食事写真"}
+              className="w-full aspect-square object-cover rounded-2xl"
+            />
+          )}
+
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-gray-500">AI推定メニュー</span>
+              {analysis.meal_type && (
+                <span className="text-xs px-2 py-0.5 bg-emerald-600/30 text-emerald-300 rounded-full">
+                  {analysis.meal_type}
+                </span>
+              )}
+            </div>
+            <p className="text-lg font-bold">{analysis.menu_name || "判定不能"}</p>
+            {typeof analysis.score === "number" && (
+              <div className="flex items-center gap-2 mt-2">
+                <div className="flex-1 h-2 bg-gray-800 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-emerald-400 to-green-500"
+                    style={{ width: `${Math.max(0, Math.min(100, analysis.score))}%` }}
+                  />
+                </div>
+                <span className="text-sm font-bold text-emerald-300">
+                  {analysis.score}/100
+                </span>
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-4 gap-2">
+            <NutritionCell label="カロリー" value={analysis.calories} unit="kcal" />
+            <NutritionCell label="タンパク質" value={analysis.protein_g} unit="g" />
+            <NutritionCell label="炭水化物" value={analysis.carbs_g} unit="g" />
+            <NutritionCell label="脂質" value={analysis.fat_g} unit="g" />
+          </div>
+
+          {analysis.advice && (
+            <div className="bg-gradient-to-br from-blue-500/10 to-indigo-600/10 border border-blue-500/30 rounded-2xl p-4">
+              <p className="text-xs text-blue-300 mb-2">💬 AIカウンセラーより</p>
+              <p className="text-sm text-gray-200 whitespace-pre-wrap leading-relaxed">
+                {analysis.advice}
+              </p>
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <button
+              onClick={resetToHome}
+              className="flex-1 px-4 py-3 bg-gray-800 hover:bg-gray-700 rounded-xl text-sm font-semibold"
+            >
+              もう1枚撮る
+            </button>
+            <button
+              onClick={() => onNavigate("home")}
+              className="flex-1 px-4 py-3 bg-emerald-600 hover:bg-emerald-700 rounded-xl text-sm font-semibold"
+            >
+              ホームへ
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 履歴 */}
+      {mode === "history" && (
+        <div className="w-full max-w-md space-y-3">
+          <button
+            onClick={resetToHome}
+            className="text-xs text-emerald-400"
+          >
+            ← 撮影画面に戻る
+          </button>
+
+          {loadingHistory ? (
+            <div className="text-center text-gray-400 py-10">読み込み中...</div>
+          ) : records.length === 0 ? (
+            <div className="text-center text-gray-400 py-10">
+              まだ記録がありません。食事を撮影してみましょう！
+            </div>
+          ) : (
+            records.map((r) => (
+              <div
+                key={r.id}
+                className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={r.image_url}
+                  alt={r.menu_name || "食事写真"}
+                  className="w-full aspect-video object-cover"
+                />
+                <div className="p-3 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-gray-500">
+                      {new Date(r.created_at).toLocaleString("ja-JP", {
+                        month: "numeric",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                    {r.meal_type && (
+                      <span className="text-[10px] px-2 py-0.5 bg-emerald-600/30 text-emerald-300 rounded-full">
+                        {r.meal_type}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm font-bold">{r.menu_name || "判定不能"}</p>
+                  <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-gray-400">
+                    {r.calories !== null && <span>🔥 {r.calories}kcal</span>}
+                    {r.protein_g !== null && <span>P {r.protein_g}g</span>}
+                    {r.carbs_g !== null && <span>C {r.carbs_g}g</span>}
+                    {r.fat_g !== null && <span>F {r.fat_g}g</span>}
+                    {r.score !== null && <span>⭐ {r.score}/100</span>}
+                  </div>
+                  {r.advice && (
+                    <p className="text-xs text-gray-300 whitespace-pre-wrap leading-relaxed mt-2">
+                      {r.advice}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </main>
+  );
+}
+
+function NutritionCell({
+  label,
+  value,
+  unit,
+}: {
+  label: string;
+  value: number | null | undefined;
+  unit: string;
+}) {
+  return (
+    <div className="bg-gray-900 border border-gray-800 rounded-xl px-2 py-2 text-center">
+      <p className="text-[10px] text-gray-500">{label}</p>
+      <p className="text-sm font-bold text-white mt-0.5">
+        {value !== null && value !== undefined ? value : "-"}
+        <span className="text-[10px] font-normal text-gray-400 ml-0.5">{unit}</span>
+      </p>
+    </div>
+  );
+}
+
+// ==================== サブスク管理画面 ====================
+type SubscriptionState = {
+  status: "free" | "trial" | "active_monthly" | "active_yearly" | "cancelled" | "expired";
+  isPaid: boolean;
+  isTrial: boolean;
+  trialEndsAt: string | null;
+  currentPeriodEnd: string | null;
+  usage: { posture: number; chat: number; meal: number };
+  limits: {
+    posture: number | "unlimited";
+    chat: number | "unlimited";
+    meal: number | "unlimited";
+  };
+};
+
+function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
+  const [state, setState] = useState<SubscriptionState | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [acting, setActing] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadState = useCallback(async () => {
+    setLoading(true);
+    try {
+      const deviceId = getDeviceId();
+      const res = await fetch(`/api/subscription?deviceId=${encodeURIComponent(deviceId || "")}`);
+      const data = await res.json();
+      if (res.ok) setState(data);
+    } catch {
+      setError("プラン情報の取得に失敗しました");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadState();
+  }, [loadState]);
+
+  const callAction = async (
+    action: "start_trial" | "subscribe" | "cancel",
+    plan?: "monthly" | "yearly"
+  ) => {
+    setActing(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/subscription", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, plan, deviceId: getDeviceId() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "操作に失敗しました");
+      if (action === "start_trial") setMessage("✅ 7日間の無料トライアルを開始しました！");
+      else if (action === "subscribe") setMessage(`✅ ${plan === "monthly" ? "月額" : "年額"}プランを開始しました！`);
+      else if (action === "cancel") setMessage("次回更新時に解約されます（期限までは引き続き利用可能です）");
+      await loadState();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setActing(false);
+    }
+  };
+
+  const formatDate = (iso: string | null) => {
+    if (!iso) return "";
+    return new Date(iso).toLocaleDateString("ja-JP");
+  };
+
+  const statusLabel: Record<SubscriptionState["status"], string> = {
+    free: "無料プラン",
+    trial: "🎁 無料トライアル中",
+    active_monthly: "👑 月額プラン",
+    active_yearly: "👑 年額プラン",
+    cancelled: "解約予約済み（期限まで利用可）",
+    expired: "期限切れ・無料プラン",
+  };
+
+  return (
+    <main className="fixed inset-0 bg-gray-950 overflow-y-auto text-white flex flex-col items-center p-4 pb-20">
+      <div className="flex items-center gap-3 mb-4 w-full max-w-md">
+        <button
+          onClick={() => onNavigate("home")}
+          className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm"
+        >
+          ← 戻る
+        </button>
+        <h1 className="text-lg font-bold">👑 プラン管理</h1>
+      </div>
+
+      <div className="w-full max-w-md space-y-4">
+        {loading && <div className="text-center text-gray-400 py-10">読み込み中...</div>}
+
+        {message && (
+          <div className="bg-emerald-500/20 border border-emerald-500/40 rounded-xl px-4 py-3 text-sm text-emerald-300">
+            {message}
+          </div>
+        )}
+
+        {error && (
+          <div className="bg-red-500/20 border border-red-500/40 rounded-xl px-4 py-3 text-sm text-red-300">
+            ⚠️ {error}
+          </div>
+        )}
+
+        {state && (
+          <>
+            {/* 現在のステータス */}
+            <div
+              className={`rounded-2xl p-5 border ${
+                state.isPaid
+                  ? "bg-gradient-to-br from-amber-500/20 to-yellow-600/10 border-amber-500/40"
+                  : "bg-gray-900 border-gray-800"
+              }`}
+            >
+              <p className="text-xs text-gray-400 mb-1">現在のプラン</p>
+              <p className="text-lg font-bold">{statusLabel[state.status]}</p>
+              {state.trialEndsAt && state.status === "trial" && (
+                <p className="text-xs text-amber-300 mt-2">
+                  トライアル終了: {formatDate(state.trialEndsAt)}
+                </p>
+              )}
+              {state.currentPeriodEnd && (state.status === "active_monthly" || state.status === "active_yearly" || state.status === "cancelled") && (
+                <p className="text-xs text-gray-300 mt-2">
+                  {state.status === "cancelled" ? "期限" : "次回更新"}: {formatDate(state.currentPeriodEnd)}
+                </p>
+              )}
+            </div>
+
+            {/* 今月の利用状況 */}
+            {!state.isPaid && (
+              <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4">
+                <p className="text-xs text-gray-400 mb-3">今月の利用状況</p>
+                <UsageRow
+                  label="姿勢診断"
+                  usage={state.usage.posture}
+                  limit={state.limits.posture}
+                />
+                <UsageRow
+                  label="AIチャット"
+                  usage={state.usage.chat}
+                  limit={state.limits.chat}
+                />
+                <UsageRow
+                  label="食事分析"
+                  usage={state.usage.meal}
+                  limit={state.limits.meal}
+                />
+              </div>
+            )}
+
+            {/* プラン案内（無料プラン時のみ） */}
+            {!state.isPaid && (
+              <>
+                <div className="bg-gradient-to-br from-amber-500/10 to-yellow-600/5 border border-amber-500/30 rounded-2xl p-5 space-y-3">
+                  <p className="text-base font-extrabold text-amber-300">
+                    👑 プレミアムプランで全機能開放
+                  </p>
+                  <ul className="text-sm text-gray-200 space-y-1.5">
+                    <li>✅ 姿勢診断・AIチャット・食事分析 無制限</li>
+                    <li>✅ 30種類のストレッチ全開放</li>
+                    <li>✅ 音声ガイド機能</li>
+                    <li>✅ 過去データを無期限保存</li>
+                    <li>✅ AI姿勢写真分析</li>
+                  </ul>
+                </div>
+
+                {/* 無料トライアルボタン */}
+                {state.status !== "expired" && (
+                  <button
+                    onClick={() => callAction("start_trial")}
+                    disabled={acting}
+                    className="btn-3d w-full px-5 py-4 bg-gradient-to-b from-amber-400 via-amber-500 to-yellow-600 disabled:opacity-50 rounded-2xl font-bold shadow-[0_10px_30px_rgba(245,158,11,0.5)]"
+                  >
+                    🎁 7日間無料で試す
+                  </button>
+                )}
+
+                {/* 月額プラン */}
+                <button
+                  onClick={() => callAction("subscribe", "monthly")}
+                  disabled={acting}
+                  className="w-full px-5 py-4 bg-gray-900 hover:bg-gray-800 border-2 border-gray-700 disabled:opacity-50 rounded-2xl text-left flex items-center justify-between"
+                >
+                  <div>
+                    <p className="text-sm font-bold">月額プラン</p>
+                    <p className="text-xs text-gray-400 mt-0.5">いつでも解約可能</p>
+                  </div>
+                  <p className="text-lg font-extrabold">
+                    ¥1,280<span className="text-xs font-normal text-gray-400">/月</span>
+                  </p>
+                </button>
+
+                {/* 年額プラン */}
+                <button
+                  onClick={() => callAction("subscribe", "yearly")}
+                  disabled={acting}
+                  className="w-full px-5 py-4 bg-gradient-to-br from-indigo-600/30 to-purple-600/20 hover:from-indigo-600/40 border-2 border-indigo-500 disabled:opacity-50 rounded-2xl text-left flex items-center justify-between relative overflow-hidden"
+                >
+                  <span className="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg">
+                    2ヶ月分お得
+                  </span>
+                  <div>
+                    <p className="text-sm font-bold">年額プラン ⭐ おすすめ</p>
+                    <p className="text-xs text-indigo-300 mt-0.5">月額換算 ¥1,067（17%オフ）</p>
+                  </div>
+                  <p className="text-lg font-extrabold">
+                    ¥12,800<span className="text-xs font-normal text-gray-400">/年</span>
+                  </p>
+                </button>
+              </>
+            )}
+
+            {/* 有料プラン時の解約ボタン */}
+            {state.isPaid && state.status !== "cancelled" && state.status !== "trial" && (
+              <button
+                onClick={() => {
+                  if (confirm("本当に解約しますか？期限までは引き続き利用できます。")) {
+                    callAction("cancel");
+                  }
+                }}
+                disabled={acting}
+                className="w-full px-4 py-3 bg-gray-900 hover:bg-gray-800 border border-gray-700 rounded-xl text-sm text-gray-400"
+              >
+                解約する
+              </button>
+            )}
+
+            {/* 注意書き */}
+            <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-3 text-[11px] text-gray-500 leading-relaxed">
+              ℹ️ 現在は開発中のため、実際の決済は発生しません。App Storeリリース時にApple App Store経由の課金に切り替わります。解約・返金はApp Storeの規約に従います。
+            </div>
+          </>
+        )}
+      </div>
+    </main>
+  );
+}
+
+function UsageRow({
+  label,
+  usage,
+  limit,
+}: {
+  label: string;
+  usage: number;
+  limit: number | "unlimited";
+}) {
+  const max = limit === "unlimited" ? 999 : limit;
+  const pct = limit === "unlimited" ? 0 : Math.min(100, (usage / max) * 100);
+  const isFull = limit !== "unlimited" && usage >= limit;
+  return (
+    <div className="mb-2.5 last:mb-0">
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-xs text-gray-300">{label}</span>
+        <span className={`text-xs font-bold ${isFull ? "text-red-400" : "text-gray-400"}`}>
+          {usage} / {limit === "unlimited" ? "無制限" : limit}
+        </span>
+      </div>
+      {limit !== "unlimited" && (
+        <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
+          <div
+            className={`h-full ${isFull ? "bg-red-500" : "bg-emerald-500"}`}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+      )}
+    </div>
   );
 }
