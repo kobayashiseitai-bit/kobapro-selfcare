@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
             feature: "posture",
             usage: limitCheck.usage,
             limit: limitCheck.limit,
-            message: `無料プランの姿勢診断は月${limitCheck.limit}回までです。`,
+            message: `無料プランの姿勢チェックは月${limitCheck.limit}回までです。`,
           },
           { status: 402 }
         );

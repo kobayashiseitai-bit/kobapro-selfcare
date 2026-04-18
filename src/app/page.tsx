@@ -654,7 +654,7 @@ function HomeScreen({
             <span className="text-4xl">🧍</span>
             <div className="text-left">
               <p className="text-base font-bold">ZERO-PAIN AIで姿勢スキャン</p>
-              <p className="text-sm text-emerald-50/90 mt-0.5">スマホを置いて全身撮影 → 歪みを自動診断</p>
+              <p className="text-sm text-emerald-50/90 mt-0.5">スマホを置いて全身撮影 → 歪みを自動チェック</p>
             </div>
           </button>
           <button
@@ -688,7 +688,7 @@ function HomeScreen({
             <img src="/icon-skeleton-sensei.png" alt="ガイコツ先生" className="h-full w-auto drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)] -my-2" />
             <div className="flex-1 min-w-0">
               <p className="text-base font-bold text-white leading-tight">ガイコツ先生に相談</p>
-              <p className="text-sm text-indigo-100 mt-1">症状を聞き取り最適なケアを提案</p>
+              <p className="text-sm text-indigo-100 mt-1">お悩みを聞き取り最適なケアを提案</p>
             </div>
           </button>
         </div>
@@ -712,7 +712,7 @@ function HomeScreen({
                 ガイコツ先生の食事分析
               </p>
               <p className="text-sm text-emerald-50/90 mt-1 leading-snug">
-                写真1枚で栄養×姿勢ケアを診断
+                写真1枚で栄養×姿勢ケアをチェック
               </p>
             </div>
             <span className="text-2xl text-white/80">›</span>
@@ -821,7 +821,7 @@ function AiCounselScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Scre
           setMessages([{ role: "assistant", content: result.cleanText }]);
         }
       } catch {
-        const fallback = "こんにちは！今日はどんな症状が気になりますか？お気軽にお話しください。";
+        const fallback = "こんにちは！今日はどんなお悩みが気になりますか？お気軽にお話しください。";
         setMessages([{ role: "assistant", content: fallback }]);
       }
       setLoading(false);
@@ -935,7 +935,7 @@ function AiCounselScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Scre
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && !("isComposing" in e.nativeEvent && e.nativeEvent.isComposing)) sendMessage(); }}
-          placeholder="症状を入力..."
+          placeholder="お悩みを入力..."
           className="flex-1 px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-blue-500 text-sm"
           disabled={loading}
         />
@@ -965,7 +965,7 @@ function SelfcareScreen({ onNavigate, initialSymptomId }: { onNavigate: (s: Scre
       </div>
 
       <p className="text-gray-400 text-sm mb-4 w-full max-w-md">
-        気になる症状を選んでください
+        気になる箇所を選んでください
       </p>
 
       <div className="w-full max-w-md grid grid-cols-2 gap-3">
@@ -1554,7 +1554,7 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
           setDiagnosis([...frontDiagnosisRef.current, ...sideResults]);
           setCaptureStep("done");
           captureStepRef.current = "done";
-          speak("横向きの撮影が完了しました。診断結果をご確認ください。", true);
+          speak("横向きの撮影が完了しました。チェック結果をご確認ください。", true);
           startGuideForStep.current = "front";
         }
       } else {
@@ -1713,11 +1713,11 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
 
       {diagnosis.length > 0 && (
         <div className="w-full max-w-md mt-4 space-y-4">
-          {/* 正面の診断結果（最初の5項目） */}
+          {/* 正面のチェック結果（最初の5項目） */}
           <div>
             <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
               <span className="px-2 py-0.5 bg-blue-600 rounded text-xs">正面</span>
-              正面からの診断
+              正面からのチェック
             </h2>
             <div className="space-y-2">
               {diagnosis.slice(0, 5).map((item, i) => (
@@ -1733,12 +1733,12 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
             </div>
           </div>
 
-          {/* 側面の診断結果（6項目目以降） */}
+          {/* 側面のチェック結果（6項目目以降） */}
           {diagnosis.length > 5 && (
             <div>
               <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
                 <span className="px-2 py-0.5 bg-purple-600 rounded text-xs">側面</span>
-                横からの診断
+                横からのチェック
               </h2>
               <div className="space-y-2">
                 {diagnosis.slice(5).map((item, i) => (
@@ -4164,7 +4164,7 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
               <div className="card-base p-4">
                 <p className="text-xs text-gray-400 mb-3 font-bold tracking-wide">今月の利用状況</p>
                 <UsageRow
-                  label="姿勢診断"
+                  label="姿勢チェック"
                   usage={state.usage.posture}
                   limit={state.limits.posture}
                 />
@@ -4189,7 +4189,7 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
                     👑 プレミアムプランで全機能開放
                   </p>
                   <ul className="text-sm text-gray-200 space-y-1.5">
-                    <li>✅ 姿勢診断・AIチャット・食事分析 無制限</li>
+                    <li>✅ 姿勢チェック・AIチャット・食事分析 無制限</li>
                     <li>✅ 30種類のストレッチ全開放</li>
                     <li>✅ 音声ガイド機能</li>
                     <li>✅ 過去データを無期限保存</li>
