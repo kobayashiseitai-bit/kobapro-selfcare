@@ -507,13 +507,27 @@ function HomeScreen({
     <main className="fixed inset-0 bg-gray-950 text-white flex flex-col overflow-y-auto">
       {/* ヘッダー */}
       <header className="sticky top-0 z-10 bg-gray-950/95 backdrop-blur-sm border-b border-gray-800/50 px-4 py-3 flex items-center justify-between">
-        <div className="w-20" />
-        <h1 className="text-lg font-bold">ZERO-PAIN</h1>
+        <div className="w-12" />
+        <h1 className="text-lg font-bold tracking-wide">ZERO-PAIN</h1>
         <button
           onClick={() => onNavigate("subscription")}
-          className="w-20 text-xs font-bold text-amber-400 hover:text-amber-300 flex items-center justify-end gap-1"
+          aria-label="メニュー"
+          className="w-12 h-10 flex items-center justify-center rounded-xl bg-gray-900 hover:bg-gray-800 border border-gray-800 active:scale-95 transition"
         >
-          👑 <span>プラン</span>
+          {/* 3本線のハンバーガーアイコン */}
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            className="w-5 h-5 text-gray-200"
+          >
+            <line x1="4" y1="7" x2="20" y2="7" />
+            <line x1="4" y1="12" x2="20" y2="12" />
+            <line x1="4" y1="17" x2="20" y2="17" />
+          </svg>
         </button>
       </header>
 
@@ -531,34 +545,27 @@ function HomeScreen({
           </div>
         )}
 
-        {/* プロフィール未完成バナー（大きく・直接プロフィール画面へ） */}
+        {/* プロフィール未完成バナー（インディゴ系で統一、大きく目立つ） */}
         {profileComplete === false && (
           <button
             onClick={() => onGoToMealMode("goal")}
-            className="btn-3d w-full rounded-2xl overflow-hidden shadow-[0_10px_30px_rgba(99,102,241,0.5)] text-left"
+            className="btn-3d w-full rounded-2xl overflow-hidden shadow-[0_10px_30px_rgba(99,102,241,0.45)] text-left bg-gradient-to-br from-indigo-500 via-indigo-600 to-indigo-800 relative"
           >
-            {/* 上部：NEWバナー */}
-            <div className="bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-300 px-4 py-2.5 flex items-center justify-between">
-              <p className="text-sm font-extrabold text-amber-900 flex items-center gap-1.5 drop-shadow-sm">
-                ✨ 最初の設定で精度が劇的UP
-              </p>
-              <span className="text-[10px] font-extrabold text-white bg-red-500 px-2 py-0.5 rounded-full shadow-sm">
-                未設定
-              </span>
-            </div>
-            {/* 下部：メインボタン */}
-            <div className="bg-gradient-to-br from-indigo-500 via-purple-600 to-indigo-700 px-5 py-5 flex items-center gap-4">
+            <span className="absolute top-2 right-2 text-[10px] font-extrabold text-white bg-red-500 px-2 py-0.5 rounded-full shadow-sm z-10">
+              未設定
+            </span>
+            <div className="px-5 py-5 flex items-center gap-4">
               <span className="text-5xl drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)]">👤</span>
               <div className="flex-1 min-w-0">
                 <p className="text-lg font-extrabold drop-shadow-sm text-white leading-tight">
-                  AIがあなた専用に計算します
+                  AIがあなた専用に計算
                 </p>
                 <p className="text-sm font-semibold text-indigo-100 mt-1 leading-snug">
                   身長・体重・目標を入力で<br />
                   最適カロリーを自動算出
                 </p>
               </div>
-              <span className="text-3xl text-white opacity-90">›</span>
+              <span className="text-3xl text-white opacity-80">›</span>
             </div>
           </button>
         )}
@@ -2198,41 +2205,39 @@ function MealScreen({
             <span className="text-lg">食事を撮影する</span>
           </button>
 
-          <button
-            onClick={() => setMode("calendar")}
-            className="w-full px-5 py-3 bg-gray-800 hover:bg-gray-700 rounded-2xl font-semibold flex items-center gap-3 border border-gray-700"
-          >
-            <span className="text-2xl">📅</span>
-            <div className="text-left flex-1">
-              <p className="text-sm font-bold">食事カレンダー</p>
-              <p className="text-xs text-gray-400">日別カロリー・栄養バランスの推移</p>
-            </div>
-            <span className="text-gray-500">›</span>
-          </button>
-
+          {/* プロフィール & 目標（最重要なので目立たせる） */}
           <button
             onClick={() => setMode("goal")}
-            className="w-full px-5 py-3 bg-gradient-to-br from-indigo-600/30 to-purple-600/20 hover:from-indigo-600/40 border border-indigo-500/50 rounded-2xl font-semibold flex items-center gap-3"
+            className="w-full px-5 py-4 bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-2xl font-semibold flex items-center gap-3 shadow-[0_8px_20px_rgba(99,102,241,0.35)]"
           >
-            <span className="text-2xl">👤</span>
+            <span className="text-3xl">👤</span>
             <div className="text-left flex-1">
-              <p className="text-sm font-bold">プロフィール & 目標</p>
-              <p className="text-xs text-indigo-300">身長・体重・目標 → AIが最適プラン自動計算</p>
+              <p className="text-base font-bold">プロフィール &amp; 目標</p>
+              <p className="text-xs text-indigo-100 mt-0.5">身長・体重 → AIが最適プラン計算</p>
             </div>
-            <span className="text-indigo-300">›</span>
+            <span className="text-white/70 text-xl">›</span>
           </button>
 
-          <button
-            onClick={openHistory}
-            className="w-full px-5 py-3 bg-gray-800 hover:bg-gray-700 rounded-2xl font-semibold flex items-center gap-3 border border-gray-700"
-          >
-            <span className="text-2xl">📚</span>
-            <div className="text-left flex-1">
-              <p className="text-sm font-bold">食事履歴（リスト表示）</p>
-              <p className="text-xs text-gray-400">全記録を写真付き一覧で確認</p>
-            </div>
-            <span className="text-gray-500">›</span>
-          </button>
+          {/* カレンダー・履歴はニュートラルで統一 */}
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => setMode("calendar")}
+              className="px-3 py-4 bg-gray-900 hover:bg-gray-800 rounded-2xl font-semibold flex flex-col items-center gap-1 border border-gray-800"
+            >
+              <span className="text-2xl">📅</span>
+              <p className="text-sm font-bold">カレンダー</p>
+              <p className="text-[10px] text-gray-400 text-center leading-tight">日別カロリー推移</p>
+            </button>
+
+            <button
+              onClick={openHistory}
+              className="px-3 py-4 bg-gray-900 hover:bg-gray-800 rounded-2xl font-semibold flex flex-col items-center gap-1 border border-gray-800"
+            >
+              <span className="text-2xl">📚</span>
+              <p className="text-sm font-bold">履歴</p>
+              <p className="text-[10px] text-gray-400 text-center leading-tight">全記録を一覧で確認</p>
+            </button>
+          </div>
         </div>
       )}
 
@@ -3112,9 +3117,9 @@ function MealGoalView({ onBack }: { onBack: () => void }) {
       <button
         onClick={save}
         disabled={saving}
-        className="w-full px-4 py-3.5 bg-gradient-to-r from-indigo-600 to-purple-600 disabled:opacity-50 rounded-2xl font-bold"
+        className="btn-3d w-full px-4 py-4 bg-gradient-to-b from-indigo-500 via-indigo-600 to-indigo-800 disabled:opacity-50 rounded-2xl font-bold text-base shadow-[0_8px_24px_rgba(99,102,241,0.45)]"
       >
-        {saving ? "保存中..." : "保存してAIに連携する"}
+        {saving ? "保存中..." : "保存する"}
       </button>
     </div>
   );
