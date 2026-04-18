@@ -19,7 +19,7 @@ export default function PrivacyPage() {
         <section>
           <p className="text-xs text-gray-400 mb-2">最終更新日: 2026年4月18日</p>
           <p>
-            ZERO-PAIN（以下「本アプリ」といいます）は、運営者である小林整体（以下「当方」といいます）が提供するセルフケア支援アプリケーションです。
+            ZERO-PAIN（以下「本アプリ」といいます）は、運営者である TopBank, Inc.（有限会社トップバンク、以下「当方」といいます）が提供するセルフケア支援アプリケーションです。
             本プライバシーポリシーは、本アプリの利用に関連して当方が取得する情報の取り扱いについて定めるものです。
           </p>
         </section>
@@ -27,7 +27,7 @@ export default function PrivacyPage() {
         <section>
           <h2 className="text-base font-bold text-white mb-2">1. 事業者情報</h2>
           <ul className="space-y-1 pl-4 list-disc text-gray-300">
-            <li>事業者名: 小林整体</li>
+            <li>事業者名: TopBank, Inc.（有限会社トップバンク）</li>
             <li>お問い合わせ: アプリ内サポート窓口</li>
           </ul>
         </section>

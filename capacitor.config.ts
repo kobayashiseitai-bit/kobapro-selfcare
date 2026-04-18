@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.kobayashiseitai.zeropain',
+  appId: 'com.topbank.zeropain',
   appName: 'ZERO-PAIN',
   webDir: 'public',
   server: {

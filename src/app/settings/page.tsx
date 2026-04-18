@@ -220,7 +220,7 @@ export default function SettingsPage() {
         <section className="card-base p-4 text-center">
           <p className="text-xs text-gray-500">ZERO-PAIN</p>
           <p className="text-[11px] text-gray-600 mt-1">
-            © 2026 小林整体. All rights reserved.
+            © 2026 TopBank, Inc. All rights reserved.
           </p>
         </section>
 
