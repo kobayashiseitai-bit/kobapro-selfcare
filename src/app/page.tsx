@@ -579,12 +579,12 @@ function HomeScreen({
             <div className="flex items-start gap-3">
               <span className="text-3xl">{riskIcons[prediction.riskLevel] || "✅"}</span>
               <div className="flex-1">
-                <p className="text-base font-bold text-white mb-1.5 flex items-center gap-1.5">
+                <p className="text-base font-bold text-white mb-1.5 flex items-center gap-2">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src="/icon-skeleton-sensei.png"
+                    src="/icon-skeleton-sensei-face.png"
                     alt="ガイコツ先生"
-                    className="w-6 h-6 object-contain drop-shadow"
+                    className="w-9 h-9 object-contain drop-shadow"
                   />
                   <span>ガイコツ先生の痛み予測</span>
                 </p>
@@ -697,12 +697,12 @@ function HomeScreen({
           >
             {/* 上部: NEWバナー訴求 */}
             <div className="bg-gradient-to-r from-lime-400 via-green-400 to-emerald-400 px-4 py-3 flex items-center justify-between">
-              <p className="text-base font-extrabold text-green-900 flex items-center gap-1.5 drop-shadow-sm">
+              <p className="text-base font-extrabold text-green-900 flex items-center gap-2 drop-shadow-sm">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src="/icon-skeleton-sensei.png"
+                  src="/icon-skeleton-sensei-face.png"
                   alt="ガイコツ先生"
-                  className="w-6 h-6 object-contain"
+                  className="w-8 h-8 object-contain"
                 />
                 ガイコツ先生の食事分析
               </p>
@@ -887,7 +887,7 @@ function AiCounselScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Scre
         <button onClick={() => onNavigate("home")} className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm">← 戻る</button>
         <div className="flex items-center gap-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icon-skeleton-sensei.png" alt="ガイコツ先生" className="w-8 h-8" />
+          <img src="/icon-skeleton-sensei-face.png" alt="ガイコツ先生" className="w-10 h-10 object-contain" />
           <h1 className="text-base font-bold">ガイコツ先生のカウンセリング</h1>
         </div>
       </header>
@@ -2274,12 +2274,12 @@ function MealScreen({
             />
           )}
           <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-5">
-            <div className="flex items-center justify-center gap-2 mb-2">
+            <div className="flex items-center justify-center gap-3 mb-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/icon-skeleton-sensei.png"
+                src="/icon-skeleton-sensei-face.png"
                 alt="ガイコツ先生"
-                className="w-8 h-8 object-contain animate-pulse"
+                className="w-14 h-14 object-contain animate-pulse"
               />
               <span className="animate-pulse text-emerald-300 text-lg font-bold">
                 ガイコツ先生が分析中...
@@ -3095,12 +3095,12 @@ function MealGoalView({ onBack }: { onBack: () => void }) {
       {/* AI分析結果 */}
       {rec && (
         <div className="bg-gradient-to-br from-emerald-500/10 to-green-600/5 border border-emerald-500/40 rounded-2xl p-4 space-y-3">
-          <p className="text-sm font-bold text-emerald-300 flex items-center gap-1.5">
+          <p className="text-sm font-bold text-emerald-300 flex items-center gap-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/icon-skeleton-sensei.png"
+              src="/icon-skeleton-sensei-face.png"
               alt="ガイコツ先生"
-              className="w-6 h-6 object-contain"
+              className="w-8 h-8 object-contain"
             />
             ガイコツ先生があなた専用に計算した推奨値
           </p>
@@ -3186,16 +3186,16 @@ function SaveSuccessModal({
       >
         {/* ガイコツ先生の顔 + チェックマーク */}
         <div className="flex justify-center mb-4 relative">
-          <div className="w-28 h-28 rounded-full bg-white border-4 border-white flex items-center justify-center shadow-lg overflow-hidden">
+          <div className="w-36 h-36 rounded-full bg-white border-4 border-white flex items-center justify-center shadow-lg overflow-hidden">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/icon-skeleton-sensei.png"
+              src="/icon-skeleton-sensei-face.png"
               alt="ガイコツ先生"
-              className="w-24 h-24 object-contain"
+              className="w-32 h-32 object-contain"
             />
           </div>
           {/* 右下に小さなチェックマークバッジ */}
-          <div className="absolute bottom-0 right-[calc(50%-3.5rem)] w-10 h-10 rounded-full bg-emerald-500 border-4 border-white flex items-center justify-center shadow-md">
+          <div className="absolute bottom-0 right-[calc(50%-4.5rem)] w-12 h-12 rounded-full bg-emerald-500 border-4 border-white flex items-center justify-center shadow-md">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 24 24"
@@ -3204,7 +3204,7 @@ function SaveSuccessModal({
               strokeWidth="4"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="w-5 h-5"
+              className="w-6 h-6"
             >
               <polyline points="20 6 9 17 4 12" />
             </svg>
@@ -3223,12 +3223,12 @@ function SaveSuccessModal({
         {/* ガイコツ先生の計算結果サマリ */}
         {recommendation && (
           <div className="bg-white/15 backdrop-blur-sm rounded-2xl p-4 space-y-2.5 mb-5">
-            <p className="text-xs text-emerald-100 font-semibold text-center flex items-center justify-center gap-1.5">
+            <p className="text-xs text-emerald-100 font-semibold text-center flex items-center justify-center gap-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/icon-skeleton-sensei.png"
+                src="/icon-skeleton-sensei-face.png"
                 alt="ガイコツ先生"
-                className="w-5 h-5 object-contain"
+                className="w-7 h-7 object-contain"
               />
               ガイコツ先生があなた専用に算出
             </p>
