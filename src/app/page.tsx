@@ -558,7 +558,7 @@ function HomeScreen({
               <span className="text-5xl drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)]">👤</span>
               <div className="flex-1 min-w-0">
                 <p className="text-lg font-extrabold drop-shadow-sm text-white leading-tight">
-                  AIがあなた専用に計算
+                  ガイコツ先生があなた専用に計算
                 </p>
                 <p className="text-sm font-semibold text-indigo-100 mt-1 leading-snug">
                   身長・体重・目標を入力で<br />
@@ -580,8 +580,8 @@ function HomeScreen({
               <span className="text-3xl">{riskIcons[prediction.riskLevel] || "✅"}</span>
               <div className="flex-1">
                 <p className="text-base font-bold text-white mb-1.5 flex items-center gap-1">
-                  <span className="text-lg">🤖</span>
-                  <span>AI痛み予測</span>
+                  <span className="text-lg">🦴</span>
+                  <span>ガイコツ先生の痛み予測</span>
                 </p>
                 <p className="text-sm font-bold text-white">{prediction.prediction}</p>
                 {prediction.detail && <p className="text-xs text-gray-300 mt-1">{prediction.detail}</p>}
@@ -668,7 +668,7 @@ function HomeScreen({
                 ✨ あなた専用のパーソナルトレーナー
               </p>
               <p className="text-xs font-semibold text-amber-900 mt-0.5">
-                使うほど賢くなる、あなた専属のAI相談窓口
+                使うほど賢くなる、あなた専属の相談相手
               </p>
             </div>
             {/* 下部: ガイコツ先生ボタン */}
@@ -693,7 +693,7 @@ function HomeScreen({
             {/* 上部: NEWバナー訴求 */}
             <div className="bg-gradient-to-r from-lime-400 via-green-400 to-emerald-400 px-4 py-3 flex items-center justify-between">
               <p className="text-base font-extrabold text-green-900 flex items-center gap-1.5 drop-shadow-sm">
-                🍎 AI食事分析
+                🦴 ガイコツ先生の食事分析
               </p>
               <span className="text-[10px] font-extrabold text-white bg-red-500 px-2 py-0.5 rounded-full shadow-sm">
                 NEW
@@ -703,7 +703,7 @@ function HomeScreen({
             <div className="bg-gradient-to-b from-emerald-500 via-emerald-600 to-green-800 flex items-center gap-4 px-5 py-5">
               <span className="text-5xl drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)]">📷</span>
               <div className="flex-1 min-w-0">
-                <p className="text-base font-bold drop-shadow-sm text-white">食事の写真でAI栄養診断</p>
+                <p className="text-base font-bold drop-shadow-sm text-white">食事の写真でガイコツ先生が栄養診断</p>
                 <p className="text-xs font-normal opacity-90 text-white mt-0.5">
                   カロリー・栄養素 × 姿勢ケアを同時にアドバイス
                 </p>
@@ -2157,7 +2157,7 @@ function MealScreen({
         >
           ← 戻る
         </button>
-        <h1 className="text-lg font-bold">🍱 食事記録＆AI分析</h1>
+        <h1 className="text-lg font-bold">🍱 食事記録＆ガイコツ先生の分析</h1>
       </div>
 
       {/* ホーム（撮影ボタン） */}
@@ -2165,7 +2165,7 @@ function MealScreen({
         <div className="w-full max-w-md space-y-4">
           <div className="bg-gradient-to-br from-emerald-500/20 to-green-600/10 border border-emerald-500/30 rounded-2xl p-5">
             <p className="text-sm text-emerald-200 leading-relaxed">
-              📸 食事の写真を撮るだけで、AIがメニュー・カロリー・栄養バランスを分析し、あなたの姿勢や痛みに合わせたアドバイスをお伝えします。
+              📸 食事の写真を撮るだけで、ガイコツ先生がメニュー・カロリー・栄養バランスを分析し、あなたの姿勢や痛みに合わせたアドバイスをお伝えします。
             </p>
           </div>
 
@@ -2213,7 +2213,7 @@ function MealScreen({
             <span className="text-3xl">👤</span>
             <div className="text-left flex-1">
               <p className="text-base font-bold">プロフィール &amp; 目標</p>
-              <p className="text-xs text-indigo-100 mt-0.5">身長・体重 → AIが最適プラン計算</p>
+              <p className="text-xs text-indigo-100 mt-0.5">身長・体重 → ガイコツ先生が最適プラン計算</p>
             </div>
             <span className="text-white/70 text-xl">›</span>
           </button>
@@ -2263,7 +2263,7 @@ function MealScreen({
             />
           )}
           <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-5">
-            <div className="animate-pulse text-emerald-300 text-lg mb-2">🤖 AI分析中...</div>
+            <div className="animate-pulse text-emerald-300 text-lg mb-2">🦴 ガイコツ先生が分析中...</div>
             <p className="text-xs text-gray-400">
               メニュー識別 → 栄養素計算 → あなた専用のアドバイス生成中
             </p>
@@ -2285,7 +2285,7 @@ function MealScreen({
 
           <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-gray-500">AI推定メニュー</span>
+              <span className="text-xs text-gray-500">ガイコツ先生の推定</span>
               {analysis.meal_type && (
                 <span className="text-xs px-2 py-0.5 bg-emerald-600/30 text-emerald-300 rounded-full">
                   {analysis.meal_type}
@@ -2317,7 +2317,7 @@ function MealScreen({
 
           {analysis.advice && (
             <div className="bg-gradient-to-br from-blue-500/10 to-indigo-600/10 border border-blue-500/30 rounded-2xl p-4">
-              <p className="text-xs text-blue-300 mb-2">💬 AIカウンセラーより</p>
+              <p className="text-xs text-blue-300 mb-2">💬 ガイコツ先生より</p>
               <p className="text-sm text-gray-200 whitespace-pre-wrap leading-relaxed">
                 {analysis.advice}
               </p>
@@ -2897,7 +2897,7 @@ function MealGoalView({ onBack }: { onBack: () => void }) {
       <div className="bg-gradient-to-br from-indigo-500/10 to-purple-600/5 border border-indigo-500/30 rounded-2xl p-4">
         <p className="text-sm font-bold text-indigo-300 mb-1">👤 プロフィール & 目標</p>
         <p className="text-xs text-gray-400">
-          身長・体重・目標を入力するとAIが科学的根拠に基づいてあなた専用のプランを自動計算します。
+          身長・体重・目標を入力するとガイコツ先生が科学的根拠に基づいてあなた専用のプランを自動計算します。
         </p>
       </div>
 
@@ -3074,7 +3074,7 @@ function MealGoalView({ onBack }: { onBack: () => void }) {
       {/* AI分析結果 */}
       {rec && (
         <div className="bg-gradient-to-br from-emerald-500/10 to-green-600/5 border border-emerald-500/40 rounded-2xl p-4 space-y-3">
-          <p className="text-sm font-bold text-emerald-300">🤖 AIがあなた専用に計算した推奨値</p>
+          <p className="text-sm font-bold text-emerald-300">🦴 ガイコツ先生があなた専用に計算した推奨値</p>
           <div className="grid grid-cols-2 gap-2">
             <InfoCell label="BMI" value={`${rec.bmi}`} sub={rec.bmiCategory} />
             <InfoCell label="基礎代謝" value={`${rec.bmr}`} sub="kcal/日" />
@@ -3177,16 +3177,16 @@ function SaveSuccessModal({
           保存しました！
         </h2>
         <p className="text-sm text-emerald-50 text-center mb-4 leading-relaxed">
-          AIがあなた専用のプランを
+          ガイコツ先生があなた専用のプランを
           <br />
           計算しました 💪
         </p>
 
-        {/* AI計算結果のサマリ */}
+        {/* ガイコツ先生の計算結果サマリ */}
         {recommendation && (
           <div className="bg-white/15 backdrop-blur-sm rounded-2xl p-4 space-y-2.5 mb-5">
             <p className="text-xs text-emerald-100 font-semibold text-center">
-              🤖 あなた専用の推奨値
+              🦴 ガイコツ先生があなた専用に算出
             </p>
             <div className="grid grid-cols-2 gap-2">
               <div className="bg-white/20 rounded-xl px-3 py-2 text-center">
