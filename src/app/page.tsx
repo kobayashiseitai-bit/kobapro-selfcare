@@ -113,10 +113,16 @@ export default function Home() {
   const [screen, setScreen] = useState<Screen>("loading");
   const [selectedSymptomId, setSelectedSymptomId] = useState<string | null>(null);
   const [mealInitialMode, setMealInitialMode] = useState<"home" | "goal" | "calendar" | null>(null);
+  const [chatConsultMeal, setChatConsultMeal] = useState(false);
 
   const goToMealWithMode = (mode: "home" | "goal" | "calendar") => {
     setMealInitialMode(mode);
     setScreen("meal");
+  };
+
+  const goToChatWithMeal = () => {
+    setChatConsultMeal(true);
+    setScreen("ai-counsel");
   };
 
   // 初回チェック: ユーザー登録済みかどうか
@@ -157,7 +163,14 @@ export default function Home() {
     <>
       {screen === "register" && <RegisterScreen onComplete={() => setScreen("home")} />}
       {screen === "home" && <HomeScreen onNavigate={setScreen} onSelectSymptom={goToSelfcare} onGoToMealMode={goToMealWithMode} />}
-      {screen === "ai-counsel" && <AiCounselScreen onNavigate={setScreen} onSelectSymptom={goToSelfcare} />}
+      {screen === "ai-counsel" && (
+        <AiCounselScreen
+          onNavigate={setScreen}
+          onSelectSymptom={goToSelfcare}
+          consultMeal={chatConsultMeal}
+          onMealConsumed={() => setChatConsultMeal(false)}
+        />
+      )}
       {screen === "selfcare" && <SelfcareScreen onNavigate={setScreen} initialSymptomId={selectedSymptomId} />}
       {screen === "check" && <CheckScreen onNavigate={setScreen} />}
       {screen === "history" && <HistoryScreen onNavigate={setScreen} />}
@@ -166,6 +179,7 @@ export default function Home() {
           onNavigate={setScreen}
           initialMode={mealInitialMode}
           onModeConsumed={() => setMealInitialMode(null)}
+          onConsultMeal={goToChatWithMeal}
         />
       )}
       {screen === "subscription" && <SubscriptionScreen onNavigate={setScreen} />}
@@ -926,7 +940,17 @@ function HomeScreen({
 // ==================== AIカウンセリング画面 ====================
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
-function AiCounselScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Screen) => void; onSelectSymptom: (id: string) => void }) {
+function AiCounselScreen({
+  onNavigate,
+  onSelectSymptom,
+  consultMeal,
+  onMealConsumed,
+}: {
+  onNavigate: (s: Screen) => void;
+  onSelectSymptom: (id: string) => void;
+  consultMeal?: boolean;
+  onMealConsumed?: () => void;
+}) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -937,7 +961,8 @@ function AiCounselScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Scre
   // ストリーミングAPIを呼び出す共通関数
   const streamChat = async (
     apiMessages: ChatMessage[],
-    onText: (delta: string) => void
+    onText: (delta: string) => void,
+    extra?: { consultMeal?: boolean }
   ): Promise<{ cleanText: string; recommendedSymptomId: string | null }> => {
     const res = await fetch("/api/chat", {
       method: "POST",
@@ -945,6 +970,7 @@ function AiCounselScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Scre
       body: JSON.stringify({
         messages: apiMessages.map((m) => ({ role: m.role, content: m.content })),
         deviceId: getDeviceId(),
+        consultMeal: extra?.consultMeal === true,
       }),
     });
     if (!res.body) throw new Error("No response body");
@@ -988,6 +1014,38 @@ function AiCounselScreen({ onNavigate, onSelectSymptom }: { onNavigate: (s: Scre
   // 初期ロード：過去のチャット履歴を復元 or 初回メッセージ送信
   useEffect(() => {
     async function initChat() {
+      // 食事相談モードの場合、履歴を読まずに食事写真付きで開始
+      if (consultMeal) {
+        onMealConsumed?.();
+        setLoading(true);
+        setMessages([{ role: "assistant", content: "" }]);
+        let streamedText = "";
+        try {
+          const result = await streamChat(
+            [],
+            (delta) => {
+              streamedText += delta;
+              const display = streamedText.replace(/<recommendation>[\s\S]*$/, "");
+              setMessages([{ role: "assistant", content: display }]);
+            },
+            { consultMeal: true }
+          );
+          if (result.cleanText) {
+            setMessages([{ role: "assistant", content: result.cleanText }]);
+          }
+        } catch {
+          setMessages([
+            {
+              role: "assistant",
+              content: "食事の分析結果を見てアドバイスします。何か気になる点はありますか？",
+            },
+          ]);
+        }
+        setLoading(false);
+        setHistoryLoaded(true);
+        return;
+      }
+
       // 1. まず過去のチャット履歴を取得
       try {
         const deviceId = getDeviceId();
@@ -2695,10 +2753,12 @@ function MealScreen({
   onNavigate,
   initialMode,
   onModeConsumed,
+  onConsultMeal,
 }: {
   onNavigate: (s: Screen) => void;
   initialMode?: "home" | "goal" | "calendar" | null;
   onModeConsumed?: () => void;
+  onConsultMeal?: () => void;
 }) {
   const [mode, setMode] = useState<"home" | "analyzing" | "result" | "history" | "calendar" | "goal">(
     initialMode === "goal" || initialMode === "calendar" ? initialMode : "home"
@@ -3108,6 +3168,22 @@ function MealScreen({
                 {analysis.advice}
               </p>
             </div>
+          )}
+
+          {/* ガイコツ先生にこの食事を相談 */}
+          {onConsultMeal && (
+            <button
+              onClick={onConsultMeal}
+              className="btn-secondary w-full px-4 py-4 flex items-center justify-center gap-3"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/icon-skeleton-sensei-face.png"
+                alt="ガイコツ先生"
+                className="w-10 h-10 object-contain"
+              />
+              <span className="text-base font-bold">ガイコツ先生にこの食事を相談する</span>
+            </button>
           )}
 
           <div className="flex gap-2">
