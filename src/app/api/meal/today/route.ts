@@ -49,12 +49,21 @@ export async function GET(req: NextRequest) {
       .select("id")
       .eq("device_id", deviceId);
     if (!users || users.length === 0) {
-      return NextResponse.json({
-        date: start.toISOString(),
-        byMealType: {},
-        total: { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0 },
-        goal: null,
-      });
+      return NextResponse.json(
+        {
+          date: start.toISOString(),
+          byMealType: {},
+          total: { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0 },
+          goal: null,
+        },
+        {
+          headers: {
+            "Cache-Control": "no-store, no-cache, must-revalidate, private",
+            Pragma: "no-cache",
+            Expires: "0",
+          },
+        }
+      );
     }
     const userId = users[0].id;
 
@@ -119,17 +128,26 @@ export async function GET(req: NextRequest) {
       total.fat_g += Number(m.fat_g) || 0;
     });
 
-    return NextResponse.json({
-      date: start.toISOString(),
-      byMealType,
-      total: {
-        calories: total.calories,
-        protein_g: Number(total.protein_g.toFixed(1)),
-        carbs_g: Number(total.carbs_g.toFixed(1)),
-        fat_g: Number(total.fat_g.toFixed(1)),
+    return NextResponse.json(
+      {
+        date: start.toISOString(),
+        byMealType,
+        total: {
+          calories: total.calories,
+          protein_g: Number(total.protein_g.toFixed(1)),
+          carbs_g: Number(total.carbs_g.toFixed(1)),
+          fat_g: Number(total.fat_g.toFixed(1)),
+        },
+        goal: goalRes.data,
       },
-      goal: goalRes.data,
-    });
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, private",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      }
+    );
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     return NextResponse.json(

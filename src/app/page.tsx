@@ -3269,30 +3269,38 @@ function TodayMealDashboard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDateOffset]);
 
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const deviceId = getDeviceId();
+      // クライアントのローカルタイムゾーンで「その日の0:00〜翌日0:00」を計算
+      const startLocal = new Date(selectedDate);
+      startLocal.setHours(0, 0, 0, 0);
+      const endLocal = new Date(startLocal);
+      endLocal.setDate(endLocal.getDate() + 1);
+      // iOS Safari のキャッシュ回避のためタイムスタンプを付与
+      const res = await fetch(
+        `/api/meal/today?deviceId=${encodeURIComponent(deviceId || "")}&start=${encodeURIComponent(
+          startLocal.toISOString()
+        )}&end=${encodeURIComponent(endLocal.toISOString())}&t=${Date.now()}`,
+        {
+          cache: "no-store",
+          headers: {
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            Pragma: "no-cache",
+          },
+        }
+      );
+      const json = await res.json();
+      if (res.ok) setData(json);
+    } catch {
+      setData(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedDate]);
+
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const deviceId = getDeviceId();
-        // クライアントのローカルタイムゾーンで「その日の0:00〜翌日0:00」を計算
-        const startLocal = new Date(selectedDate);
-        startLocal.setHours(0, 0, 0, 0);
-        const endLocal = new Date(startLocal);
-        endLocal.setDate(endLocal.getDate() + 1);
-        const res = await fetch(
-          `/api/meal/today?deviceId=${encodeURIComponent(deviceId || "")}&start=${encodeURIComponent(
-            startLocal.toISOString()
-          )}&end=${encodeURIComponent(endLocal.toISOString())}`,
-          { cache: "no-store" }
-        );
-        const json = await res.json();
-        if (res.ok) setData(json);
-      } catch {
-        setData(null);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchData();
 
     // 画面に戻ってきたとき自動リフレッシュ（食事記録後にホームに戻った時など）
@@ -3305,7 +3313,7 @@ function TodayMealDashboard({
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("focus", fetchData);
     };
-  }, [selectedDate]);
+  }, [fetchData]);
 
   // 7日分のカレンダー（今日を中心に±3日）
   const weekDays = useMemo(() => {
@@ -3336,29 +3344,40 @@ function TodayMealDashboard({
 
   return (
     <div className="card-accent-emerald p-4 space-y-3 relative overflow-hidden">
-      {/* 週間カレンダー（横7日分） */}
-      <div className="flex items-center justify-between gap-1">
-        {weekDays.map((d) => {
-          const isSelected = d.offset === selectedDateOffset;
-          const isToday = d.offset === 0;
-          const dayOfWeek = dayLabels[d.date.getDay()];
-          return (
-            <button
-              key={d.offset}
-              onClick={() => setSelectedDateOffset(d.offset)}
-              className={`flex-1 py-2 rounded-xl transition ${
-                isSelected
-                  ? "bg-emerald-500 text-white"
-                  : isToday
-                  ? "bg-emerald-500/20 border border-emerald-500/40 text-emerald-300"
-                  : "text-gray-400"
-              }`}
-            >
-              <p className="text-[11px] font-semibold">{isToday ? "今日" : dayOfWeek}</p>
-              <p className="text-sm font-extrabold">{d.date.getDate()}</p>
-            </button>
-          );
-        })}
+      {/* 週間カレンダー + 更新ボタン */}
+      <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between gap-1 flex-1">
+          {weekDays.map((d) => {
+            const isSelected = d.offset === selectedDateOffset;
+            const isToday = d.offset === 0;
+            const dayOfWeek = dayLabels[d.date.getDay()];
+            return (
+              <button
+                key={d.offset}
+                onClick={() => setSelectedDateOffset(d.offset)}
+                className={`flex-1 py-2 rounded-xl transition ${
+                  isSelected
+                    ? "bg-emerald-500 text-white"
+                    : isToday
+                    ? "bg-emerald-500/20 border border-emerald-500/40 text-emerald-300"
+                    : "text-gray-400"
+                }`}
+              >
+                <p className="text-[11px] font-semibold">{isToday ? "今日" : dayOfWeek}</p>
+                <p className="text-sm font-extrabold">{d.date.getDate()}</p>
+              </button>
+            );
+          })}
+        </div>
+        {/* 🔄 更新ボタン（食事記録後に手動で最新化） */}
+        <button
+          onClick={fetchData}
+          disabled={loading}
+          aria-label="更新"
+          className="w-9 h-9 flex items-center justify-center rounded-xl bg-gray-800 border border-gray-700 text-emerald-400 active:scale-90 disabled:opacity-50 transition"
+        >
+          <span className={`text-base ${loading ? "animate-spin" : ""}`}>🔄</span>
+        </button>
       </div>
 
       {/* 摂取カロリー プログレスバー + PFC円グラフ */}
