@@ -1272,13 +1272,22 @@ function AiCounselScreen({
   const [loading, setLoading] = useState(false);
   const [recommendedId, setRecommendedId] = useState<string | null>(null);
   const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [attachedPhotoUrl, setAttachedPhotoUrl] = useState<string | null>(null);
+  const [photoViewingBadge, setPhotoViewingBadge] = useState<string | null>(null);
+  const [compareRequested, setCompareRequested] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   // ストリーミングAPIを呼び出す共通関数
   const streamChat = async (
     apiMessages: ChatMessage[],
     onText: (delta: string) => void,
-    extra?: { consultMeal?: boolean }
+    extra?: {
+      consultMeal?: boolean;
+      attachedPhotoUrl?: string | null;
+      compareMode?: boolean;
+    }
   ): Promise<{ cleanText: string; recommendedSymptomId: string | null }> => {
     const res = await fetch("/api/chat", {
       method: "POST",
@@ -1287,6 +1296,8 @@ function AiCounselScreen({
         messages: apiMessages.map((m) => ({ role: m.role, content: m.content })),
         deviceId: getDeviceId(),
         consultMeal: extra?.consultMeal === true,
+        attachedPhotoUrl: extra?.attachedPhotoUrl || null,
+        compareMode: extra?.compareMode === true,
       }),
     });
     if (!res.body) throw new Error("No response body");
@@ -1331,10 +1342,49 @@ function AiCounselScreen({
   useEffect(() => {
     async function initChat() {
       // 食事相談モードの場合、履歴を読まずに食事写真付きで開始
+      // 姿勢写真が存在するかを先に取得して、バッジ表示の判定に使う
+      try {
+        const deviceId = getDeviceId();
+        const baRes = await fetch(
+          `/api/before-after?deviceId=${encodeURIComponent(deviceId || "")}&t=${Date.now()}`,
+          { cache: "no-store" }
+        );
+        const baData = await baRes.json();
+        if (baData.hasData && baData.latest) {
+          const latestDate = new Date(baData.latest.createdAt);
+          const daysAgo = Math.floor(
+            (Date.now() - latestDate.getTime()) / (1000 * 60 * 60 * 24)
+          );
+          if (daysAgo <= 3) {
+            const dateLabel =
+              daysAgo === 0
+                ? "今日"
+                : daysAgo === 1
+                ? "昨日"
+                : `${latestDate.getMonth() + 1}/${latestDate.getDate()}の姿勢写真`;
+            setPhotoViewingBadge(dateLabel);
+          }
+        } else if (baData.firstRecord) {
+          // 1枚しかない場合も表示
+          const d = new Date(baData.firstRecord.createdAt);
+          const daysAgo = Math.floor(
+            (Date.now() - d.getTime()) / (1000 * 60 * 60 * 24)
+          );
+          if (daysAgo <= 3) {
+            setPhotoViewingBadge(
+              daysAgo === 0 ? "今日" : `${d.getMonth() + 1}/${d.getDate()}の姿勢写真`
+            );
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+
       if (consultMeal) {
         onMealConsumed?.();
         setLoading(true);
         setMessages([{ role: "assistant", content: "" }]);
+        setPhotoViewingBadge("食事写真");
         let streamedText = "";
         try {
           const result = await streamChat(
@@ -1432,27 +1482,67 @@ function AiCounselScreen({
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const sendMessage = async () => {
-    if (!input.trim() || loading) return;
-    const userMsg: ChatMessage = { role: "user", content: input.trim() };
+  // カメラで撮影した画像をSupabase Storageへアップロード
+  const handlePhotoCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingPhoto(true);
+    try {
+      const compressedDataUrl = await compressImageToBase64(file, 1024);
+      const res = await fetch("/api/chat/upload-photo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          deviceId: getDeviceId(),
+          imageData: compressedDataUrl,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.imageUrl) {
+        throw new Error(data.detail || data.error || "アップロードに失敗しました");
+      }
+      setAttachedPhotoUrl(data.imageUrl);
+      setPhotoViewingBadge("今撮った姿勢写真");
+      // プレースホルダーメッセージを自動入力
+      if (!input.trim()) {
+        setInput("今撮影した姿勢を見てください");
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "アップロード失敗");
+    } finally {
+      setUploadingPhoto(false);
+      if (cameraInputRef.current) cameraInputRef.current.value = "";
+    }
+  };
+
+  // Before/After比較リクエスト
+  const requestCompare = async () => {
+    if (loading || uploadingPhoto) return;
+    const userMsg: ChatMessage = {
+      role: "user",
+      content: "最初と最新の姿勢を比べて、変化と改善点を教えてください",
+    };
     const newMessages = [...messages, userMsg];
-    // 空のアシスタントメッセージを追加（ストリーミング表示用）
     setMessages([...newMessages, { role: "assistant", content: "" }]);
-    setInput("");
     setLoading(true);
+    setCompareRequested(true);
+    setPhotoViewingBadge("Before/After 比較中");
 
     let streamedText = "";
     try {
-      const result = await streamChat(newMessages, (delta) => {
-        streamedText += delta;
-        const display = streamedText.replace(/<recommendation>[\s\S]*$/, "");
-        setMessages([...newMessages, { role: "assistant", content: display }]);
-      });
+      const result = await streamChat(
+        newMessages,
+        (delta) => {
+          streamedText += delta;
+          const display = streamedText.replace(/<recommendation>[\s\S]*$/, "");
+          setMessages([...newMessages, { role: "assistant", content: display }]);
+        },
+        { compareMode: true }
+      );
 
       const finalText = result.cleanText || streamedText;
       setMessages([...newMessages, { role: "assistant", content: finalText }]);
 
-      // DBに保存
       saveToDb({ type: "chat", role: "user", content: userMsg.content });
       saveToDb({
         type: "chat",
@@ -1461,8 +1551,59 @@ function AiCounselScreen({
         recommendedSymptom: result.recommendedSymptomId,
       });
 
-      if (result.recommendedSymptomId) {
-        setRecommendedId(result.recommendedSymptomId);
+      if (result.recommendedSymptomId) setRecommendedId(result.recommendedSymptomId);
+    } catch {
+      setMessages([
+        ...newMessages,
+        {
+          role: "assistant",
+          content: "すみません、比較分析中にエラーが発生しました。もう一度お試しください。",
+        },
+      ]);
+    }
+    setLoading(false);
+  };
+
+  const sendMessage = async () => {
+    if ((!input.trim() && !attachedPhotoUrl) || loading) return;
+    const userContent = input.trim() || "今撮影した姿勢を見てください";
+    const userMsg: ChatMessage = { role: "user", content: userContent };
+    const newMessages = [...messages, userMsg];
+    setMessages([...newMessages, { role: "assistant", content: "" }]);
+    setInput("");
+    setLoading(true);
+
+    // 写真を添付した場合はバッジ表示を維持（送信後にクリア）
+    const photoForThisSend = attachedPhotoUrl;
+    setAttachedPhotoUrl(null);
+
+    let streamedText = "";
+    try {
+      const result = await streamChat(
+        newMessages,
+        (delta) => {
+          streamedText += delta;
+          const display = streamedText.replace(/<recommendation>[\s\S]*$/, "");
+          setMessages([...newMessages, { role: "assistant", content: display }]);
+        },
+        { attachedPhotoUrl: photoForThisSend }
+      );
+
+      const finalText = result.cleanText || streamedText;
+      setMessages([...newMessages, { role: "assistant", content: finalText }]);
+
+      saveToDb({ type: "chat", role: "user", content: userMsg.content });
+      saveToDb({
+        type: "chat",
+        role: "assistant",
+        content: finalText,
+        recommendedSymptom: result.recommendedSymptomId,
+      });
+
+      if (result.recommendedSymptomId) setRecommendedId(result.recommendedSymptomId);
+      // 写真送信完了後はバッジ更新
+      if (photoForThisSend) {
+        setPhotoViewingBadge(null);
       }
     } catch {
       setMessages([
@@ -1477,13 +1618,24 @@ function AiCounselScreen({
 
   return (
     <main className="fixed inset-0 bg-gray-950 text-white flex flex-col">
-      <header className="sticky top-0 z-10 bg-gray-950/95 backdrop-blur-sm border-b border-gray-800/50 px-4 py-3 flex items-center gap-3">
-        <button onClick={() => onNavigate("home")} className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm">← 戻る</button>
-        <div className="flex items-center gap-2">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icon-skeleton-sensei-face.png" alt="ガイコツ先生" className="w-10 h-10 object-contain" />
-          <h1 className="text-base font-bold">ガイコツ先生のカウンセリング</h1>
+      <header className="sticky top-0 z-10 bg-gray-950/95 backdrop-blur-sm border-b border-gray-800/50 px-4 py-3">
+        <div className="flex items-center gap-3">
+          <button onClick={() => onNavigate("home")} className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm">← 戻る</button>
+          <div className="flex items-center gap-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/icon-skeleton-sensei-face.png" alt="ガイコツ先生" className="w-10 h-10 object-contain" />
+            <h1 className="text-base font-bold">ガイコツ先生のカウンセリング</h1>
+          </div>
         </div>
+        {/* 📸 Vision モードバッジ（写真を見ながら会話中の視覚フィードバック） */}
+        {photoViewingBadge && (
+          <div className="mt-2 inline-flex items-center gap-1.5 bg-gradient-to-r from-indigo-500/30 to-purple-500/30 border border-indigo-400/50 rounded-full px-3 py-1">
+            <span className="text-sm">📸</span>
+            <span className="text-[11px] font-bold text-indigo-200">
+              {photoViewingBadge}を見ながら応答中
+            </span>
+          </div>
+        )}
       </header>
 
       {/* チャットエリア */}
@@ -1527,24 +1679,93 @@ function AiCounselScreen({
         </div>
       )}
 
-      {/* 入力エリア */}
-      <div className="border-t border-gray-800 px-4 py-3 max-w-md w-full mx-auto flex gap-2">
+      {/* 入力エリア（機能強化: カメラ撮影 + Before/After比較） */}
+      <div className="border-t border-gray-800 max-w-md w-full mx-auto">
+        {/* 隠しファイル入力（カメラ起動用） */}
         <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter" && !("isComposing" in e.nativeEvent && e.nativeEvent.isComposing)) sendMessage(); }}
-          placeholder="お悩みを入力..."
-          className="flex-1 px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-blue-500 text-sm"
-          disabled={loading}
+          ref={cameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={handlePhotoCapture}
+          className="hidden"
         />
-        <button
-          onClick={sendMessage}
-          disabled={loading || !input.trim()}
-          className="px-4 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 rounded-xl font-semibold text-sm"
-        >
-          送信
-        </button>
+
+        {/* 添付プレビュー（撮影後・送信前） */}
+        {attachedPhotoUrl && (
+          <div className="px-4 pt-3 pb-1">
+            <div className="relative inline-flex items-center gap-2 bg-indigo-900/40 border border-indigo-500/40 rounded-xl p-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={attachedPhotoUrl}
+                alt="添付画像"
+                className="w-12 h-12 object-cover rounded-lg"
+              />
+              <div className="pr-1">
+                <p className="text-[11px] font-bold text-indigo-300">✅ 写真を添付しました</p>
+                <p className="text-[10px] text-gray-400">送信すると分析します</p>
+              </div>
+              <button
+                onClick={() => {
+                  setAttachedPhotoUrl(null);
+                  setPhotoViewingBadge(null);
+                }}
+                className="ml-1 w-6 h-6 bg-gray-800 hover:bg-gray-700 rounded-full flex items-center justify-center text-xs text-gray-400"
+                aria-label="削除"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Before/After比較ボタン（まだ比較してない場合のみ表示） */}
+        {!compareRequested && !attachedPhotoUrl && messages.length >= 1 && (
+          <div className="px-4 pt-2">
+            <button
+              onClick={requestCompare}
+              disabled={loading}
+              className="w-full py-2 bg-gradient-to-r from-pink-500/20 to-purple-500/20 hover:from-pink-500/30 hover:to-purple-500/30 border border-pink-500/40 rounded-xl text-xs font-bold text-pink-200 flex items-center justify-center gap-2 active:scale-[0.98] transition"
+            >
+              <span className="text-base">⚖️</span>
+              <span>Before / After を比較分析してもらう</span>
+            </button>
+          </div>
+        )}
+
+        <div className="px-4 py-3 flex gap-2 items-end">
+          {/* カメラボタン */}
+          <button
+            onClick={() => cameraInputRef.current?.click()}
+            disabled={loading || uploadingPhoto}
+            aria-label="カメラで撮影"
+            className="w-11 h-11 flex-shrink-0 bg-gradient-to-br from-indigo-500 to-purple-600 hover:brightness-110 disabled:opacity-50 rounded-xl flex items-center justify-center active:scale-95 transition"
+          >
+            <span className="text-xl">{uploadingPhoto ? "⏳" : "📷"}</span>
+          </button>
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (
+                e.key === "Enter" &&
+                !("isComposing" in e.nativeEvent && e.nativeEvent.isComposing)
+              )
+                sendMessage();
+            }}
+            placeholder={attachedPhotoUrl ? "写真について質問（任意）..." : "お悩みを入力..."}
+            className="flex-1 px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-blue-500 text-sm"
+            disabled={loading}
+          />
+          <button
+            onClick={sendMessage}
+            disabled={loading || (!input.trim() && !attachedPhotoUrl)}
+            className="px-4 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 rounded-xl font-semibold text-sm"
+          >
+            送信
+          </button>
+        </div>
       </div>
     </main>
   );
