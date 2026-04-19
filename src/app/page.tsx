@@ -2258,8 +2258,8 @@ function CelebrationModal({
 
         {/* バッジ名 */}
         <div className="animate-slide-up-fade" style={{ animationDelay: "0.4s", opacity: 0 }}>
-          <p className="text-amber-300 font-bold text-sm tracking-widest mb-2">
-            🎊 BADGE UNLOCKED 🎊
+          <p className="text-amber-300 font-bold text-base tracking-wide mb-2">
+            🎊 バッジを獲得しました 🎊
           </p>
           <h2 className="text-3xl font-extrabold text-white mb-2 drop-shadow-lg">
             {badge.title}
@@ -2369,7 +2369,7 @@ async function scheduleStreakReminder(data: StreakData) {
           : `素晴らしい継続力です！明日も楽しく記録しましょう ✨`;
     } else {
       title = "🌱 ZERO-PAINで健康習慣";
-      body = "今日の姿勢チェックや食事記録をしてストリークを始めましょう！";
+      body = "今日の姿勢チェックや食事記録をして連続記録を始めましょう！";
     }
 
     // 今日の20:30（JST）を計算
@@ -2504,7 +2504,7 @@ function StreakCard() {
             </p>
             <p className="text-xs text-gray-300 leading-relaxed">
               今日、姿勢チェック・食事記録・ガイコツ先生への相談のいずれかをすると、
-              ストリーク（連続日数）がスタートします 🎯
+              連続記録日数がカウントスタートします 🎯
             </p>
           </div>
         </div>
@@ -2646,7 +2646,7 @@ function StreakDetailModal({
         {/* ヘッダー */}
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-extrabold text-white flex items-center gap-2">
-            🔥 <span>ストリーク</span>
+            🔥 <span>連続記録</span>
           </h2>
           <button onClick={onClose} className="text-gray-400 text-2xl">
             ✕
@@ -2737,7 +2737,7 @@ function StreakDetailModal({
             <div className="card-accent-indigo p-4 space-y-3">
               {/* パーセンタイル表示 */}
               <div className="text-center">
-                <p className="text-[11px] text-indigo-300">あなたのストリークは</p>
+                <p className="text-[11px] text-indigo-300">あなたの連続記録は</p>
                 <p className="text-3xl font-extrabold text-white mt-1">
                   上位{" "}
                   <span className="text-indigo-300">
