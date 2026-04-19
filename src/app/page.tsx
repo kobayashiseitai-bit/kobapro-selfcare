@@ -525,6 +525,10 @@ function HomeScreen({
   const [showReminderSetting, setShowReminderSetting] = useState(false);
   const [profileComplete, setProfileComplete] = useState<boolean | null>(null);
   const [showMenu, setShowMenu] = useState(false);
+  // 朝のチェックイン通知設定
+  const [morningNotifEnabled, setMorningNotifEnabled] = useState(false);
+  const [morningNotifHour, setMorningNotifHour] = useState(8); // 0-23
+  const [morningNotifMinute, setMorningNotifMinute] = useState(0); // 0-59
 
   // 痛み予測を取得 + プロフィール完成度チェック
   useEffect(() => {
@@ -598,6 +602,119 @@ function HomeScreen({
       await LocalNotifications.cancel({ notifications: [{ id: 1 }] });
     } catch (e) {
       console.error("Native notification cancel error:", e);
+    }
+  };
+
+  // ☀️ 朝のコンディションチェック通知をスケジュール（ID=3、毎日指定時刻）
+  const scheduleMorningCheckinNotification = async (hour: number, minute: number = 0) => {
+    if (!isNativePlatform()) {
+      // Web環境: ブラウザ通知許可だけ求める
+      if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "default") {
+        await Notification.requestPermission();
+      }
+      return;
+    }
+    try {
+      const { LocalNotifications } = await import("@capacitor/local-notifications");
+      // 既存の朝通知をキャンセル
+      await LocalNotifications.cancel({ notifications: [{ id: 3 }] });
+      // 権限取得
+      const perm = await LocalNotifications.requestPermissions();
+      if (perm.display !== "granted") return;
+
+      // 次回の発火時刻（今日 or 明日の指定時刻）
+      const now = new Date();
+      const target = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+        hour,
+        minute,
+        0
+      );
+      // すでに過ぎていたら翌日に
+      if (target.getTime() <= now.getTime()) {
+        target.setDate(target.getDate() + 1);
+      }
+
+      // メッセージはランダムに選ぶ（マンネリ防止）
+      const titles = [
+        "☀️ おはようございます！",
+        "🦴 ガイコツ先生がお待ちです",
+        "☕ 今日のコンディションは？",
+        "🌅 今日も一緒にコツコツ",
+      ];
+      const bodies = [
+        "30秒で完了！今日の体調をチェックしましょう",
+        "今日のコンディションを教えてくださいね",
+        "朝のチェックインで今日のケアが決まります",
+        "ガイコツ先生から今日のアドバイスが届きます",
+      ];
+      const title = titles[Math.floor(Math.random() * titles.length)];
+      const body = bodies[Math.floor(Math.random() * bodies.length)];
+
+      await LocalNotifications.schedule({
+        notifications: [
+          {
+            id: 3,
+            title,
+            body,
+            schedule: {
+              at: target,
+              repeats: true,
+              every: "day",
+            },
+            sound: "default",
+          },
+        ],
+      });
+    } catch (e) {
+      console.error("Morning checkin notification error:", e);
+    }
+  };
+
+  // 朝通知キャンセル
+  const cancelMorningCheckinNotification = async () => {
+    if (!isNativePlatform()) return;
+    try {
+      const { LocalNotifications } = await import("@capacitor/local-notifications");
+      await LocalNotifications.cancel({ notifications: [{ id: 3 }] });
+    } catch (e) {
+      console.error("Morning notification cancel error:", e);
+    }
+  };
+
+  // 朝のチェックイン通知設定の読み込み
+  useEffect(() => {
+    const enabled = localStorage.getItem("zero_pain_morning_notif") === "1";
+    const hour = parseInt(localStorage.getItem("zero_pain_morning_hour") || "8");
+    const minute = parseInt(localStorage.getItem("zero_pain_morning_minute") || "0");
+    setMorningNotifEnabled(enabled);
+    setMorningNotifHour(hour);
+    setMorningNotifMinute(minute);
+    // 有効なら再スケジュール（起動のたびに最新状態に）
+    if (enabled) {
+      scheduleMorningCheckinNotification(hour, minute);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 朝通知の設定を保存＆適用
+  const saveMorningNotifSettings = async (
+    enabled: boolean,
+    hour: number,
+    minute: number
+  ) => {
+    setMorningNotifEnabled(enabled);
+    setMorningNotifHour(hour);
+    setMorningNotifMinute(minute);
+    localStorage.setItem("zero_pain_morning_notif", enabled ? "1" : "0");
+    localStorage.setItem("zero_pain_morning_hour", String(hour));
+    localStorage.setItem("zero_pain_morning_minute", String(minute));
+    if (enabled) {
+      await scheduleMorningCheckinNotification(hour, minute);
+    } else {
+      await cancelMorningCheckinNotification();
     }
   };
 
@@ -888,7 +1005,15 @@ function HomeScreen({
         )}
 
         {/* ☀️ 朝のコンディションチェック（毎日1回・AIパーソナライズ） */}
-        <MorningCheckinCard onNavigate={onNavigate} onSelectSymptom={onSelectSymptom} />
+        <MorningCheckinCard
+          onNavigate={onNavigate}
+          onSelectSymptom={onSelectSymptom}
+          morningNotifEnabled={morningNotifEnabled}
+          onEnableMorningNotif={async () => {
+            await saveMorningNotifSettings(true, 8, 0);
+            setShowReminderSetting(true);
+          }}
+        />
 
         {/* 🔥 ストリーク（連続記録日数） */}
         <StreakCard />
@@ -899,37 +1024,95 @@ function HomeScreen({
         {/* 今日の食事ダッシュボード（週間カレンダー + 区分別サマリ） */}
         <TodayMealDashboard onGoToMealMode={onGoToMealMode} onOpenMeal={() => onNavigate("meal")} />
 
-        {/* リマインダー設定 */}
-        <div className="flex items-center justify-between">
+        {/* 通知設定（朝のチェックイン + ストレッチリマインダー） */}
+        <div>
           <button
             onClick={() => setShowReminderSetting(!showReminderSetting)}
             className="text-xs text-gray-500 flex items-center gap-1"
           >
-            ⏰ リマインダー: {reminderHours ? `${reminderHours}時間ごと` : "未設定"}
+            🔔 通知設定: {morningNotifEnabled
+              ? `朝 ${morningNotifHour}:${String(morningNotifMinute).padStart(2, "0")}`
+              : reminderHours
+              ? `${reminderHours}時間ごと`
+              : "未設定"}
           </button>
         </div>
 
         {showReminderSetting && (
-          <div className="bg-gray-900 rounded-xl p-4 border border-gray-800">
-            <p className="text-sm text-gray-300 mb-3">ストレッチリマインダー間隔</p>
-            <div className="flex gap-2">
-              {[1, 2, 3].map((h) => (
+          <div className="bg-gray-900 rounded-xl p-4 border border-gray-800 space-y-4">
+            {/* ☀️ 朝のコンディションチェック通知 */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-white font-bold">☀️ 朝のコンディションチェック通知</p>
+                  <p className="text-[11px] text-gray-400">毎朝、指定時刻にガイコツ先生がお知らせ</p>
+                </div>
                 <button
-                  key={h}
-                  onClick={() => saveReminder(h)}
-                  className={`flex-1 py-2 rounded-lg text-sm font-bold ${
-                    reminderHours === h ? "bg-blue-600 text-white" : "bg-gray-800 text-gray-400"
+                  onClick={() => saveMorningNotifSettings(!morningNotifEnabled, morningNotifHour, morningNotifMinute)}
+                  className={`relative w-12 h-6 rounded-full transition ${
+                    morningNotifEnabled ? "bg-emerald-500" : "bg-gray-700"
                   }`}
                 >
-                  {h}時間
+                  <span
+                    className={`absolute top-0.5 w-5 h-5 bg-white rounded-full transition ${
+                      morningNotifEnabled ? "left-6" : "left-0.5"
+                    }`}
+                  />
                 </button>
-              ))}
-              <button
-                onClick={() => { setReminderHours(null); localStorage.removeItem("zero_pain_reminder_hours"); setShowReminderSetting(false); cancelNativeNotification(); }}
-                className="flex-1 py-2 rounded-lg text-sm bg-gray-800 text-gray-400"
-              >
-                OFF
-              </button>
+              </div>
+              {morningNotifEnabled && (
+                <div className="flex items-center gap-2 pt-1">
+                  <p className="text-xs text-gray-400">通知時刻:</p>
+                  <select
+                    value={morningNotifHour}
+                    onChange={(e) => saveMorningNotifSettings(true, parseInt(e.target.value), morningNotifMinute)}
+                    className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-white"
+                  >
+                    {Array.from({ length: 24 }, (_, i) => i).map((h) => (
+                      <option key={h} value={h}>
+                        {String(h).padStart(2, "0")}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="text-sm text-gray-400">:</span>
+                  <select
+                    value={morningNotifMinute}
+                    onChange={(e) => saveMorningNotifSettings(true, morningNotifHour, parseInt(e.target.value))}
+                    className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-white"
+                  >
+                    {[0, 15, 30, 45].map((m) => (
+                      <option key={m} value={m}>
+                        {String(m).padStart(2, "0")}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+
+            <div className="border-t border-gray-800 pt-3">
+              <p className="text-sm text-gray-300 mb-2 font-bold">💪 ストレッチリマインダー間隔</p>
+              <div className="flex gap-2">
+                {[1, 2, 3].map((h) => (
+                  <button
+                    key={h}
+                    onClick={() => saveReminder(h)}
+                    className={`flex-1 py-2 rounded-lg text-sm font-bold ${
+                      reminderHours === h ? "bg-blue-600 text-white" : "bg-gray-800 text-gray-400"
+                    }`}
+                  >
+                    {h}時間
+                  </button>
+                ))}
+                <button
+                  onClick={() => { setReminderHours(null); localStorage.removeItem("zero_pain_reminder_hours"); cancelNativeNotification(); }}
+                  className={`flex-1 py-2 rounded-lg text-sm ${
+                    reminderHours === null ? "bg-gray-700 text-white" : "bg-gray-800 text-gray-400"
+                  }`}
+                >
+                  OFF
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -3049,9 +3232,13 @@ interface CheckinData {
 function MorningCheckinCard({
   onNavigate,
   onSelectSymptom,
+  morningNotifEnabled,
+  onEnableMorningNotif,
 }: {
   onNavigate: (s: Screen) => void;
   onSelectSymptom: (id: SelectableSymptomId) => void;
+  morningNotifEnabled: boolean;
+  onEnableMorningNotif: () => Promise<void>;
 }) {
   const [loading, setLoading] = useState(true);
   const [hasToday, setHasToday] = useState(false);
@@ -3062,6 +3249,39 @@ function MorningCheckinCard({
   const [bodyNote, setBodyNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [showNoteInput, setShowNoteInput] = useState(false);
+  const [showNudge, setShowNudge] = useState(false);
+  const [enablingNotif, setEnablingNotif] = useState(false);
+
+  // 通知誘導バナーの表示判定（チェックイン後 + 通知未設定 + 7日以内に却下されていない）
+  useEffect(() => {
+    if (!hasToday) return;
+    if (morningNotifEnabled) {
+      setShowNudge(false);
+      return;
+    }
+    const dismissedAt = localStorage.getItem("zero_pain_morning_nudge_dismissed_at");
+    const now = Date.now();
+    if (dismissedAt && now - parseInt(dismissedAt) < 7 * 24 * 60 * 60 * 1000) {
+      setShowNudge(false);
+      return;
+    }
+    setShowNudge(true);
+  }, [hasToday, morningNotifEnabled]);
+
+  const dismissNudge = () => {
+    localStorage.setItem("zero_pain_morning_nudge_dismissed_at", String(Date.now()));
+    setShowNudge(false);
+  };
+
+  const enableNotif = async () => {
+    setEnablingNotif(true);
+    try {
+      await onEnableMorningNotif();
+      setShowNudge(false);
+    } finally {
+      setEnablingNotif(false);
+    }
+  };
 
   const loadStatus = useCallback(async () => {
     setLoading(true);
@@ -3200,6 +3420,36 @@ function MorningCheckinCard({
                 <span className="text-emerald-400 text-lg">→</span>
               </button>
             ))}
+          </div>
+        )}
+
+        {/* 🔔 通知誘導バナー（通知未設定 + 一度だけ表示） */}
+        {showNudge && (
+          <div className="mt-3 bg-gradient-to-r from-indigo-600/30 to-purple-600/20 border border-indigo-400/40 rounded-xl p-3 space-y-2">
+            <div className="flex items-start gap-2">
+              <span className="text-xl">🔔</span>
+              <div className="flex-1">
+                <p className="text-xs font-bold text-indigo-300">明日も忘れないように</p>
+                <p className="text-[11px] text-gray-300 mt-0.5">
+                  朝8時に通知を届けましょう。ガイコツ先生があなたをお待ちします。
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={enableNotif}
+                disabled={enablingNotif}
+                className="flex-1 py-2 bg-indigo-500 hover:bg-indigo-400 disabled:opacity-50 rounded-lg text-xs font-bold text-white active:scale-[0.98] transition"
+              >
+                {enablingNotif ? "設定中..." : "✨ 朝8時に通知"}
+              </button>
+              <button
+                onClick={dismissNudge}
+                className="flex-1 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-xs text-gray-400"
+              >
+                あとで
+              </button>
+            </div>
           </div>
         )}
       </div>
