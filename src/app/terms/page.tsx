@@ -47,7 +47,7 @@ export default function TermsPage() {
           <div className="card-accent-amber p-4 space-y-2 mb-2">
             <p className="font-bold text-amber-300">⚠️ 本アプリは医療行為ではありません</p>
             <p className="text-gray-200">
-              本アプリは、整体師の一般的な知見に基づくセルフケア情報の提供を目的としています。
+              本アプリは、カイロプラクターの一般的な知見に基づくセルフケア情報の提供を目的としています。
               医師法その他の医療関連法令に基づく医療行為・診断・治療・処方を行うものではありません。
             </p>
           </div>

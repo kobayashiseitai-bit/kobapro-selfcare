@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
 
     // Claude AIで予測生成
     const today = DAYS[new Date().getDay()];
-    const analysisPrompt = `あなたは整体の専門家AIです。以下のユーザーデータから、今日の体のコンディションを予測し、予防アドバイスを1つ生成してください。
+    const analysisPrompt = `あなたはカイロプラクティックの専門家AIです。以下のユーザーデータから、今日の体のコンディションを予測し、予防アドバイスを1つ生成してください。
 
 【重要】回答では以下の用語を避けてください（セルフケアアプリのため）:
 - 「症状」→「お悩み」「気になる状態」「コンディション」

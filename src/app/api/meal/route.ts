@@ -33,7 +33,7 @@ const SYMPTOM_LABELS: Record<string, string> = {
 };
 
 // ZERO-PAIN 食事分析用プロンプト
-const MEAL_SYSTEM_PROMPT = `あなたはZERO-PAINセルフケアアプリ専属のAI栄養士兼整体師です。
+const MEAL_SYSTEM_PROMPT = `あなたはZERO-PAINセルフケアアプリ専属のAI栄養士兼カイロプラクターです。
 ユーザーが撮影した食事写真を見て、栄養分析と姿勢・体調に結びつけたアドバイスをします。
 
 【役割】
