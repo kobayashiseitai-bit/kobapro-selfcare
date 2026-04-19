@@ -38,7 +38,7 @@ const POSE_CONNECTIONS: [number, number][] = [
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type MediaPipeModules = { PoseLandmarker: any; FilesetResolver: any; DrawingUtils: any };
 
-type Screen = "loading" | "register" | "home" | "ai-counsel" | "selfcare" | "check" | "history" | "meal" | "subscription";
+type Screen = "loading" | "register" | "home" | "ai-counsel" | "selfcare" | "check" | "history" | "meal" | "subscription" | "report";
 
 const PREFECTURES = [
   "北海道","青森県","岩手県","宮城県","秋田県","山形県","福島県",
@@ -183,6 +183,7 @@ export default function Home() {
         />
       )}
       {screen === "subscription" && <SubscriptionScreen onNavigate={setScreen} />}
+      {screen === "report" && <ReportScreen onNavigate={setScreen} />}
     </>
   );
 }
@@ -642,6 +643,18 @@ function HomeScreen({
                 ✕
               </button>
             </div>
+
+            <button
+              onClick={() => { setShowMenu(false); onNavigate("report"); }}
+              className="card-accent-indigo w-full text-left p-3 flex items-center gap-3 active:scale-[0.98] transition"
+            >
+              <span className="text-2xl">📊</span>
+              <div className="flex-1">
+                <p className="text-sm font-bold text-white">ガイコツ先生のレポート</p>
+                <p className="text-[11px] text-indigo-200">週次・月次の振り返り</p>
+              </div>
+              <span className="text-indigo-300">›</span>
+            </button>
 
             <button
               onClick={() => { setShowMenu(false); onNavigate("subscription"); }}
@@ -5185,6 +5198,292 @@ function UsageRow({
           />
         </div>
       )}
+    </div>
+  );
+}
+
+// ==================== 週次・月次レポート画面 ====================
+type ReportStats = {
+  period: "week" | "month";
+  periodLabel: string;
+  postureCount: number;
+  postureImprovement: string;
+  mealCount: number;
+  avgCalories: number;
+  avgProtein: number;
+  avgMealScore: number;
+  weightChange: number;
+  topSymptoms: Array<{ label: string; count: number }>;
+  goal: {
+    goal_type: string;
+    target_calories: number;
+    target_protein_g: number;
+  } | null;
+};
+
+type ReportData = {
+  period: "week" | "month";
+  hasData: boolean;
+  message?: string;
+  stats?: ReportStats;
+  report?: {
+    title: string;
+    summary: string;
+    praise: string;
+    advice: string;
+    nextGoal: string;
+  } | null;
+  generatedAt?: string;
+};
+
+function ReportScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
+  const [period, setPeriod] = useState<"week" | "month">("week");
+  const [data, setData] = useState<ReportData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async (p: "week" | "month") => {
+    setLoading(true);
+    setError(null);
+    try {
+      const deviceId = getDeviceId();
+      const res = await fetch(
+        `/api/report?deviceId=${encodeURIComponent(deviceId || "")}&period=${p}`,
+        { cache: "no-store" }
+      );
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "レポート取得失敗");
+      setData(d);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "エラー");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load(period);
+  }, [period, load]);
+
+  return (
+    <main className="fixed inset-0 bg-gray-950 overflow-y-auto text-white flex flex-col items-center p-4 pb-20">
+      <div className="flex items-center gap-3 mb-4 w-full max-w-md">
+        <button
+          onClick={() => onNavigate("home")}
+          className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm"
+        >
+          ← 戻る
+        </button>
+        <h1 className="text-lg font-bold">📊 ガイコツ先生のレポート</h1>
+      </div>
+
+      <div className="w-full max-w-md space-y-4">
+        {/* 期間切り替え */}
+        <div className="flex gap-2">
+          <button
+            onClick={() => setPeriod("week")}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition ${
+              period === "week"
+                ? "bg-emerald-600 text-white"
+                : "bg-gray-800 text-gray-400 border border-gray-700"
+            }`}
+          >
+            📅 週次レポート
+          </button>
+          <button
+            onClick={() => setPeriod("month")}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition ${
+              period === "month"
+                ? "bg-emerald-600 text-white"
+                : "bg-gray-800 text-gray-400 border border-gray-700"
+            }`}
+          >
+            🗓️ 月次レポート
+          </button>
+        </div>
+
+        {loading && (
+          <div className="card-base p-10 text-center">
+            <div className="flex items-center justify-center gap-3 mb-3">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/icon-skeleton-sensei-face.png"
+                alt="ガイコツ先生"
+                className="w-12 h-12 object-contain animate-pulse"
+              />
+            </div>
+            <p className="text-sm text-gray-300 animate-pulse">
+              ガイコツ先生がレポートを作成中...
+            </p>
+          </div>
+        )}
+
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-sm text-red-300">
+            ⚠️ {error}
+          </div>
+        )}
+
+        {!loading && data && !data.hasData && (
+          <div className="card-base p-6 text-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/icon-skeleton-sensei-face.png"
+              alt="ガイコツ先生"
+              className="w-16 h-16 object-contain mx-auto mb-3"
+            />
+            <p className="text-sm text-gray-300 leading-relaxed">
+              {data.message || "まだ記録が不足しています"}
+            </p>
+            <button
+              onClick={() => onNavigate("home")}
+              className="btn-primary mt-4 px-6 py-2.5 text-sm"
+            >
+              記録を始める
+            </button>
+          </div>
+        )}
+
+        {!loading && data && data.hasData && data.stats && (
+          <>
+            {/* AIレポート（ガイコツ先生の総評） */}
+            {data.report && (
+              <div className="card-accent-indigo p-5 space-y-3">
+                <div className="flex items-start gap-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/icon-skeleton-sensei-face.png"
+                    alt="ガイコツ先生"
+                    className="w-14 h-14 object-contain flex-shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] text-indigo-300 font-bold tracking-wide">
+                      ガイコツ先生の振り返り
+                    </p>
+                    <h3 className="text-lg font-extrabold text-white mt-1 leading-tight">
+                      {data.report.title}
+                    </h3>
+                    <p className="text-sm text-indigo-100 mt-1 leading-relaxed">
+                      {data.report.summary}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-white/5 rounded-xl p-3 border border-white/10">
+                  <p className="text-[11px] text-emerald-300 font-bold mb-1">
+                    💪 素晴らしかった点
+                  </p>
+                  <p className="text-sm text-gray-100 leading-relaxed">
+                    {data.report.praise}
+                  </p>
+                </div>
+
+                <div className="bg-white/5 rounded-xl p-3 border border-white/10">
+                  <p className="text-[11px] text-amber-300 font-bold mb-1">
+                    🎯 改善のヒント
+                  </p>
+                  <p className="text-sm text-gray-100 leading-relaxed">
+                    {data.report.advice}
+                  </p>
+                </div>
+
+                <div className="bg-white/5 rounded-xl p-3 border border-white/10">
+                  <p className="text-[11px] text-pink-300 font-bold mb-1">
+                    🚀 次の目標
+                  </p>
+                  <p className="text-sm text-gray-100 leading-relaxed">
+                    {data.report.nextGoal}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* 統計サマリー */}
+            <div className="card-base p-4 space-y-3">
+              <p className="text-[11px] text-gray-400 font-bold tracking-wide">
+                📊 {data.stats.periodLabel}の統計
+              </p>
+
+              <div className="grid grid-cols-2 gap-2">
+                <StatBlock
+                  label="姿勢チェック"
+                  value={`${data.stats.postureCount}`}
+                  unit="回"
+                  hint={data.stats.postureImprovement}
+                />
+                <StatBlock
+                  label="食事記録"
+                  value={`${data.stats.mealCount}`}
+                  unit="件"
+                />
+                <StatBlock
+                  label="平均カロリー"
+                  value={`${data.stats.avgCalories}`}
+                  unit="kcal/日"
+                />
+                <StatBlock
+                  label="平均タンパク質"
+                  value={`${data.stats.avgProtein}`}
+                  unit="g/日"
+                />
+                <StatBlock
+                  label="食事スコア"
+                  value={`${data.stats.avgMealScore}`}
+                  unit="/100"
+                />
+                <StatBlock
+                  label="体重変化"
+                  value={`${data.stats.weightChange > 0 ? "+" : ""}${data.stats.weightChange}`}
+                  unit="kg"
+                />
+              </div>
+
+              {data.stats.topSymptoms.length > 0 && (
+                <div className="pt-2 border-t border-white/5">
+                  <p className="text-[11px] text-gray-400 mb-1.5">
+                    気になっているお悩み TOP3
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {data.stats.topSymptoms.map((s) => (
+                      <span
+                        key={s.label}
+                        className="text-[11px] bg-gray-800 rounded-full px-3 py-1 border border-gray-700"
+                      >
+                        {s.label} ({s.count}回)
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    </main>
+  );
+}
+
+function StatBlock({
+  label,
+  value,
+  unit,
+  hint,
+}: {
+  label: string;
+  value: string;
+  unit: string;
+  hint?: string;
+}) {
+  return (
+    <div className="bg-gray-900/50 rounded-xl px-3 py-2 border border-white/5">
+      <p className="text-[10px] text-gray-500">{label}</p>
+      <p className="text-lg font-extrabold text-white mt-0.5">
+        {value}
+        <span className="text-[11px] font-normal text-gray-400 ml-1">
+          {unit}
+        </span>
+      </p>
+      {hint && <p className="text-[10px] text-emerald-400 mt-0.5">{hint}</p>}
     </div>
   );
 }
