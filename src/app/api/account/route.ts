@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
     const userId = users[0].id;
 
     // 全関連データを並行取得
-    const [posture, chats, meals, weights, goals, symptoms, subscription, mysets, usage] =
+    const [posture, chats, meals, weights, goals, symptoms, subscription, usage] =
       await Promise.all([
         supabase.from("posture_records").select("*").eq("user_id", userId),
         supabase.from("chat_logs").select("*").eq("user_id", userId),
@@ -49,7 +49,6 @@ export async function GET(req: NextRequest) {
         supabase.from("nutrition_goals").select("*").eq("user_id", userId),
         supabase.from("symptom_selections").select("*").eq("user_id", userId),
         supabase.from("subscriptions").select("*").eq("user_id", userId),
-        supabase.from("my_sets").select("*").eq("user_id", userId),
         supabase.from("usage_counters").select("*").eq("user_id", userId),
       ]);
 
@@ -64,7 +63,6 @@ export async function GET(req: NextRequest) {
       nutrition_goals: goals.data || [],
       symptom_selections: symptoms.data || [],
       subscription: subscription.data || [],
-      my_sets: mysets.data || [],
       usage_counters: usage.data || [],
     };
 
@@ -152,7 +150,6 @@ export async function DELETE(req: NextRequest) {
       supabase.from("nutrition_goals").delete().eq("user_id", userId),
       supabase.from("symptom_selections").delete().eq("user_id", userId),
       supabase.from("subscriptions").delete().eq("user_id", userId),
-      supabase.from("my_sets").delete().eq("user_id", userId),
       supabase.from("usage_counters").delete().eq("user_id", userId),
     ]);
 

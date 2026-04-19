@@ -3558,20 +3558,6 @@ async function compressImageToBase64(input: File, maxSize = 512): Promise<string
   }
 }
 
-type MySet = {
-  id: string;
-  name: string;
-  meal_type: string | null;
-  menu_name: string;
-  calories: number | null;
-  protein_g: number | null;
-  carbs_g: number | null;
-  fat_g: number | null;
-  icon: string | null;
-  use_count: number;
-  last_used_at: string | null;
-};
-
 function MealScreen({
   onNavigate,
   initialMode,
@@ -3596,10 +3582,6 @@ function MealScreen({
       return "間食";
     }
   );
-  const [mySets, setMySets] = useState<MySet[]>([]);
-  const [savingSet, setSavingSet] = useState(false);
-  const [showSaveSetModal, setShowSaveSetModal] = useState(false);
-
   // 画面表示後にinitialModeを消費（戻ったときにhomeに戻るように）
   useEffect(() => {
     if (initialMode && onModeConsumed) {
@@ -3667,77 +3649,6 @@ function MealScreen({
       setRecords([]);
     } finally {
       setLoadingHistory(false);
-    }
-  };
-
-  // MYセット一覧読み込み
-  const loadMySets = useCallback(async () => {
-    try {
-      const deviceId = getDeviceId();
-      const res = await fetch(
-        `/api/meal/my-sets?deviceId=${encodeURIComponent(deviceId || "")}`
-      );
-      const data = await res.json();
-      setMySets(data.sets || []);
-    } catch {
-      setMySets([]);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (mode === "home") loadMySets();
-  }, [mode, loadMySets]);
-
-  // MYセットから1タップ記録
-  const useMySet = async (setId: string) => {
-    try {
-      const res = await fetch("/api/meal/my-sets", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "use",
-          deviceId: getDeviceId(),
-          setId,
-          mealType: selectedMealType,
-        }),
-      });
-      if (!res.ok) throw new Error("MYセットの記録に失敗しました");
-      await loadMySets();
-      alert(`✅ ${selectedMealType}として記録しました！`);
-    } catch (e) {
-      alert(e instanceof Error ? e.message : "記録失敗");
-    }
-  };
-
-  // 今の分析結果をMYセットとして保存
-  const saveAsMySet = async (name: string, icon: string) => {
-    if (!analysis || !name.trim()) return;
-    setSavingSet(true);
-    try {
-      const res = await fetch("/api/meal/my-sets", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "create",
-          deviceId: getDeviceId(),
-          name: name.trim(),
-          mealType: analysis.meal_type || selectedMealType,
-          menuName: analysis.menu_name || "名称不明",
-          calories: analysis.calories,
-          proteinG: analysis.protein_g,
-          carbsG: analysis.carbs_g,
-          fatG: analysis.fat_g,
-          icon,
-        }),
-      });
-      if (!res.ok) throw new Error("MYセット保存失敗");
-      setShowSaveSetModal(false);
-      await loadMySets();
-      alert(`✅「${name}」をMYセットに保存しました`);
-    } catch (e) {
-      alert(e instanceof Error ? e.message : "保存失敗");
-    } finally {
-      setSavingSet(false);
     }
   };
 
@@ -3868,35 +3779,6 @@ function MealScreen({
             </button>
           </div>
 
-          {/* MYセット（1タップで記録） */}
-          {mySets.length > 0 && (
-            <div className="card-base p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-bold text-amber-400">⭐ MYセット（1タップ記録）</p>
-                <p className="text-[11px] text-gray-400">
-                  {selectedMealType}として記録
-                </p>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {mySets.slice(0, 6).map((s) => (
-                  <button
-                    key={s.id}
-                    onClick={() => useMySet(s.id)}
-                    className="btn-neutral px-3 py-2.5 text-left active:scale-95 transition"
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-lg">{s.icon || "🍽️"}</span>
-                      <p className="text-xs font-bold truncate">{s.name}</p>
-                    </div>
-                    <p className="text-[11px] text-gray-400 truncate">{s.menu_name}</p>
-                    <p className="text-[11px] text-emerald-400 font-bold">
-                      {s.calories || "-"}kcal / P{s.protein_g || 0}g
-                    </p>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       )}
 
@@ -4024,24 +3906,7 @@ function MealScreen({
             </button>
           </div>
 
-          {/* MYセットに保存ボタン */}
-          <button
-            onClick={() => setShowSaveSetModal(true)}
-            className="card-accent-amber w-full px-4 py-3 text-sm font-bold text-amber-300 flex items-center justify-center gap-2 transition active:scale-[0.99]"
-          >
-            ⭐ この食事をMYセットに保存
-          </button>
         </div>
-      )}
-
-      {/* MYセット保存モーダル */}
-      {showSaveSetModal && analysis && (
-        <SaveMySetModal
-          analysis={analysis}
-          saving={savingSet}
-          onSave={saveAsMySet}
-          onClose={() => setShowSaveSetModal(false)}
-        />
       )}
 
       {/* 履歴 */}
@@ -4981,90 +4846,6 @@ function SaveSuccessModal({
         >
           OK
         </button>
-      </div>
-    </div>
-  );
-}
-
-// ==================== MYセット保存モーダル ====================
-function SaveMySetModal({
-  analysis,
-  saving,
-  onSave,
-  onClose,
-}: {
-  analysis: MealAnalysis;
-  saving: boolean;
-  onSave: (name: string, icon: string) => void;
-  onClose: () => void;
-}) {
-  const [name, setName] = useState(analysis.menu_name || "");
-  const [icon, setIcon] = useState("🍽️");
-
-  const icons = ["🍽️", "🍚", "🥗", "🍜", "🍛", "🍝", "🥪", "🍱", "🍰", "☕", "🍎", "🥞"];
-
-  return (
-    <div
-      className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-6"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-sm bg-gray-900 border border-gray-700 rounded-3xl p-5 shadow-2xl space-y-3"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h3 className="text-lg font-extrabold text-emerald-300">⭐ MYセットに保存</h3>
-        <p className="text-xs text-gray-400">
-          次回から1タップで同じ食事を記録できます
-        </p>
-
-        <div>
-          <p className="text-xs text-gray-400 mb-1.5">セット名</p>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="例: いつもの朝食"
-            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white"
-            maxLength={30}
-          />
-        </div>
-
-        <div>
-          <p className="text-xs text-gray-400 mb-1.5">アイコン</p>
-          <div className="grid grid-cols-6 gap-1.5">
-            {icons.map((i) => (
-              <button
-                key={i}
-                onClick={() => setIcon(i)}
-                className={`py-2 text-xl rounded-lg ${
-                  icon === i ? "bg-emerald-600" : "bg-gray-800 border border-gray-700"
-                }`}
-              >
-                {i}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="bg-gray-800 rounded-lg px-3 py-2 text-[11px] text-gray-400">
-          {analysis.menu_name} / 🔥{analysis.calories || 0}kcal / P{analysis.protein_g || 0}g
-        </div>
-
-        <div className="flex gap-2 pt-2">
-          <button
-            onClick={onClose}
-            className="flex-1 py-2.5 bg-gray-800 rounded-xl text-sm font-bold"
-          >
-            キャンセル
-          </button>
-          <button
-            onClick={() => onSave(name, icon)}
-            disabled={saving || !name.trim()}
-            className="flex-1 py-2.5 bg-gradient-to-r from-amber-500 to-yellow-600 disabled:opacity-50 rounded-xl text-sm font-bold"
-          >
-            {saving ? "保存中..." : "保存する"}
-          </button>
-        </div>
       </div>
     </div>
   );
