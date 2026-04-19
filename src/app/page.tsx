@@ -784,6 +784,9 @@ function HomeScreen({
           </button>
         )}
 
+        {/* 🔥 ストリーク（連続記録日数） */}
+        <StreakCard />
+
         {/* ガイコツ先生の今日の一言（旬の食材・豆知識） */}
         <DailyTipCard />
 
@@ -2169,6 +2172,312 @@ function HistoryScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
         新しく撮影する
       </button>
     </main>
+  );
+}
+
+// ==================== ストリーク（連続記録日数） ====================
+type StreakBadge = {
+  days: number;
+  emoji: string;
+  title: string;
+  unlocked: boolean;
+};
+
+type StreakData = {
+  currentStreak: number;
+  longestStreak: number;
+  totalActiveDays: number;
+  activeToday: boolean;
+  lastActiveDate: string | null;
+  nextBadge: StreakBadge;
+  unlockedBadges: StreakBadge[];
+  badges: StreakBadge[];
+  dateMap: Record<string, boolean>;
+};
+
+function StreakCard() {
+  const [data, setData] = useState<StreakData | null>(null);
+  const [showDetail, setShowDetail] = useState(false);
+
+  const fetchStreak = useCallback(async () => {
+    try {
+      const deviceId = getDeviceId();
+      const res = await fetch(
+        `/api/streak?deviceId=${encodeURIComponent(deviceId || "")}`,
+        { cache: "no-store" }
+      );
+      const d = await res.json();
+      if (res.ok) setData(d);
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => {
+    fetchStreak();
+    const onVis = () => {
+      if (document.visibilityState === "visible") fetchStreak();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("focus", fetchStreak);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("focus", fetchStreak);
+    };
+  }, [fetchStreak]);
+
+  if (!data) return null;
+
+  // ストリーク0日の場合は導入カード表示
+  if (data.currentStreak === 0 && data.longestStreak === 0) {
+    return (
+      <div className="card-base p-4 relative overflow-hidden">
+        <span className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500/70" />
+        <div className="flex items-start gap-3 pl-2">
+          <span className="text-3xl">🔥</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-white mb-1">
+              連続記録を始めましょう
+            </p>
+            <p className="text-xs text-gray-300 leading-relaxed">
+              今日、姿勢チェック・食事記録・ガイコツ先生への相談のいずれかをすると、
+              ストリーク（連続日数）がスタートします 🎯
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const progressToNext =
+    data.nextBadge && data.currentStreak < data.nextBadge.days
+      ? (data.currentStreak / data.nextBadge.days) * 100
+      : 100;
+  const daysToNext = data.nextBadge.days - data.currentStreak;
+
+  return (
+    <>
+      <button
+        onClick={() => setShowDetail(true)}
+        className="w-full card-base p-4 relative overflow-hidden active:scale-[0.99] transition text-left"
+      >
+        <span className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500/70" />
+        <div className="flex items-center gap-3 pl-2">
+          {/* 大きな炎アイコン + 日数 */}
+          <div className="flex items-baseline gap-1 flex-shrink-0">
+            <span className="text-3xl">🔥</span>
+            <span className="text-3xl font-extrabold text-amber-300">
+              {data.currentStreak}
+            </span>
+            <span className="text-sm font-bold text-amber-300">日</span>
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] text-amber-400 font-bold tracking-wide">
+              {data.activeToday ? "連続記録中" : "続けて達成！"}
+            </p>
+            {data.nextBadge && data.currentStreak < data.nextBadge.days ? (
+              <>
+                <p className="text-xs text-gray-300 mt-0.5 leading-tight">
+                  次のバッジまで <strong className="text-white">あと{daysToNext}日</strong>
+                </p>
+                {/* プログレスバー */}
+                <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden mt-1.5">
+                  <div
+                    className="h-full bg-gradient-to-r from-amber-500 to-red-500 transition-all"
+                    style={{ width: `${progressToNext}%` }}
+                  />
+                </div>
+                <p className="text-[11px] text-gray-400 mt-1">
+                  {data.nextBadge.emoji} {data.nextBadge.title}
+                </p>
+              </>
+            ) : (
+              <p className="text-xs text-gray-300 mt-0.5">
+                最長記録: {data.longestStreak}日 / 累計{data.totalActiveDays}日
+              </p>
+            )}
+          </div>
+
+          <span className="text-gray-500 text-lg">›</span>
+        </div>
+
+        {/* 今日未達成の警告 */}
+        {!data.activeToday && data.currentStreak > 0 && (
+          <div className="mt-3 pl-2 text-[11px] text-red-300 bg-red-500/10 border border-red-500/30 rounded-md px-2 py-1.5">
+            ⚠️ 今日まだ記録がありません。今日中に1つ記録すれば{data.currentStreak}日連続が継続します！
+          </div>
+        )}
+      </button>
+
+      {/* 詳細モーダル */}
+      {showDetail && (
+        <StreakDetailModal data={data} onClose={() => setShowDetail(false)} />
+      )}
+    </>
+  );
+}
+
+function StreakDetailModal({
+  data,
+  onClose,
+}: {
+  data: StreakData;
+  onClose: () => void;
+}) {
+  // 直近30日のカレンダー（JST日付 YYYY-MM-DD の配列）
+  const last30Days: string[] = [];
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+    const jst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
+    const key = `${jst.getUTCFullYear()}-${String(jst.getUTCMonth() + 1).padStart(2, "0")}-${String(jst.getUTCDate()).padStart(2, "0")}`;
+    last30Days.push(key);
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-sm max-h-[90vh] overflow-y-auto bg-gray-900 border border-white/10 rounded-3xl p-5 space-y-5"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* ヘッダー */}
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-extrabold text-white flex items-center gap-2">
+            🔥 <span>ストリーク</span>
+          </h2>
+          <button onClick={onClose} className="text-gray-400 text-2xl">
+            ✕
+          </button>
+        </div>
+
+        {/* 大きな数字表示 */}
+        <div className="card-accent-amber p-5 text-center">
+          <p className="text-[11px] text-amber-300 font-bold tracking-wide">
+            現在の連続記録
+          </p>
+          <div className="flex items-baseline justify-center gap-1 mt-1">
+            <span className="text-5xl">🔥</span>
+            <span className="text-6xl font-extrabold text-amber-300">
+              {data.currentStreak}
+            </span>
+            <span className="text-2xl font-bold text-amber-300">日</span>
+          </div>
+          <p className="text-xs text-gray-300 mt-2">
+            {data.activeToday
+              ? "✅ 今日も記録達成！"
+              : "⏰ 今日の記録をお忘れなく"}
+          </p>
+        </div>
+
+        {/* 統計 */}
+        <div className="grid grid-cols-3 gap-2">
+          <div className="card-base p-3 text-center">
+            <p className="text-[10px] text-gray-400">最長記録</p>
+            <p className="text-xl font-extrabold text-white mt-1">
+              {data.longestStreak}
+              <span className="text-[10px] ml-0.5 font-normal">日</span>
+            </p>
+          </div>
+          <div className="card-base p-3 text-center">
+            <p className="text-[10px] text-gray-400">累計</p>
+            <p className="text-xl font-extrabold text-white mt-1">
+              {data.totalActiveDays}
+              <span className="text-[10px] ml-0.5 font-normal">日</span>
+            </p>
+          </div>
+          <div className="card-base p-3 text-center">
+            <p className="text-[10px] text-gray-400">獲得バッジ</p>
+            <p className="text-xl font-extrabold text-white mt-1">
+              {data.unlockedBadges.length}
+              <span className="text-[10px] ml-0.5 font-normal">個</span>
+            </p>
+          </div>
+        </div>
+
+        {/* 直近30日カレンダー */}
+        <div>
+          <p className="text-[11px] text-gray-400 font-bold mb-2 tracking-wide">
+            📅 直近30日の記録
+          </p>
+          <div className="grid grid-cols-10 gap-1">
+            {last30Days.map((key, i) => {
+              const active = data.dateMap[key];
+              const isToday = i === 29;
+              return (
+                <div
+                  key={key}
+                  className={`aspect-square rounded-md flex items-center justify-center text-[10px] font-bold ${
+                    active
+                      ? isToday
+                        ? "bg-gradient-to-br from-amber-500 to-red-500 text-white"
+                        : "bg-emerald-600/60 text-white"
+                      : "bg-gray-800 text-gray-600"
+                  }`}
+                  title={key}
+                >
+                  {active ? "🔥" : "·"}
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-[10px] text-gray-500 mt-1.5 text-right">
+            左: 30日前 → 右: 今日
+          </p>
+        </div>
+
+        {/* バッジ一覧 */}
+        <div>
+          <p className="text-[11px] text-gray-400 font-bold mb-2 tracking-wide">
+            🏆 バッジコレクション
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {data.badges.map((b) => (
+              <div
+                key={b.days}
+                className={`rounded-xl p-3 flex items-center gap-2 ${
+                  b.unlocked
+                    ? "card-accent-amber"
+                    : "card-base opacity-40 grayscale"
+                }`}
+              >
+                <span className="text-2xl">{b.emoji}</span>
+                <div className="flex-1 min-w-0">
+                  <p
+                    className={`text-xs font-bold ${
+                      b.unlocked ? "text-white" : "text-gray-500"
+                    }`}
+                  >
+                    {b.title}
+                  </p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">
+                    {b.days}日連続
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 次の目標 */}
+        {data.currentStreak < data.nextBadge.days && (
+          <div className="card-base p-4 text-center">
+            <p className="text-xs text-gray-400">次の目標</p>
+            <p className="text-2xl mt-1">{data.nextBadge.emoji}</p>
+            <p className="text-sm font-bold text-white mt-1">
+              {data.nextBadge.title}
+            </p>
+            <p className="text-[11px] text-gray-400 mt-1">
+              あと {data.nextBadge.days - data.currentStreak} 日！
+            </p>
+          </div>
+        )}
+
+        <button onClick={onClose} className="btn-primary w-full py-3 text-sm">
+          閉じる
+        </button>
+      </div>
+    </div>
   );
 }
 
