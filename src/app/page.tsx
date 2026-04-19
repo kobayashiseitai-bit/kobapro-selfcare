@@ -38,7 +38,7 @@ const POSE_CONNECTIONS: [number, number][] = [
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type MediaPipeModules = { PoseLandmarker: any; FilesetResolver: any; DrawingUtils: any };
 
-type Screen = "loading" | "register" | "home" | "ai-counsel" | "selfcare" | "check" | "history" | "meal" | "subscription" | "report";
+type Screen = "loading" | "register" | "home" | "ai-counsel" | "selfcare" | "check" | "history" | "meal" | "subscription" | "report" | "invite";
 
 const PREFECTURES = [
   "北海道","青森県","岩手県","宮城県","秋田県","山形県","福島県",
@@ -184,6 +184,7 @@ export default function Home() {
       )}
       {screen === "subscription" && <SubscriptionScreen onNavigate={setScreen} />}
       {screen === "report" && <ReportScreen onNavigate={setScreen} />}
+      {screen === "invite" && <InviteScreen onNavigate={setScreen} />}
     </>
   );
 }
@@ -211,6 +212,19 @@ function RegisterScreen({ onComplete }: { onComplete: () => void }) {
   const [agreedHealth, setAgreedHealth] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [showInviteInput, setShowInviteInput] = useState(false);
+  const [inviteCode, setInviteCode] = useState("");
+
+  // URLパラメータから招待コードを自動取得（共有URL経由の登録）
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("invite");
+    if (code) {
+      setInviteCode(code.toUpperCase());
+      setShowInviteInput(true);
+    }
+  }, []);
 
   const togglePain = (id: string) => {
     setPainAreas((prev) =>
@@ -242,6 +256,28 @@ function RegisterScreen({ onComplete }: { onComplete: () => void }) {
       });
       const data = await res.json();
       if (data.ok) {
+        // 招待コードがあれば適用
+        if (inviteCode.trim()) {
+          try {
+            const inviteRes = await fetch("/api/invite", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                deviceId: getDeviceId(),
+                code: inviteCode.trim(),
+              }),
+            });
+            const inviteData = await inviteRes.json();
+            if (!inviteRes.ok) {
+              // 招待失敗は警告だけで登録は成功扱い
+              alert(`招待コードは適用されませんでした: ${inviteData.error || ""}`);
+            } else {
+              alert(inviteData.message || "🎁 招待コードを適用しました！");
+            }
+          } catch {
+            // エラー時も登録自体は成功
+          }
+        }
         onComplete();
       } else {
         setError("登録に失敗しました。もう一度お試しください。");
@@ -337,6 +373,46 @@ function RegisterScreen({ onComplete }: { onComplete: () => void }) {
                 className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-blue-500 text-sm resize-none"
               />
             </div>
+
+            {/* 招待コード入力欄（折りたたみ式） */}
+            {!showInviteInput ? (
+              <button
+                type="button"
+                onClick={() => setShowInviteInput(true)}
+                className="w-full py-2.5 text-xs text-amber-400 hover:text-amber-300 flex items-center justify-center gap-1"
+              >
+                🎁 招待コードをお持ちですか？
+              </button>
+            ) : (
+              <div className="card-accent-amber p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold text-amber-300">
+                    🎁 招待コード（お持ちの方）
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowInviteInput(false);
+                      setInviteCode("");
+                    }}
+                    className="text-[10px] text-gray-400"
+                  >
+                    閉じる
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  value={inviteCode}
+                  onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                  placeholder="例: KOBA2026"
+                  maxLength={12}
+                  className="w-full px-4 py-2.5 bg-gray-800 border border-amber-500/30 rounded-lg text-white focus:outline-none focus:border-amber-500 text-sm font-mono tracking-wider text-center"
+                />
+                <p className="text-[10px] text-gray-400 leading-relaxed">
+                  招待コードを入力すると、無料トライアルが<strong className="text-amber-300">7日→14日に延長</strong>されます ✨
+                </p>
+              </div>
+            )}
           </div>
 
           {/* ヘルスケア免責 */}
@@ -643,6 +719,18 @@ function HomeScreen({
                 ✕
               </button>
             </div>
+
+            <button
+              onClick={() => { setShowMenu(false); onNavigate("invite"); }}
+              className="card-accent-amber w-full text-left p-3 flex items-center gap-3 active:scale-[0.98] transition"
+            >
+              <span className="text-2xl">🎁</span>
+              <div className="flex-1">
+                <p className="text-sm font-bold text-white">友達を招待</p>
+                <p className="text-[11px] text-amber-200">招待成立で1ヶ月無料！</p>
+              </div>
+              <span className="text-amber-300">›</span>
+            </button>
 
             <button
               onClick={() => { setShowMenu(false); onNavigate("report"); }}
@@ -2295,13 +2383,39 @@ function CelebrationModal({
           </div>
         </div>
 
-        {/* OKボタン */}
-        <div className="animate-slide-up-fade" style={{ animationDelay: "1.0s", opacity: 0 }}>
+        {/* シェア + OKボタン */}
+        <div className="animate-slide-up-fade space-y-2" style={{ animationDelay: "1.0s", opacity: 0 }}>
+          <button
+            onClick={async () => {
+              const shareText = `🎉 ZERO-PAINで「${badge.title}」バッジを獲得しました！${streakDays}日連続記録達成 ${badge.emoji}🔥\n\n姿勢チェックと食事記録でガイコツ先生と一緒に健康習慣を続けています✨\n\nhttps://posture-app-steel.vercel.app`;
+              if (typeof navigator === "undefined") return;
+              const nav = navigator as Navigator & {
+                share?: (d: ShareData) => Promise<void>;
+                clipboard?: { writeText: (s: string) => Promise<void> };
+              };
+              if (nav.share) {
+                try {
+                  await nav.share({
+                    title: `🎉 ${badge.title} 獲得！`,
+                    text: shareText,
+                  });
+                } catch { /* user cancelled */ }
+              } else if (nav.clipboard) {
+                try {
+                  await nav.clipboard.writeText(shareText);
+                  alert("✅ シェア用テキストをコピーしました！");
+                } catch { /* ignore */ }
+              }
+            }}
+            className="w-full py-3 bg-gradient-to-r from-amber-500 to-red-500 hover:from-amber-400 hover:to-red-400 rounded-2xl text-base font-bold text-white shadow-[0_8px_24px_rgba(245,158,11,0.45)]"
+          >
+            📤 この達成を友達にシェア
+          </button>
           <button
             onClick={onClose}
-            className="btn-primary w-full py-3.5 text-base"
+            className="btn-neutral w-full py-3 text-sm"
           >
-            ありがとう！🔥
+            閉じる
           </button>
         </div>
       </div>
@@ -5613,3 +5727,246 @@ function StatBlock({
     </div>
   );
 }
+
+// ==================== 友達招待画面 ====================
+type InviteData = {
+  code: string;
+  useCount: number;
+  totalInvited: number;
+  bonusFreeMonths: number;
+  createdAt: string;
+  shareUrl: string;
+};
+
+function InviteScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
+  const [data, setData] = useState<InviteData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [copied, setCopied] = useState<"code" | "url" | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const deviceId = getDeviceId();
+        const res = await fetch(
+          `/api/invite?deviceId=${encodeURIComponent(deviceId || "")}`
+        );
+        const d = await res.json();
+        if (res.ok) setData(d);
+      } catch { /* ignore */ }
+      setLoading(false);
+    })();
+  }, []);
+
+  const copyToClipboard = async (text: string, type: "code" | "url") => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(type);
+      setTimeout(() => setCopied(null), 2000);
+    } catch {
+      // Fallback
+      const el = document.createElement("textarea");
+      el.value = text;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand("copy");
+      document.body.removeChild(el);
+      setCopied(type);
+      setTimeout(() => setCopied(null), 2000);
+    }
+  };
+
+  const shareText = data
+    ? `ZERO-PAIN（ゼロペイン）を試してみて！
+AI姿勢チェックと食事分析で健康習慣をサポートしてくれるアプリです🦴✨
+
+招待コード: ${data.code}
+${data.shareUrl}
+
+このコードで登録すると7日→14日の無料トライアルに延長されます🎁`
+    : "";
+
+  const shareToNative = async () => {
+    if (!data) return;
+    // Web Share API（iPhone Safari 対応）
+    if (typeof navigator !== "undefined" && "share" in navigator) {
+      try {
+        await (navigator as Navigator & { share: (d: ShareData) => Promise<void> }).share({
+          title: "ZERO-PAIN に招待します",
+          text: shareText,
+          url: data.shareUrl,
+        });
+      } catch { /* user cancelled */ }
+    } else {
+      // フォールバック: クリップボードにコピー
+      copyToClipboard(shareText, "url");
+    }
+  };
+
+  const shareToLine = () => {
+    if (!data) return;
+    const url = `https://line.me/R/msg/text/?${encodeURIComponent(shareText)}`;
+    window.open(url, "_blank");
+  };
+
+  const shareToTwitter = () => {
+    if (!data) return;
+    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
+    window.open(url, "_blank");
+  };
+
+  return (
+    <main className="fixed inset-0 bg-gray-950 overflow-y-auto text-white flex flex-col items-center p-4 pb-20">
+      <div className="flex items-center gap-3 mb-4 w-full max-w-md">
+        <button
+          onClick={() => onNavigate("home")}
+          className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm"
+        >
+          ← 戻る
+        </button>
+        <h1 className="text-lg font-bold">🎁 友達を招待</h1>
+      </div>
+
+      <div className="w-full max-w-md space-y-4">
+        {loading ? (
+          <div className="card-base p-8 text-center text-gray-400">
+            読み込み中...
+          </div>
+        ) : !data ? (
+          <div className="card-base p-8 text-center text-gray-400">
+            招待コードの取得に失敗しました
+          </div>
+        ) : (
+          <>
+            {/* お得感の訴求 */}
+            <div className="card-accent-amber p-5 space-y-3">
+              <p className="text-base font-extrabold text-amber-300">
+                🎁 友達招待で両方にお得特典！
+              </p>
+              <div className="space-y-2">
+                <div className="bg-white/5 rounded-xl p-3 border border-amber-500/20">
+                  <p className="text-[11px] text-amber-300 font-bold">
+                    あなたへの特典
+                  </p>
+                  <p className="text-sm text-white mt-0.5">
+                    🆓 <strong>1ヶ月分 無料</strong>（1招待成立ごと）
+                  </p>
+                </div>
+                <div className="bg-white/5 rounded-xl p-3 border border-amber-500/20">
+                  <p className="text-[11px] text-amber-300 font-bold">
+                    友達への特典
+                  </p>
+                  <p className="text-sm text-white mt-0.5">
+                    🎊 無料トライアルが <strong>7日→14日</strong> に延長
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* 招待コード表示 */}
+            <div className="card-base p-5 space-y-3">
+              <p className="text-[11px] text-gray-400 font-bold tracking-wide">
+                🎫 あなたの招待コード
+              </p>
+              <div className="bg-gradient-to-br from-amber-500/20 to-yellow-600/10 border-2 border-amber-500/40 rounded-2xl p-5 text-center">
+                <p className="text-4xl font-extrabold text-amber-300 tracking-[0.3em] font-mono">
+                  {data.code}
+                </p>
+              </div>
+              <button
+                onClick={() => copyToClipboard(data.code, "code")}
+                className="btn-neutral w-full py-2.5 text-sm font-bold"
+              >
+                {copied === "code" ? "✅ コピーしました" : "📋 コードをコピー"}
+              </button>
+            </div>
+
+            {/* シェアボタン */}
+            <div className="space-y-2">
+              <p className="text-[11px] text-gray-400 font-bold tracking-wide px-1">
+                📢 友達に教える
+              </p>
+
+              {/* ネイティブ共有（iPhone）*/}
+              <button
+                onClick={shareToNative}
+                className="btn-primary w-full py-3.5 text-base flex items-center justify-center gap-2"
+              >
+                <span className="text-xl">📤</span>
+                <span>共有メニューを開く</span>
+              </button>
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={shareToLine}
+                  className="bg-[#06C755] hover:bg-[#05b04d] text-white rounded-xl py-3 font-bold flex items-center justify-center gap-2 text-sm"
+                >
+                  <span className="text-lg">💬</span>
+                  LINE で送る
+                </button>
+                <button
+                  onClick={shareToTwitter}
+                  className="bg-black hover:bg-gray-900 text-white border border-gray-700 rounded-xl py-3 font-bold flex items-center justify-center gap-2 text-sm"
+                >
+                  <span className="text-lg">𝕏</span>
+                  ポストする
+                </button>
+              </div>
+
+              <button
+                onClick={() => copyToClipboard(shareText, "url")}
+                className="btn-neutral w-full py-2.5 text-sm"
+              >
+                {copied === "url" ? "✅ テキストをコピーしました" : "📋 紹介文をコピー"}
+              </button>
+            </div>
+
+            {/* 実績表示 */}
+            <div className="card-base p-4 space-y-2">
+              <p className="text-[11px] text-gray-400 font-bold tracking-wide">
+                📊 あなたの招待実績
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="text-center">
+                  <p className="text-[11px] text-gray-400">招待成立数</p>
+                  <p className="text-3xl font-extrabold text-emerald-300 mt-1">
+                    {data.totalInvited}
+                    <span className="text-xs font-normal text-gray-400 ml-1">
+                      人
+                    </span>
+                  </p>
+                </div>
+                <div className="text-center">
+                  <p className="text-[11px] text-gray-400">獲得無料月数</p>
+                  <p className="text-3xl font-extrabold text-amber-300 mt-1">
+                    {data.bonusFreeMonths}
+                    <span className="text-xs font-normal text-gray-400 ml-1">
+                      ヶ月
+                    </span>
+                  </p>
+                </div>
+              </div>
+              {data.totalInvited === 0 && (
+                <p className="text-[11px] text-gray-500 text-center pt-1">
+                  まだ招待成立はありません
+                </p>
+              )}
+            </div>
+
+            {/* 紹介文プレビュー */}
+            <div className="card-base p-4">
+              <p className="text-[11px] text-gray-400 font-bold tracking-wide mb-2">
+                💬 紹介メッセージのプレビュー
+              </p>
+              <div className="bg-gray-900/50 rounded-xl p-3 border border-white/5">
+                <p className="text-xs text-gray-300 whitespace-pre-wrap leading-relaxed">
+                  {shareText}
+                </p>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </main>
+  );
+}
+
