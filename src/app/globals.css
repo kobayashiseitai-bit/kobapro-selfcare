@@ -207,6 +207,9 @@ img, video, canvas {
     opacity: 0;
   }
 }
+.animate-confetti {
+  animation: confetti-fall linear infinite;
+}
 
 /* バッジポップアップ: 中央に大きく現れる */
 @keyframes badge-pop {

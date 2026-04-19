@@ -38,7 +38,7 @@ const POSE_CONNECTIONS: [number, number][] = [
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type MediaPipeModules = { PoseLandmarker: any; FilesetResolver: any; DrawingUtils: any };
 
-type Screen = "loading" | "register" | "home" | "ai-counsel" | "selfcare" | "check" | "history" | "meal" | "subscription" | "report" | "invite" | "before-after" | "sensei-profile";
+type Screen = "loading" | "register" | "onboarding" | "home" | "ai-counsel" | "selfcare" | "check" | "history" | "meal" | "subscription" | "report" | "invite" | "before-after" | "sensei-profile";
 
 const PREFECTURES = [
   "北海道","青森県","岩手県","宮城県","秋田県","山形県","福島県",
@@ -161,7 +161,15 @@ export default function Home() {
 
   return (
     <>
-      {screen === "register" && <RegisterScreen onComplete={() => setScreen("home")} />}
+      {screen === "register" && (
+        <RegisterScreen
+          onComplete={() => {
+            const onboarded = localStorage.getItem("zero_pain_onboarded") === "1";
+            setScreen(onboarded ? "home" : "onboarding");
+          }}
+        />
+      )}
+      {screen === "onboarding" && <OnboardingScreen onNavigate={setScreen} />}
       {screen === "home" && <HomeScreen onNavigate={setScreen} onSelectSymptom={goToSelfcare} onGoToMealMode={goToMealWithMode} />}
       {screen === "ai-counsel" && (
         <AiCounselScreen
@@ -202,6 +210,156 @@ const PAIN_AREAS = [
   { id: "arm", label: "腕・手" },
   { id: "leg", label: "脚・足" },
 ];
+
+// ==================== 🌟 オンボーディング（初回体験） ====================
+function OnboardingScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
+  const [slide, setSlide] = useState(0);
+  const [userName, setUserName] = useState<string>("");
+
+  useEffect(() => {
+    // ユーザー名を取得（登録直後）
+    const fetchUserName = async () => {
+      try {
+        const deviceId = getDeviceId();
+        if (!deviceId) return;
+        const res = await fetch(
+          `/api/checkin?deviceId=${encodeURIComponent(deviceId)}&t=${Date.now()}`,
+          { cache: "no-store" }
+        );
+        const data = await res.json();
+        if (data.userName) setUserName(data.userName);
+      } catch {
+        /* ignore */
+      }
+    };
+    fetchUserName();
+  }, []);
+
+  const slides = useMemo(
+    () => [
+      {
+        emoji: "🦴",
+        title: userName ? `${userName}さん、はじめまして！` : "はじめまして！",
+        subtitle: "ガイコツ先生です",
+        description:
+          "生前は30年間、1万人の体を整えてきた名カイロプラクター。骨だけになっても、あなたの体と人生を支えます。",
+        image: "/icon-skeleton-sensei.png",
+      },
+      {
+        emoji: "🧍",
+        title: "AIが姿勢を瞬時に分析",
+        subtitle: "スマホ1台で本格チェック",
+        description:
+          "全身撮影するだけで、肩のズレ・骨盤の傾き・重心バランスなど、カイロプラクティックの視点で姿勢を分析します。",
+        image: "/icon-skeleton-sensei-face.png",
+      },
+      {
+        emoji: "💫",
+        title: "毎朝30秒で体が変わる",
+        subtitle: "コンディションチェック習慣",
+        description:
+          "朝の体調タップ → AIがその日のケアを提案。続けるほど、ガイコツ先生との関係も深まります（31日目にはタメ口も）。",
+        image: "/icon-skeleton-sensei-face.png",
+      },
+    ],
+    [userName]
+  );
+
+  const completeOnboarding = () => {
+    localStorage.setItem("zero_pain_onboarded", "1");
+  };
+
+  const handleNext = () => {
+    if (slide < slides.length - 1) {
+      setSlide(slide + 1);
+    } else {
+      // 完了 → 最初の姿勢チェックへ
+      completeOnboarding();
+      // 初回姿勢チェックのフラグを立てる（CheckScreen で祝福演出のため）
+      localStorage.setItem("zero_pain_first_check_pending", "1");
+      onNavigate("check");
+    }
+  };
+
+  const handleSkip = () => {
+    completeOnboarding();
+    onNavigate("home");
+  };
+
+  const current = slides[slide];
+
+  return (
+    <main className="fixed inset-0 bg-gradient-to-b from-gray-950 via-indigo-950/30 to-gray-950 text-white flex flex-col">
+      {/* スキップボタン */}
+      <div className="flex justify-end px-4 pt-4">
+        <button
+          onClick={handleSkip}
+          className="text-xs text-gray-500 hover:text-gray-300 px-3 py-1.5"
+        >
+          スキップ →
+        </button>
+      </div>
+
+      {/* メインコンテンツ */}
+      <div className="flex-1 flex flex-col items-center justify-center px-6 pb-8">
+        {/* キャラクターイラスト */}
+        <div className="relative mb-6">
+          {/* グロー効果 */}
+          <div className="absolute inset-0 blur-3xl bg-indigo-500/30 rounded-full scale-125" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={current.image}
+            alt="ガイコツ先生"
+            className="relative w-40 h-40 object-contain drop-shadow-[0_0_40px_rgba(99,102,241,0.6)]"
+          />
+        </div>
+
+        {/* タイトル */}
+        <p className="text-4xl mb-2">{current.emoji}</p>
+        <h1 className="text-2xl font-extrabold text-white text-center leading-tight mb-1">
+          {current.title}
+        </h1>
+        <p className="text-sm text-indigo-300 font-bold mb-5">{current.subtitle}</p>
+
+        {/* 説明 */}
+        <p className="text-sm text-gray-300 text-center leading-relaxed max-w-sm mb-8">
+          {current.description}
+        </p>
+
+        {/* 進捗ドット */}
+        <div className="flex gap-2 mb-6">
+          {slides.map((_, i) => (
+            <div
+              key={i}
+              className={`h-1.5 rounded-full transition-all ${
+                i === slide
+                  ? "w-8 bg-indigo-400"
+                  : i < slide
+                  ? "w-2 bg-indigo-600"
+                  : "w-2 bg-gray-700"
+              }`}
+            />
+          ))}
+        </div>
+
+        {/* ボタン */}
+        <button
+          onClick={handleNext}
+          className="w-full max-w-sm py-3.5 bg-gradient-to-r from-indigo-500 to-purple-600 hover:brightness-110 rounded-2xl font-extrabold text-white shadow-[0_8px_24px_rgba(99,102,241,0.5)] active:scale-[0.98] transition"
+        >
+          {slide < slides.length - 1 ? "次へ →" : "📷 さっそく始める"}
+        </button>
+
+        {/* 最終ページでの追加テキスト */}
+        {slide === slides.length - 1 && (
+          <p className="text-[11px] text-gray-500 mt-4 text-center">
+            最初の姿勢チェックで「Before写真」が保存されます
+          </p>
+        )}
+      </div>
+    </main>
+  );
+}
 
 function RegisterScreen({ onComplete }: { onComplete: () => void }) {
   const [name, setName] = useState("");
@@ -2028,6 +2186,7 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   const [landmarks, setLandmarks] = useState<Landmark[]>([]);
   const [saved, setSaved] = useState(false);
   const [photoSaved, setPhotoSaved] = useState(false);
+  const [showFirstCheckCelebration, setShowFirstCheckCelebration] = useState(false);
   const [captureStep, setCaptureStep] = useState<"front" | "side" | "done">("front");
   const captureStepRef = useRef<"front" | "side" | "done">("front");
   const [frontDiagnosis, setFrontDiagnosis] = useState<DiagnosisItem[]>([]);
@@ -2407,6 +2566,15 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
 
     saveToDb({ type: "posture", landmarks, diagnosis, imageUrl });
     setSaved(true);
+
+    // 🎉 初回の姿勢チェックなら祝福演出を表示
+    if (typeof window !== "undefined") {
+      const pending = localStorage.getItem("zero_pain_first_check_pending");
+      if (pending === "1") {
+        localStorage.removeItem("zero_pain_first_check_pending");
+        setShowFirstCheckCelebration(true);
+      }
+    }
   }, [landmarks, diagnosis]);
 
   const handleSavePhoto = useCallback(() => {
@@ -2576,7 +2744,111 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
           )}
         </div>
       )}
+
+      {/* 🎉 初回チェック祝福モーダル */}
+      {showFirstCheckCelebration && (
+        <FirstCheckCelebrationModal
+          onClose={() => {
+            setShowFirstCheckCelebration(false);
+          }}
+          onGoHome={() => {
+            setShowFirstCheckCelebration(false);
+            onNavigate("home");
+          }}
+          onOpenBeforeAfter={() => {
+            setShowFirstCheckCelebration(false);
+            onNavigate("before-after");
+          }}
+        />
+      )}
     </main>
+  );
+}
+
+// ==================== 🎉 初回姿勢チェック祝福モーダル ====================
+function FirstCheckCelebrationModal({
+  onClose,
+  onGoHome,
+  onOpenBeforeAfter,
+}: {
+  onClose: () => void;
+  onGoHome: () => void;
+  onOpenBeforeAfter: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      {/* 紙吹雪アニメーション（CSSベース） */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        {Array.from({ length: 20 }).map((_, i) => (
+          <div
+            key={i}
+            className="absolute text-2xl animate-confetti"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `-10%`,
+              animationDelay: `${Math.random() * 2}s`,
+              animationDuration: `${3 + Math.random() * 2}s`,
+            }}
+          >
+            {["✨", "🎉", "🦴", "🌟", "💫"][i % 5]}
+          </div>
+        ))}
+      </div>
+
+      <div
+        className="relative w-full max-w-sm bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 rounded-3xl p-6 shadow-2xl space-y-4 animate-slide-up-fade"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="text-center space-y-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/icon-skeleton-sensei-face.png"
+            alt="ガイコツ先生"
+            className="w-24 h-24 mx-auto object-contain drop-shadow-lg"
+          />
+          <div>
+            <p className="text-xs font-bold text-yellow-300 tracking-widest mb-1">
+              🎉 ACHIEVEMENT UNLOCKED
+            </p>
+            <h2 className="text-2xl font-extrabold text-white leading-tight">
+              はじめての姿勢チェック完了！
+            </h2>
+            <p className="text-sm text-indigo-100 mt-2">
+              🌱 バッジ獲得: <span className="font-bold">はじめの一歩</span>
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-black/30 rounded-2xl p-4 space-y-2">
+          <p className="text-sm text-white leading-relaxed">
+            ✨ 今日の写真は<span className="font-bold text-yellow-300">&ldquo;Before写真&rdquo;</span>
+            として保存されました。
+          </p>
+          <p className="text-xs text-indigo-100 leading-relaxed">
+            継続するほど、体の変化がはっきり見えてきます。
+            1ヶ月後のあなたが楽しみですね。
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <button
+            onClick={onOpenBeforeAfter}
+            className="w-full py-3 bg-white text-indigo-700 rounded-xl font-extrabold shadow-lg active:scale-[0.98] transition"
+          >
+            📸 Before写真を確認する
+          </button>
+          <button
+            onClick={onGoHome}
+            className="w-full py-2.5 bg-white/20 hover:bg-white/30 text-white rounded-xl font-bold transition"
+          >
+            ホームに戻る
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
