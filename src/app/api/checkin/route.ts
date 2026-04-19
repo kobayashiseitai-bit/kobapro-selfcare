@@ -221,16 +221,16 @@ export async function POST(req: NextRequest) {
     const moodLabel = MOOD_LABELS[moodLevel];
     const userName = user.name || "あなた";
 
-    // 関係性レベルで口調を変える
+    // 関係性レベルで口調を変える（chat/route.ts と統一）
     let toneInstruction = "";
-    if (daysSinceRegistration <= 7) {
-      toneInstruction = "丁寧な敬語で話す。「〜ですね」「〜ましょう」のような初対面の温かさ。";
+    if (daysSinceRegistration <= 3) {
+      toneInstruction = `丁寧な敬語で話す。「〜ですね」「〜ましょう」のような初対面の温かさ。「${userName}さん」と呼ぶ。`;
+    } else if (daysSinceRegistration <= 14) {
+      toneInstruction = `親しみのある敬語。時々「〜だね」も混ぜる。「${userName}さん」と呼ぶ。`;
     } else if (daysSinceRegistration <= 30) {
-      toneInstruction = "親しみのある敬語。時々「〜だね」も混ぜる。";
-    } else if (daysSinceRegistration <= 100) {
-      toneInstruction = "親しい友人のような口調。名前で呼ぶ。「小林さん、〜ですよ」";
+      toneInstruction = `親しい友人のような口調。「${userName}さん、」と呼びかけて始める。敬語と「〜だね」混在。`;
     } else {
-      toneInstruction = "長年の付き合いのような信頼感。タメ口も混ぜる。「小林さん、〜してね」";
+      toneInstruction = `気の置けない関係。タメ口も混ぜる。「${userName}さん、〜してね」「〜だよ」。これまでの継続への敬意を込めて。`;
     }
 
     const analysisPrompt = `あなたは「ガイコツ先生」、ZERO-PAINセルフケアアプリ専属のAIカイロプラクターです。

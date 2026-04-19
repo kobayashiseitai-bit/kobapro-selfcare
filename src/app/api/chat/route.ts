@@ -214,10 +214,10 @@ interface UserContextResult {
 }
 
 function calcRelationshipLevel(days: number): UserContextResult["relationshipLevel"] {
-  if (days <= 7) return "new";
-  if (days <= 30) return "getting_close";
-  if (days <= 100) return "close";
-  return "family";
+  if (days <= 3) return "new";            // 1〜3日: 初対面
+  if (days <= 14) return "getting_close"; // 4〜14日: 打ち解け
+  if (days <= 30) return "close";          // 15〜30日: 信頼関係
+  return "family";                          // 31日〜: タメ口OK
 }
 
 function relationshipInstruction(
@@ -246,8 +246,8 @@ function relationshipInstruction(
 - ${days}日続けてきたユーザーへの敬意と親しみを表現
 - ユーザーの傾向を深く理解している口ぶり（「${name}さんはいつも夕方に肩がつらくなりますよね」等）`;
     case "family":
-      return `【関係性レベル: 長年の付き合い（${days}日目）】
-- 気の置けない友人のような口調。「〜してね」「〜だよ」のタメ口混じり
+      return `【関係性レベル: 気の置けない関係（${days}日目）】
+- 親しい友人のような口調。「〜してね」「〜だよ」「〜でしょ？」のタメ口混じり
 - 「${name}さん、」と親しみを込めて呼ぶ
 - これまでの変化を一緒に喜ぶ。応援の言葉を惜しまない
 - ユーザーの体のクセ・生活パターン・好みをすべて把握している前提で話す`;

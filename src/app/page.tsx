@@ -3115,16 +3115,16 @@ function MorningCheckinCard({
     }
   };
 
-  // 関係性レベルでの挨拶（登録日数に応じて変化）
+  // 関係性レベルでの挨拶（chat/route.ts の閾値と統一: 3日/14日/30日）
   const greeting = useMemo(() => {
     const name = userName || "あなた";
     if (daysSinceRegistration === 0) {
       return `はじめまして、${name}さん`;
-    } else if (daysSinceRegistration <= 7) {
+    } else if (daysSinceRegistration <= 3) {
       return `おはようございます、${name}さん`;
-    } else if (daysSinceRegistration <= 30) {
+    } else if (daysSinceRegistration <= 14) {
       return `おはよう、${name}さん！`;
-    } else if (daysSinceRegistration <= 100) {
+    } else if (daysSinceRegistration <= 30) {
       return `${name}さん、今日もよろしくね`;
     } else {
       return `${name}さん、今日も一緒にがんばろう`;
@@ -6290,10 +6290,10 @@ function SenseiProfileScreen({ onNavigate }: { onNavigate: (s: Screen) => void }
           </p>
           <div className="space-y-2">
             {[
-              { range: "1〜7日", label: "はじめまして", desc: "丁寧な敬語で距離感を保ちます" },
-              { range: "8〜30日", label: "打ち解けてきた頃", desc: "親しみのある敬語になります" },
-              { range: "31〜100日", label: "信頼関係", desc: "名前で呼んでくれるように" },
-              { range: "101日〜", label: "長年の付き合い", desc: "気の置けない友人のような口調に" },
+              { range: "1〜3日", label: "はじめまして", desc: "丁寧な敬語で距離感を保ちます" },
+              { range: "4〜14日", label: "打ち解けてきた頃", desc: "親しみのある敬語になります" },
+              { range: "15〜30日", label: "信頼関係", desc: "名前で呼んで相談に乗ってくれます" },
+              { range: "31日〜", label: "気の置けない関係", desc: "タメ口が混ざる親しい友人に ✨" },
             ].map((r, i) => (
               <div key={i} className="flex gap-3 items-start">
                 <div className="w-20 text-[11px] text-indigo-300 font-bold pt-0.5">{r.range}</div>
