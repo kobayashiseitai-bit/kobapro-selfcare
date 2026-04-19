@@ -2590,6 +2590,17 @@ function StreakCard() {
   );
 }
 
+type RankingData = {
+  myStreak: number;
+  totalUsers: number;
+  rank: number;
+  percentile: number;
+  activeUsersToday: number;
+  averageStreak: number;
+  medianStreak: number;
+  topStreakDistribution: Array<{ range: string; count: number; isMe: boolean }>;
+};
+
 function StreakDetailModal({
   data,
   onClose,
@@ -2597,6 +2608,23 @@ function StreakDetailModal({
   data: StreakData;
   onClose: () => void;
 }) {
+  const [ranking, setRanking] = useState<RankingData | null>(null);
+  const [rankingLoading, setRankingLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const deviceId = getDeviceId();
+        const res = await fetch(
+          `/api/streak/ranking?deviceId=${encodeURIComponent(deviceId || "")}`,
+          { cache: "no-store" }
+        );
+        const d = await res.json();
+        if (res.ok) setRanking(d);
+      } catch { /* ignore */ }
+      setRankingLoading(false);
+    })();
+  }, []);
   // 直近30日のカレンダー（JST日付 YYYY-MM-DD の配列）
   const last30Days: string[] = [];
   for (let i = 29; i >= 0; i--) {
@@ -2699,6 +2727,104 @@ function StreakDetailModal({
             左: 30日前 → 右: 今日
           </p>
         </div>
+
+        {/* 🏆 匿名ランキング（プライバシー保護・上位%表示） */}
+        {!rankingLoading && ranking && ranking.totalUsers >= 3 && (
+          <div>
+            <p className="text-[11px] text-gray-400 font-bold mb-2 tracking-wide">
+              🏆 全ユーザー中のあなたの位置
+            </p>
+            <div className="card-accent-indigo p-4 space-y-3">
+              {/* パーセンタイル表示 */}
+              <div className="text-center">
+                <p className="text-[11px] text-indigo-300">あなたのストリークは</p>
+                <p className="text-3xl font-extrabold text-white mt-1">
+                  上位{" "}
+                  <span className="text-indigo-300">
+                    {ranking.percentile}
+                  </span>
+                  <span className="text-lg">%</span>
+                </p>
+                <p className="text-[11px] text-gray-400 mt-1">
+                  {ranking.totalUsers}人中 {ranking.rank}位
+                </p>
+              </div>
+
+              {/* 分布グラフ */}
+              <div className="space-y-1.5">
+                <p className="text-[11px] text-gray-400 mb-1">
+                  📊 ユーザー分布（あなたの位置: 🔥）
+                </p>
+                {ranking.topStreakDistribution.map((d) => {
+                  const maxCount = Math.max(
+                    ...ranking.topStreakDistribution.map((x) => x.count)
+                  );
+                  const widthPct =
+                    maxCount > 0 ? (d.count / maxCount) * 100 : 0;
+                  return (
+                    <div
+                      key={d.range}
+                      className="flex items-center gap-2 text-[11px]"
+                    >
+                      <span className="w-20 text-right text-gray-300">
+                        {d.range}
+                      </span>
+                      <div className="flex-1 h-5 bg-gray-800 rounded overflow-hidden relative">
+                        <div
+                          className={`h-full ${
+                            d.isMe
+                              ? "bg-gradient-to-r from-amber-500 to-red-500"
+                              : "bg-indigo-500/50"
+                          }`}
+                          style={{ width: `${widthPct}%` }}
+                        />
+                        {d.isMe && (
+                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm">
+                            🔥
+                          </span>
+                        )}
+                      </div>
+                      <span className="w-8 text-right text-gray-400">
+                        {d.count}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* 追加統計 */}
+              <div className="grid grid-cols-3 gap-2 pt-2 border-t border-white/5">
+                <div className="text-center">
+                  <p className="text-[10px] text-gray-400">今日記録</p>
+                  <p className="text-sm font-bold text-white mt-0.5">
+                    {ranking.activeUsersToday}
+                    <span className="text-[10px] font-normal">人</span>
+                  </p>
+                </div>
+                <div className="text-center">
+                  <p className="text-[10px] text-gray-400">平均</p>
+                  <p className="text-sm font-bold text-white mt-0.5">
+                    {ranking.averageStreak}
+                    <span className="text-[10px] font-normal">日</span>
+                  </p>
+                </div>
+                <div className="text-center">
+                  <p className="text-[10px] text-gray-400">中央値</p>
+                  <p className="text-sm font-bold text-white mt-0.5">
+                    {ranking.medianStreak}
+                    <span className="text-[10px] font-normal">日</span>
+                  </p>
+                </div>
+              </div>
+
+              <p className="text-[10px] text-gray-500 text-center leading-relaxed pt-1">
+                ※ 他のユーザーの個人情報は一切公開されません
+                <br />
+                プライバシー完全保護
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* バッジ一覧 */}
         <div>
