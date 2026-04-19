@@ -5741,6 +5741,7 @@ type InviteData = {
 function InviteScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   const [data, setData] = useState<InviteData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [errorDetail, setErrorDetail] = useState<string | null>(null);
   const [copied, setCopied] = useState<"code" | "url" | null>(null);
 
   useEffect(() => {
@@ -5751,8 +5752,14 @@ function InviteScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
           `/api/invite?deviceId=${encodeURIComponent(deviceId || "")}`
         );
         const d = await res.json();
-        if (res.ok) setData(d);
-      } catch { /* ignore */ }
+        if (res.ok) {
+          setData(d);
+        } else {
+          setErrorDetail(d.detail || d.error || "不明なエラー");
+        }
+      } catch (e) {
+        setErrorDetail(e instanceof Error ? e.message : "通信エラー");
+      }
       setLoading(false);
     })();
   }, []);
@@ -5832,8 +5839,27 @@ ${data.shareUrl}
             読み込み中...
           </div>
         ) : !data ? (
-          <div className="card-base p-8 text-center text-gray-400">
-            招待コードの取得に失敗しました
+          <div className="space-y-3">
+            <div className="card-accent-amber p-4 space-y-2">
+              <p className="text-sm font-bold text-amber-300">
+                ⚠️ 招待コード機能の準備が必要です
+              </p>
+              <p className="text-xs text-gray-200 leading-relaxed">
+                Supabase側で招待コードテーブルのセットアップが
+                まだ完了していません。開発者にお問い合わせください。
+              </p>
+              {errorDetail && (
+                <p className="text-[11px] text-gray-400 font-mono bg-gray-900/50 rounded p-2 mt-2">
+                  詳細: {errorDetail}
+                </p>
+              )}
+            </div>
+            <button
+              onClick={() => onNavigate("home")}
+              className="btn-neutral w-full py-3 text-sm"
+            >
+              ホームに戻る
+            </button>
           </div>
         ) : (
           <>

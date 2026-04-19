@@ -52,11 +52,25 @@ export async function GET(req: NextRequest) {
     const user = users[0];
 
     // 既存の招待コードをチェック
-    let { data: existing } = await supabase
+    const { data: firstCheck, error: selectError } = await supabase
       .from("invite_codes")
       .select("code, use_count, created_at")
       .eq("user_id", user.id)
       .maybeSingle();
+
+    if (selectError && selectError.code === "42P01") {
+      // PostgreSQL: relation does not exist
+      return NextResponse.json(
+        {
+          error: "SQLテーブル未作成",
+          detail: "invite_codes テーブルが存在しません。Supabase SQL Editor でマイグレーションを実行してください。",
+        },
+        { status: 500 }
+      );
+    }
+
+    let existing = firstCheck;
+    let lastInsertError: string | null = null;
 
     // なければ新規作成（最大5回試行してユニーク保証）
     if (!existing) {
@@ -74,12 +88,22 @@ export async function GET(req: NextRequest) {
           existing = inserted;
           break;
         }
+        if (error) {
+          lastInsertError = `${error.code}: ${error.message}`;
+          // テーブル未作成系のエラーならすぐ抜ける
+          if (error.code === "42P01" || error.code === "42703") break;
+        }
       }
     }
 
     if (!existing) {
       return NextResponse.json(
-        { error: "コード発行に失敗" },
+        {
+          error: "招待コードの発行に失敗しました",
+          detail:
+            lastInsertError ||
+            "invite_codes テーブルのセットアップを確認してください",
+        },
         { status: 500 }
       );
     }
