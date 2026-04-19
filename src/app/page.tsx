@@ -38,7 +38,7 @@ const POSE_CONNECTIONS: [number, number][] = [
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type MediaPipeModules = { PoseLandmarker: any; FilesetResolver: any; DrawingUtils: any };
 
-type Screen = "loading" | "register" | "home" | "ai-counsel" | "selfcare" | "check" | "history" | "meal" | "subscription" | "report" | "invite";
+type Screen = "loading" | "register" | "home" | "ai-counsel" | "selfcare" | "check" | "history" | "meal" | "subscription" | "report" | "invite" | "before-after" | "sensei-profile";
 
 const PREFECTURES = [
   "北海道","青森県","岩手県","宮城県","秋田県","山形県","福島県",
@@ -185,6 +185,8 @@ export default function Home() {
       {screen === "subscription" && <SubscriptionScreen onNavigate={setScreen} />}
       {screen === "report" && <ReportScreen onNavigate={setScreen} />}
       {screen === "invite" && <InviteScreen onNavigate={setScreen} />}
+      {screen === "before-after" && <BeforeAfterScreen onNavigate={setScreen} />}
+      {screen === "sensei-profile" && <SenseiProfileScreen onNavigate={setScreen} />}
     </>
   );
 }
@@ -885,6 +887,9 @@ function HomeScreen({
           </button>
         )}
 
+        {/* ☀️ 朝のコンディションチェック（毎日1回・AIパーソナライズ） */}
+        <MorningCheckinCard onNavigate={onNavigate} onSelectSymptom={onSelectSymptom} />
+
         {/* 🔥 ストリーク（連続記録日数） */}
         <StreakCard />
 
@@ -942,19 +947,32 @@ function HomeScreen({
               <p className="text-sm text-emerald-50/90 mt-0.5">スマホを置いて全身撮影 → 歪みを自動チェック</p>
             </div>
           </button>
-          <button
-            onClick={() => onNavigate("history")}
-            disabled={records.length === 0}
-            className="btn-neutral w-full px-5 py-3.5 flex items-center gap-3 disabled:opacity-40"
-          >
-            <span className="text-xl">📊</span>
-            <div className="text-left">
-              <p className="text-sm font-bold">過去の記録を見る</p>
-              <p className="text-[11px] text-gray-400">
-                {records.length > 0 ? `${records.length}件の記録` : "まだ記録がありません"}
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => onNavigate("history")}
+              disabled={records.length === 0}
+              className="btn-neutral px-3 py-3.5 flex flex-col items-center gap-1 disabled:opacity-40"
+            >
+              <span className="text-xl">📊</span>
+              <p className="text-xs font-bold">履歴</p>
+              <p className="text-[10px] text-gray-400 text-center leading-tight">
+                {records.length > 0 ? `${records.length}件` : "記録なし"}
               </p>
-            </div>
-          </button>
+            </button>
+            <button
+              onClick={() => onNavigate("before-after")}
+              className="relative btn-neutral px-3 py-3.5 flex flex-col items-center gap-1 border-2 border-pink-500/30"
+            >
+              <span className="absolute top-1 right-1.5 bg-pink-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                NEW
+              </span>
+              <span className="text-xl">📸</span>
+              <p className="text-xs font-bold">Before/After</p>
+              <p className="text-[10px] text-gray-400 text-center leading-tight">
+                変化を確認
+              </p>
+            </button>
+          </div>
         </div>
 
         {/* Step 2: AIカウンセリング */}
@@ -991,6 +1009,16 @@ function HomeScreen({
               </div>
               <span className="text-xl text-indigo-300">›</span>
             </div>
+          </button>
+
+          {/* ガイコツ先生のプロフィールへ */}
+          <button
+            onClick={() => onNavigate("sensei-profile")}
+            className="w-full flex items-center justify-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 py-1.5"
+          >
+            <span>💀</span>
+            <span>ガイコツ先生について詳しく</span>
+            <span>›</span>
           </button>
         </div>
 
@@ -2992,6 +3020,262 @@ function StreakDetailModal({
           閉じる
         </button>
       </div>
+    </div>
+  );
+}
+
+// ==================== ☀️ 朝のコンディションチェック ====================
+type SelectableSymptomId =
+  | "neck"
+  | "shoulder_stiff"
+  | "shoulder_pain"
+  | "back"
+  | "headache"
+  | "eye_fatigue"
+  | "kyphosis";
+
+interface CheckinData {
+  id: string;
+  mood_level: number;
+  ai_message: string | null;
+  recommended_care: Array<{
+    symptomId: string;
+    title: string;
+    reason: string;
+  }> | null;
+  checkin_date: string;
+}
+
+function MorningCheckinCard({
+  onNavigate,
+  onSelectSymptom,
+}: {
+  onNavigate: (s: Screen) => void;
+  onSelectSymptom: (id: SelectableSymptomId) => void;
+}) {
+  const [loading, setLoading] = useState(true);
+  const [hasToday, setHasToday] = useState(false);
+  const [checkin, setCheckin] = useState<CheckinData | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
+  const [daysSinceRegistration, setDaysSinceRegistration] = useState(0);
+  const [selectedMood, setSelectedMood] = useState<number | null>(null);
+  const [bodyNote, setBodyNote] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [showNoteInput, setShowNoteInput] = useState(false);
+
+  const loadStatus = useCallback(async () => {
+    setLoading(true);
+    try {
+      const deviceId = getDeviceId();
+      const res = await fetch(
+        `/api/checkin?deviceId=${encodeURIComponent(deviceId || "")}&t=${Date.now()}`,
+        { cache: "no-store" }
+      );
+      const data = await res.json();
+      setHasToday(!!data.hasToday);
+      setCheckin(data.checkin || null);
+      setUserName(data.userName || null);
+      setDaysSinceRegistration(data.daysSinceRegistration || 0);
+    } catch {
+      /* ignore */
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadStatus();
+  }, [loadStatus]);
+
+  const submit = async () => {
+    if (!selectedMood) return;
+    setSubmitting(true);
+    try {
+      const deviceId = getDeviceId();
+      const res = await fetch("/api/checkin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          deviceId,
+          moodLevel: selectedMood,
+          bodyNote: bodyNote.trim() || undefined,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || err.error || "保存に失敗しました");
+      }
+      await loadStatus();
+      setBodyNote("");
+      setShowNoteInput(false);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // 関係性レベルでの挨拶（登録日数に応じて変化）
+  const greeting = useMemo(() => {
+    const name = userName || "あなた";
+    if (daysSinceRegistration === 0) {
+      return `はじめまして、${name}さん`;
+    } else if (daysSinceRegistration <= 7) {
+      return `おはようございます、${name}さん`;
+    } else if (daysSinceRegistration <= 30) {
+      return `おはよう、${name}さん！`;
+    } else if (daysSinceRegistration <= 100) {
+      return `${name}さん、今日もよろしくね`;
+    } else {
+      return `${name}さん、今日も一緒にがんばろう`;
+    }
+  }, [userName, daysSinceRegistration]);
+
+  const moodOptions: Array<{ level: number; emoji: string; label: string; color: string }> = [
+    { level: 1, emoji: "😫", label: "つらい", color: "from-red-600/30 to-red-700/20 border-red-500/50" },
+    { level: 2, emoji: "😕", label: "いまいち", color: "from-orange-600/30 to-orange-700/20 border-orange-500/50" },
+    { level: 3, emoji: "😐", label: "普通", color: "from-gray-600/30 to-gray-700/20 border-gray-500/50" },
+    { level: 4, emoji: "🙂", label: "いい", color: "from-emerald-600/30 to-emerald-700/20 border-emerald-500/50" },
+    { level: 5, emoji: "😄", label: "絶好調", color: "from-yellow-500/30 to-amber-600/20 border-yellow-400/60" },
+  ];
+
+  if (loading) {
+    return (
+      <div className="card-base p-4 animate-pulse">
+        <div className="h-5 w-32 bg-gray-800 rounded mb-2" />
+        <div className="h-12 w-full bg-gray-800 rounded" />
+      </div>
+    );
+  }
+
+  // ========= すでに今日チェックイン済み =========
+  if (hasToday && checkin) {
+    const moodInfo = moodOptions.find((m) => m.level === checkin.mood_level);
+    return (
+      <div className={`relative overflow-hidden rounded-2xl p-4 border bg-gradient-to-br ${moodInfo?.color || "from-gray-800 to-gray-900 border-gray-700"}`}>
+        <div className="flex items-start gap-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/icon-skeleton-sensei-face.png"
+            alt="ガイコツ先生"
+            className="w-11 h-11 object-contain flex-shrink-0"
+          />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-2xl">{moodInfo?.emoji}</span>
+              <p className="text-xs text-gray-300 font-bold tracking-wide">
+                今日のコンディション: {moodInfo?.label}
+              </p>
+            </div>
+            {checkin.ai_message && (
+              <p className="text-sm text-white leading-relaxed">
+                {checkin.ai_message}
+              </p>
+            )}
+          </div>
+        </div>
+        {/* おすすめケア */}
+        {checkin.recommended_care && checkin.recommended_care.length > 0 && (
+          <div className="mt-3 space-y-1.5">
+            <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wide">
+              💡 今日のおすすめケア
+            </p>
+            {checkin.recommended_care.map((care, i) => (
+              <button
+                key={i}
+                onClick={() => {
+                  const id = care.symptomId as SelectableSymptomId;
+                  if (["neck", "shoulder_stiff", "shoulder_pain", "back", "headache", "eye_fatigue", "kyphosis"].includes(id)) {
+                    onSelectSymptom(id);
+                  } else {
+                    onNavigate("selfcare");
+                  }
+                }}
+                className="w-full bg-black/30 hover:bg-black/50 border border-white/10 rounded-xl px-3 py-2 flex items-center justify-between transition active:scale-[0.98]"
+              >
+                <div className="text-left">
+                  <p className="text-sm font-bold text-white">{care.title}</p>
+                  <p className="text-[11px] text-gray-300">{care.reason}</p>
+                </div>
+                <span className="text-emerald-400 text-lg">→</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ========= 今日まだチェックインしていない =========
+  return (
+    <div className="relative overflow-hidden rounded-2xl p-4 border border-amber-500/40 bg-gradient-to-br from-amber-500/15 via-orange-600/10 to-yellow-500/15">
+      <div className="flex items-start gap-3 mb-3">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/icon-skeleton-sensei-face.png"
+          alt="ガイコツ先生"
+          className="w-11 h-11 object-contain flex-shrink-0"
+        />
+        <div className="flex-1">
+          <p className="text-xs text-amber-400 font-bold tracking-wide mb-0.5">
+            ☀️ 今日のコンディションチェック
+          </p>
+          <p className="text-sm text-white leading-tight font-semibold">{greeting}</p>
+          <p className="text-[11px] text-gray-300 mt-1">
+            今日の体調はどうですか？1タップでOK
+          </p>
+        </div>
+      </div>
+
+      {/* 5段階ボタン */}
+      <div className="grid grid-cols-5 gap-1.5 mb-2">
+        {moodOptions.map((m) => (
+          <button
+            key={m.level}
+            onClick={() => setSelectedMood(m.level)}
+            disabled={submitting}
+            className={`py-2.5 rounded-xl border-2 flex flex-col items-center gap-0.5 transition active:scale-95 ${
+              selectedMood === m.level
+                ? `bg-gradient-to-br ${m.color} shadow-lg`
+                : "bg-gray-900/40 border-gray-700"
+            }`}
+          >
+            <span className="text-xl">{m.emoji}</span>
+            <span className="text-[10px] text-gray-300 font-bold leading-none">{m.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* 一言メモ（オプション） */}
+      {!showNoteInput && selectedMood && (
+        <button
+          onClick={() => setShowNoteInput(true)}
+          className="w-full text-[11px] text-gray-400 py-1.5 underline"
+        >
+          + 体の部位など一言を追加（任意）
+        </button>
+      )}
+      {showNoteInput && (
+        <input
+          type="text"
+          value={bodyNote}
+          onChange={(e) => setBodyNote(e.target.value)}
+          placeholder="例: 朝から首が痛い / 肩が凝っている"
+          maxLength={60}
+          className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white mb-2 placeholder-gray-600"
+        />
+      )}
+
+      {/* 送信ボタン */}
+      {selectedMood && (
+        <button
+          onClick={submit}
+          disabled={submitting}
+          className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 disabled:opacity-50 rounded-xl text-sm font-bold text-white shadow-lg active:scale-[0.98] transition"
+        >
+          {submitting ? "ガイコツ先生が見立て中..." : "✨ ガイコツ先生に見てもらう"}
+        </button>
+      )}
     </div>
   );
 }
@@ -5538,6 +5822,501 @@ type InviteData = {
   createdAt: string;
   shareUrl: string;
 };
+
+// ==================== 📸 Before/After 比較画面 ====================
+interface BeforeAfterRecord {
+  id: string;
+  imageUrl: string;
+  createdAt: string;
+  score: number;
+  issueCount: number;
+  diagnosis?: Array<{ level: string; label: string; message?: string }>;
+}
+
+interface BeforeAfterData {
+  hasData: boolean;
+  reason?: string;
+  userName?: string | null;
+  first?: BeforeAfterRecord;
+  latest?: BeforeAfterRecord;
+  firstRecord?: BeforeAfterRecord;
+  summary?: {
+    daysBetween: number;
+    totalRecords: number;
+    scoreDelta: number;
+    issueDelta: number;
+  };
+  timeline?: BeforeAfterRecord[];
+}
+
+function BeforeAfterScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
+  const [data, setData] = useState<BeforeAfterData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [selectedTimelineIdx, setSelectedTimelineIdx] = useState<number | null>(null);
+  const [sharing, setSharing] = useState(false);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const deviceId = getDeviceId();
+        const res = await fetch(
+          `/api/before-after?deviceId=${encodeURIComponent(deviceId || "")}&t=${Date.now()}`,
+          { cache: "no-store" }
+        );
+        const json = await res.json();
+        setData(json);
+      } catch {
+        setData({ hasData: false, reason: "error" });
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
+
+  const formatDate = (iso: string) => {
+    const d = new Date(iso);
+    return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
+  };
+
+  const shortDate = (iso: string) => {
+    const d = new Date(iso);
+    return `${d.getMonth() + 1}/${d.getDate()}`;
+  };
+
+  const handleShare = async () => {
+    if (!data?.first || !data?.latest || !data?.summary) return;
+    setSharing(true);
+    try {
+      const delta = data.summary.scoreDelta;
+      const days = data.summary.daysBetween;
+      const deltaText = delta >= 0 ? `+${delta}点` : `${delta}点`;
+      const shareText = `ZERO-PAINで${days}日間姿勢ケアを続けた結果、姿勢スコアが${data.first.score}点→${data.latest.score}点（${deltaText}）になりました！\n\nカイロプラクター監修の無料AI姿勢チェックアプリ、ZERO-PAINはこちら👇`;
+
+      // Web Share API
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const nav = navigator as any;
+      if (nav.share) {
+        await nav.share({
+          title: "ZERO-PAIN姿勢ケアの記録",
+          text: shareText,
+          url: "https://posture-app-steel.vercel.app",
+        });
+      } else {
+        // フォールバック: クリップボードコピー
+        await navigator.clipboard.writeText(
+          `${shareText}\nhttps://posture-app-steel.vercel.app`
+        );
+        alert("📋 シェア用テキストをコピーしました！\nSNS等に貼り付けてください。");
+      }
+    } catch (e) {
+      if (e instanceof Error && e.name !== "AbortError") {
+        alert("シェアに失敗しました: " + e.message);
+      }
+    } finally {
+      setSharing(false);
+    }
+  };
+
+  // ローディング
+  if (loading) {
+    return (
+      <main className="fixed inset-0 bg-gray-950 text-white flex items-center justify-center">
+        <p className="text-gray-400">読み込み中...</p>
+      </main>
+    );
+  }
+
+  // ========= データ不足の場合 =========
+  if (!data?.hasData) {
+    const reason = data?.reason;
+    return (
+      <main className="fixed inset-0 bg-gray-950 overflow-y-auto text-white flex flex-col items-center p-4 pb-20">
+        <div className="flex items-center gap-3 mb-4 w-full max-w-md">
+          <button
+            onClick={() => onNavigate("home")}
+            className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm"
+          >
+            ← 戻る
+          </button>
+          <h1 className="text-lg font-bold">📸 Before / After</h1>
+        </div>
+        <div className="w-full max-w-md card-base p-6 text-center space-y-3">
+          {reason === "only_one_record" && data?.firstRecord ? (
+            <>
+              <div className="text-5xl">📸</div>
+              <p className="text-base font-bold text-emerald-300">
+                Beforeの写真が保存されました！
+              </p>
+              <p className="text-xs text-gray-400 leading-relaxed">
+                初回の姿勢チェック（{formatDate(data.firstRecord.createdAt)}）が<br />
+                Beforeとして記録されています。
+              </p>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={data.firstRecord.imageUrl}
+                alt="Before"
+                className="w-full aspect-[3/4] object-cover rounded-xl border-2 border-emerald-500/40"
+              />
+              <p className="text-xs text-amber-300 mt-3">
+                💡 もう1回以上、姿勢チェックをすると<br />
+                Before / After の比較が見られるようになります。
+              </p>
+              <button
+                onClick={() => onNavigate("check")}
+                className="btn-primary w-full py-3"
+              >
+                📷 今すぐ姿勢チェックする
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="text-5xl">📏</div>
+              <p className="text-base font-bold text-gray-300">
+                まだ姿勢チェックの記録がありません
+              </p>
+              <p className="text-xs text-gray-400">
+                まず初回の姿勢チェックをしましょう。<br />
+                自動的にBefore写真として保存されます。
+              </p>
+              <button
+                onClick={() => onNavigate("check")}
+                className="btn-primary w-full py-3"
+              >
+                📷 姿勢チェックを始める
+              </button>
+            </>
+          )}
+        </div>
+      </main>
+    );
+  }
+
+  const first = data.first!;
+  const latest = data.latest!;
+  const summary = data.summary!;
+  const timeline = data.timeline || [];
+
+  // タイムラインから選択された写真（未選択時はlatest）
+  const selected =
+    selectedTimelineIdx !== null && timeline[selectedTimelineIdx]
+      ? timeline[selectedTimelineIdx]
+      : latest;
+
+  const delta = summary.scoreDelta;
+  const isImproved = delta > 0;
+
+  return (
+    <main className="fixed inset-0 bg-gray-950 overflow-y-auto text-white flex flex-col items-center p-4 pb-20">
+      <div className="flex items-center gap-3 mb-4 w-full max-w-md">
+        <button
+          onClick={() => onNavigate("home")}
+          className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm"
+        >
+          ← 戻る
+        </button>
+        <h1 className="text-lg font-bold">📸 Before / After</h1>
+      </div>
+
+      <div className="w-full max-w-md space-y-4">
+        {/* ヒーロー: 改善度表示 */}
+        <div
+          className={`relative overflow-hidden rounded-2xl p-5 border-2 ${
+            isImproved
+              ? "bg-gradient-to-br from-emerald-500/20 to-teal-600/20 border-emerald-500/50"
+              : delta === 0
+              ? "bg-gradient-to-br from-blue-500/20 to-indigo-600/20 border-blue-500/40"
+              : "bg-gradient-to-br from-amber-500/20 to-orange-600/20 border-amber-500/40"
+          }`}
+        >
+          <p className="text-[11px] text-gray-300 font-bold tracking-wider mb-2">
+            {summary.daysBetween}日間の変化
+          </p>
+          <div className="flex items-baseline gap-2">
+            <span
+              className={`text-4xl font-extrabold ${
+                isImproved ? "text-emerald-300" : delta === 0 ? "text-blue-300" : "text-amber-300"
+              }`}
+            >
+              {delta > 0 && "+"}
+              {delta}点
+            </span>
+            <span className="text-sm text-gray-300">
+              姿勢スコア {first.score}→{latest.score}
+            </span>
+          </div>
+          {summary.issueDelta > 0 && (
+            <p className="text-sm text-emerald-300 mt-2 font-semibold">
+              ✨ 気になる点が{summary.issueDelta}個減りました！
+            </p>
+          )}
+          {isImproved && (
+            <p className="text-xs text-gray-200 mt-2 leading-relaxed">
+              ZERO-PAINを{summary.totalRecords}回続けて、体の軸が整ってきています。
+              この調子で継続していきましょう 🦴
+            </p>
+          )}
+          {!isImproved && delta < 0 && (
+            <p className="text-xs text-gray-200 mt-2 leading-relaxed">
+              少し崩れた時期があったようですね。焦らず、できる範囲で続けていきましょう。
+            </p>
+          )}
+        </div>
+
+        {/* Before / After 横並び */}
+        <div className="grid grid-cols-2 gap-3">
+          {/* Before */}
+          <div className="card-base p-2 space-y-1.5">
+            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider text-center">
+              Before
+            </p>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={first.imageUrl}
+              alt="Before"
+              className="w-full aspect-[3/4] object-cover rounded-lg"
+            />
+            <div className="text-center">
+              <p className="text-[11px] text-gray-400">{shortDate(first.createdAt)}</p>
+              <p className="text-lg font-extrabold text-white">{first.score}点</p>
+            </div>
+          </div>
+          {/* After */}
+          <div className="card-base p-2 space-y-1.5 border-2 border-emerald-500/40">
+            <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider text-center">
+              {selected === latest ? "After（最新）" : "比較"}
+            </p>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={selected.imageUrl}
+              alt="After"
+              className="w-full aspect-[3/4] object-cover rounded-lg"
+            />
+            <div className="text-center">
+              <p className="text-[11px] text-gray-400">{shortDate(selected.createdAt)}</p>
+              <p className="text-lg font-extrabold text-emerald-300">{selected.score}点</p>
+            </div>
+          </div>
+        </div>
+
+        {/* タイムライン */}
+        {timeline.length > 2 && (
+          <div className="card-base p-3 space-y-2">
+            <p className="text-xs text-gray-400 font-bold">📅 タイムライン（タップで比較）</p>
+            <div className="grid grid-cols-4 gap-1.5">
+              {timeline.map((t, i) => {
+                const isLatest = i === timeline.length - 1;
+                const isSelected = selectedTimelineIdx === i || (selectedTimelineIdx === null && isLatest);
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => setSelectedTimelineIdx(i)}
+                    className={`relative aspect-[3/4] overflow-hidden rounded-lg border-2 transition ${
+                      isSelected ? "border-emerald-400" : "border-gray-700"
+                    }`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={t.imageUrl}
+                      alt={`day ${i}`}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent p-1">
+                      <p className="text-[9px] text-white font-bold text-center leading-none">
+                        {shortDate(t.createdAt)}
+                      </p>
+                      <p className="text-[10px] text-emerald-300 font-extrabold text-center leading-none mt-0.5">
+                        {t.score}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* シェアボタン */}
+        <button
+          onClick={handleShare}
+          disabled={sharing}
+          className="w-full py-3.5 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 hover:brightness-110 disabled:opacity-50 rounded-2xl text-sm font-bold text-white shadow-lg flex items-center justify-center gap-2 active:scale-[0.98] transition"
+        >
+          <span className="text-xl">📤</span>
+          <span>{sharing ? "シェア中..." : "この変化をシェアする"}</span>
+        </button>
+
+        {/* 詳細: 最新の気になる点 */}
+        {latest.diagnosis && latest.diagnosis.length > 0 && (
+          <div className="card-base p-4 space-y-2">
+            <p className="text-xs font-bold text-gray-300">📋 最新チェックの気になる点</p>
+            {latest.diagnosis.map((d, i) => (
+              <div
+                key={i}
+                className={`flex items-start gap-2 text-xs ${
+                  d.level === "good" ? "text-emerald-400" : "text-amber-300"
+                }`}
+              >
+                <span>{d.level === "good" ? "✓" : "!"}</span>
+                <div>
+                  <p className="font-semibold">{d.label}</p>
+                  {d.message && <p className="text-gray-400 mt-0.5">{d.message}</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="flex gap-2">
+          <button
+            onClick={() => onNavigate("check")}
+            className="btn-primary flex-1 py-3"
+          >
+            📷 今すぐ再チェック
+          </button>
+          <button
+            onClick={() => onNavigate("history")}
+            className="btn-neutral flex-1 py-3"
+          >
+            📚 履歴を見る
+          </button>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+// ==================== 💀 ガイコツ先生のプロフィール画面 ====================
+function SenseiProfileScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
+  return (
+    <main className="fixed inset-0 bg-gradient-to-b from-gray-950 via-indigo-950/30 to-gray-950 overflow-y-auto text-white flex flex-col items-center p-4 pb-20">
+      <div className="flex items-center gap-3 mb-4 w-full max-w-md">
+        <button
+          onClick={() => onNavigate("home")}
+          className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm"
+        >
+          ← 戻る
+        </button>
+        <h1 className="text-lg font-bold">💀 ガイコツ先生について</h1>
+      </div>
+
+      <div className="w-full max-w-md space-y-4">
+        {/* プロフィールヘッダー */}
+        <div className="card-base p-6 text-center space-y-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/icon-skeleton-sensei-face.png"
+            alt="ガイコツ先生"
+            className="w-28 h-28 mx-auto object-contain drop-shadow-[0_0_30px_rgba(99,102,241,0.5)]"
+          />
+          <div>
+            <p className="text-xs text-indigo-400 font-bold tracking-widest">AI CHIROPRACTOR</p>
+            <h2 className="text-2xl font-extrabold text-white mt-1">ガイコツ先生</h2>
+            <p className="text-xs text-gray-400 mt-1">本名: 骨田 健太郎（ほねだ けんたろう）</p>
+          </div>
+          <p className="text-sm text-gray-300 leading-relaxed italic">
+            「骨の髄まで、あなたの体を見つめます。<br />
+            体の軸が整えば、人生の軸も整う」
+          </p>
+        </div>
+
+        {/* ストーリー */}
+        <div className="card-base p-5 space-y-3">
+          <p className="text-xs font-bold text-amber-300 tracking-widest">STORY</p>
+          <div className="space-y-3 text-sm text-gray-300 leading-relaxed">
+            <p>
+              生前、先生は30年にわたって整体院を営み、<span className="text-emerald-300 font-bold">1万人以上の体</span>を整えてきました。
+            </p>
+            <p>
+              「人は見た目ではなく、骨格で決まる」と信じ、骨と向き合い続けた人生。その熱意は、骨だけになった今も変わることはありません。
+            </p>
+            <p>
+              ZERO-PAINアプリに宿り、現代のスマホユーザーが抱える姿勢の悩み、慢性的な痛み、運動不足、食事の乱れ──すべてを<span className="text-emerald-300 font-bold">AIの力で見立て</span>、一人ひとりに寄り添うようになりました。
+            </p>
+            <p>
+              ガイコツの姿に恐れる人もいるかもしれません。でも安心してください。見た目は骨でも、中身は<span className="text-emerald-300 font-bold">永遠の35歳</span>、情熱と愛情にあふれるカイロプラクターです。
+            </p>
+          </div>
+        </div>
+
+        {/* 得意分野 */}
+        <div className="card-base p-5 space-y-3">
+          <p className="text-xs font-bold text-amber-300 tracking-widest">EXPERTISE / 得意分野</p>
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            {[
+              { emoji: "🦴", label: "姿勢分析" },
+              { emoji: "💪", label: "筋肉・骨格" },
+              { emoji: "🥗", label: "食事×体の関係" },
+              { emoji: "😌", label: "ストレスケア" },
+              { emoji: "🌙", label: "睡眠・疲労" },
+              { emoji: "🧘", label: "ストレッチ指導" },
+            ].map((x, i) => (
+              <div
+                key={i}
+                className="bg-gray-900/60 border border-gray-700 rounded-lg px-3 py-2 flex items-center gap-2"
+              >
+                <span className="text-lg">{x.emoji}</span>
+                <span className="text-gray-200 font-semibold">{x.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 口癖 */}
+        <div className="card-base p-5 space-y-3">
+          <p className="text-xs font-bold text-amber-300 tracking-widest">CATCHPHRASE / 口癖</p>
+          <div className="space-y-2">
+            {[
+              "骨の髄まで分析しましょう",
+              "体の軸が整えば、人生の軸も整う",
+              "今日も一緒にコツコツやりましょう",
+              "あなたのこと、ちゃんと見てますよ",
+            ].map((phrase, i) => (
+              <div
+                key={i}
+                className="bg-gradient-to-r from-indigo-900/40 to-purple-900/30 border-l-4 border-indigo-400 rounded-r-lg px-3 py-2"
+              >
+                <p className="text-sm text-gray-200 italic">「{phrase}」</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 関係性レベル */}
+        <div className="card-base p-5 space-y-3">
+          <p className="text-xs font-bold text-amber-300 tracking-widest">RELATIONSHIP / 関係性の成長</p>
+          <p className="text-xs text-gray-400 leading-relaxed">
+            使い続けるほど、ガイコツ先生との関係が深まります。口調も少しずつ変化していきます。
+          </p>
+          <div className="space-y-2">
+            {[
+              { range: "1〜7日", label: "はじめまして", desc: "丁寧な敬語で距離感を保ちます" },
+              { range: "8〜30日", label: "打ち解けてきた頃", desc: "親しみのある敬語になります" },
+              { range: "31〜100日", label: "信頼関係", desc: "名前で呼んでくれるように" },
+              { range: "101日〜", label: "長年の付き合い", desc: "気の置けない友人のような口調に" },
+            ].map((r, i) => (
+              <div key={i} className="flex gap-3 items-start">
+                <div className="w-20 text-[11px] text-indigo-300 font-bold pt-0.5">{r.range}</div>
+                <div className="flex-1">
+                  <p className="text-sm font-bold text-white">{r.label}</p>
+                  <p className="text-[11px] text-gray-400">{r.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <button
+          onClick={() => onNavigate("ai-counsel")}
+          className="btn-primary w-full py-3.5 flex items-center justify-center gap-2"
+        >
+          <span className="text-xl">💬</span>
+          <span>ガイコツ先生と話す</span>
+        </button>
+      </div>
+    </main>
+  );
+}
 
 function InviteScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   const [data, setData] = useState<InviteData | null>(null);
