@@ -903,6 +903,9 @@ function HomeScreen({
             ⏰ リマインダー: {reminderHours ? `${reminderHours}時間ごと` : "未設定"}
           </button>
         </div>
+
+        {/* 🔍 デバッグ情報ボタン（問題調査用・一時的） */}
+        <DebugMealPanel />
         {showReminderSetting && (
           <div className="bg-gray-900 rounded-xl p-4 border border-gray-800">
             <p className="text-sm text-gray-300 mb-3">ストレッチリマインダー間隔</p>
@@ -2991,6 +2994,88 @@ function StreakDetailModal({
           閉じる
         </button>
       </div>
+    </div>
+  );
+}
+
+// ==================== 🔍 デバッグパネル（問題調査用・一時的） ====================
+function DebugMealPanel() {
+  const [open, setOpen] = useState(false);
+  const [data, setData] = useState<unknown>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const run = async () => {
+    setLoading(true);
+    setError(null);
+    setData(null);
+    try {
+      const deviceId = getDeviceId();
+      const res = await fetch(
+        `/api/debug/meal?deviceId=${encodeURIComponent(deviceId || "")}&t=${Date.now()}`,
+        { cache: "no-store" }
+      );
+      const json = await res.json();
+      setData(json);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+      alert("コピーしました");
+    } catch {
+      alert("コピーに失敗しました。画面のスクリーンショットを撮って送ってください。");
+    }
+  };
+
+  return (
+    <div className="bg-gray-900 border border-amber-800/50 rounded-xl p-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-amber-400 font-bold">🔍 食事記録の診断</p>
+        <button
+          onClick={() => setOpen(!open)}
+          className="text-xs text-gray-400"
+        >
+          {open ? "閉じる" : "開く"}
+        </button>
+      </div>
+      {open && (
+        <div className="space-y-2">
+          <p className="text-[11px] text-gray-500 leading-relaxed">
+            問題調査用のボタンです。タップすると食事記録の状態を確認できます。
+          </p>
+          <button
+            onClick={run}
+            disabled={loading}
+            className="w-full py-2.5 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 rounded-lg text-sm font-bold text-white"
+          >
+            {loading ? "取得中..." : "🔍 診断を実行する"}
+          </button>
+          {error && (
+            <div className="text-xs text-red-400 bg-red-900/20 p-2 rounded">
+              エラー: {error}
+            </div>
+          )}
+          {!!data && (
+            <div className="space-y-2">
+              <button
+                onClick={copyToClipboard}
+                className="w-full py-2 bg-gray-800 rounded-lg text-xs font-bold text-emerald-400"
+              >
+                📋 結果をコピーする
+              </button>
+              <pre className="text-[10px] text-gray-300 bg-black/50 p-2 rounded-lg overflow-x-auto max-h-96 whitespace-pre-wrap break-all">
+                {JSON.stringify(data, null, 2)}
+              </pre>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
