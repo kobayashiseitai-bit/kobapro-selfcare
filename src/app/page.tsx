@@ -2175,6 +2175,141 @@ function HistoryScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   );
 }
 
+// ==================== お祝いアニメーションモーダル ====================
+function CelebrationModal({
+  badge,
+  streakDays,
+  onClose,
+}: {
+  badge: { emoji: string; title: string; days: number };
+  streakDays: number;
+  onClose: () => void;
+}) {
+  // 紙吹雪用: 30個のカラフルな絵文字をランダム配置
+  const confettiEmojis = ["🎉", "✨", "🎊", "⭐", "💫", "🌟", "🎀", "💎"];
+  const confettiColors = [
+    "#fbbf24", // amber
+    "#34d399", // emerald
+    "#60a5fa", // blue
+    "#f472b6", // pink
+    "#a78bfa", // violet
+    "#fb923c", // orange
+  ];
+  const confettiPieces = Array.from({ length: 40 }).map((_, i) => ({
+    id: i,
+    left: Math.random() * 100, // 0-100%
+    delay: Math.random() * 1.5, // 0-1.5s
+    duration: 2.5 + Math.random() * 2, // 2.5-4.5s
+    emoji: confettiEmojis[Math.floor(Math.random() * confettiEmojis.length)],
+    color: confettiColors[Math.floor(Math.random() * confettiColors.length)],
+    size: 12 + Math.random() * 20, // 12-32px
+  }));
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] bg-black/90 backdrop-blur-md flex items-center justify-center p-6 overflow-hidden"
+      onClick={onClose}
+    >
+      {/* 紙吹雪 */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        {confettiPieces.map((p) => (
+          <span
+            key={p.id}
+            className="absolute top-0"
+            style={{
+              left: `${p.left}%`,
+              color: p.color,
+              fontSize: `${p.size}px`,
+              animation: `confetti-fall ${p.duration}s linear ${p.delay}s infinite`,
+            }}
+          >
+            {p.emoji}
+          </span>
+        ))}
+      </div>
+
+      {/* 中央のコンテンツ */}
+      <div
+        className="relative z-10 w-full max-w-sm text-center space-y-5"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* 光の背景 */}
+        <div className="relative mx-auto w-48 h-48">
+          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-amber-500 via-red-500 to-pink-500 blur-2xl animate-glow-pulse" />
+          <div className="relative w-full h-full flex items-center justify-center animate-badge-pop">
+            <span className="text-[120px] drop-shadow-[0_0_20px_rgba(251,191,36,0.8)]">
+              {badge.emoji}
+            </span>
+          </div>
+        </div>
+
+        {/* バッジ名 */}
+        <div className="animate-slide-up-fade" style={{ animationDelay: "0.4s", opacity: 0 }}>
+          <p className="text-amber-300 font-bold text-sm tracking-widest mb-2">
+            🎊 BADGE UNLOCKED 🎊
+          </p>
+          <h2 className="text-3xl font-extrabold text-white mb-2 drop-shadow-lg">
+            {badge.title}
+          </h2>
+          <p className="text-base text-gray-200">
+            <span className="text-4xl font-extrabold text-amber-300 mx-1">
+              {streakDays}
+            </span>
+            日連続達成！
+          </p>
+        </div>
+
+        {/* ガイコツ先生のメッセージ */}
+        <div
+          className="animate-slide-up-fade card-accent-amber p-4"
+          style={{ animationDelay: "0.7s", opacity: 0 }}
+        >
+          <div className="flex items-start gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/icon-skeleton-sensei-face.png"
+              alt="ガイコツ先生"
+              className="w-12 h-12 object-contain flex-shrink-0"
+            />
+            <div className="flex-1 text-left">
+              <p className="text-[11px] text-amber-400 font-bold">
+                ガイコツ先生より
+              </p>
+              <p className="text-sm text-white leading-relaxed mt-1">
+                {getCelebrationMessage(badge.days)}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* OKボタン */}
+        <div className="animate-slide-up-fade" style={{ animationDelay: "1.0s", opacity: 0 }}>
+          <button
+            onClick={onClose}
+            className="btn-primary w-full py-3.5 text-base"
+          >
+            ありがとう！🔥
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function getCelebrationMessage(days: number): string {
+  const messages: Record<number, string> = {
+    3: "素晴らしいスタートです！3日続けばもう習慣化の入り口。この調子でいきましょう🌱",
+    7: "1週間連続達成、おめでとうございます！これで健康習慣の基礎ができました🔥",
+    14: "2週間継続は本当に立派です。多くの人がここで脱落します。あなたは違いますね⭐",
+    30: "1ヶ月連続！これはもう立派な習慣です。体の変化を感じ始めていませんか？💎",
+    50: "50日継続、頭が下がります。あなたはもう達人クラスです🏆",
+    100: "驚異の3桁達成者！ZERO-PAIN利用者の中でも本当に上位層です👑",
+    200: "200日連続は鉄人の域。健康が生活の一部になっていますね🌟",
+    365: "1年連続達成！伝説級の継続力です。本当におめでとうございます🎊",
+  };
+  return messages[days] || `${days}日連続、お見事です！この調子で続けていきましょう🔥`;
+}
+
 // ==================== ストリーク（連続記録日数） ====================
 type StreakBadge = {
   days: number;
@@ -2198,6 +2333,7 @@ type StreakData = {
 function StreakCard() {
   const [data, setData] = useState<StreakData | null>(null);
   const [showDetail, setShowDetail] = useState(false);
+  const [celebrationBadge, setCelebrationBadge] = useState<StreakBadge | null>(null);
 
   const fetchStreak = useCallback(async () => {
     try {
@@ -2207,9 +2343,36 @@ function StreakCard() {
         { cache: "no-store" }
       );
       const d = await res.json();
-      if (res.ok) setData(d);
+      if (res.ok) {
+        setData(d);
+        // 新しく達成したバッジを検知してお祝い表示
+        checkForNewBadgeAchievement(d);
+      }
     } catch { /* ignore */ }
   }, []);
+
+  // LocalStorageに獲得済みバッジを保存し、新規獲得時のみお祝いを出す
+  const checkForNewBadgeAchievement = (d: StreakData) => {
+    if (typeof window === "undefined") return;
+    const celebratedKey = "zero_pain_celebrated_badges";
+    const celebratedRaw = localStorage.getItem(celebratedKey);
+    const celebrated: number[] = celebratedRaw ? JSON.parse(celebratedRaw) : [];
+
+    // 新しく獲得したバッジを探す
+    const newlyUnlocked = d.unlockedBadges.find(
+      (b) => !celebrated.includes(b.days)
+    );
+
+    if (newlyUnlocked) {
+      // 少し遅延してから祝う（画面描画後）
+      setTimeout(() => setCelebrationBadge(newlyUnlocked), 500);
+      // 獲得済みに追加して保存
+      localStorage.setItem(
+        celebratedKey,
+        JSON.stringify([...celebrated, newlyUnlocked.days])
+      );
+    }
+  };
 
   useEffect(() => {
     fetchStreak();
@@ -2311,6 +2474,15 @@ function StreakCard() {
       {/* 詳細モーダル */}
       {showDetail && (
         <StreakDetailModal data={data} onClose={() => setShowDetail(false)} />
+      )}
+
+      {/* 🎉 お祝いアニメーション（マイルストーン達成時） */}
+      {celebrationBadge && (
+        <CelebrationModal
+          badge={celebrationBadge}
+          streakDays={data.currentStreak}
+          onClose={() => setCelebrationBadge(null)}
+        />
       )}
     </>
   );
