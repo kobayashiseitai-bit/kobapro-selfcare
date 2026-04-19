@@ -2330,6 +2330,89 @@ type StreakData = {
   dateMap: Record<string, boolean>;
 };
 
+// ストリーク維持のための夜リマインダー通知をスケジュール（控えめ・1日1回）
+async function scheduleStreakReminder(data: StreakData) {
+  if (typeof window === "undefined") return;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cap = (window as any).Capacitor;
+    const isNative = cap?.isNativePlatform?.() === true;
+
+    // メッセージは状況に応じて変化
+    let title: string;
+    let body: string;
+
+    if (data.currentStreak > 0 && !data.activeToday) {
+      // 危機：今日まだ記録なし
+      title = `⚠️ ${data.currentStreak}日連続記録が途絶えそう！`;
+      body = `今日中に姿勢チェックか食事記録を1つすれば${data.currentStreak + 1}日連続達成です 🔥`;
+    } else if (data.currentStreak > 0 && data.activeToday) {
+      // 達成済：応援メッセージ
+      const daysToNext = data.nextBadge.days - data.currentStreak;
+      title = `🔥 ${data.currentStreak}日連続達成中！`;
+      body =
+        daysToNext > 0
+          ? `次のバッジ「${data.nextBadge.title}」まであと${daysToNext}日です ${data.nextBadge.emoji}`
+          : `素晴らしい継続力です！明日も楽しく記録しましょう ✨`;
+    } else {
+      title = "🌱 ZERO-PAINで健康習慣";
+      body = "今日の姿勢チェックや食事記録をしてストリークを始めましょう！";
+    }
+
+    // 今日の20:30（JST）を計算
+    const now = new Date();
+    const target = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      20,
+      30,
+      0
+    );
+    // すでに過ぎていたら翌日に
+    if (target.getTime() <= now.getTime()) {
+      target.setDate(target.getDate() + 1);
+    }
+
+    if (isNative) {
+      // Capacitor環境（iOSネイティブ）
+      const { LocalNotifications } = await import(
+        "@capacitor/local-notifications"
+      );
+      // 既存のストリーク通知（ID: 2）をキャンセル
+      await LocalNotifications.cancel({ notifications: [{ id: 2 }] });
+      // 権限チェック
+      const perm = await LocalNotifications.requestPermissions();
+      if (perm.display !== "granted") return;
+      await LocalNotifications.schedule({
+        notifications: [
+          {
+            id: 2,
+            title,
+            body,
+            schedule: {
+              at: target,
+              repeats: true,
+              every: "day",
+            },
+            sound: "default",
+          },
+        ],
+      });
+    } else {
+      // Web環境: Notification API（ページ閉じられていると届かないので簡易版）
+      if (!("Notification" in window)) return;
+      if (Notification.permission === "default") {
+        await Notification.requestPermission();
+      }
+      // Web環境は通知スケジュールできないので、次回訪問時にチェックする方式にする
+      // ここでは権限要求だけ
+    }
+  } catch (err) {
+    console.warn("[streak] reminder scheduling failed:", err);
+  }
+}
+
 function StreakCard() {
   const [data, setData] = useState<StreakData | null>(null);
   const [showDetail, setShowDetail] = useState(false);
@@ -2386,6 +2469,12 @@ function StreakCard() {
       window.removeEventListener("focus", fetchStreak);
     };
   }, [fetchStreak]);
+
+  // ストリーク維持のための夜リマインダー通知（1日1回 20:30）
+  useEffect(() => {
+    if (!data) return;
+    scheduleStreakReminder(data);
+  }, [data]);
 
   if (!data) return null;
 
