@@ -7396,12 +7396,16 @@ function FamilyScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
             {/* 家族情報ヘッダー */}
             <div className="card-accent-emerald p-5 text-center space-y-2">
               <div className="text-4xl">👨‍👩‍👧</div>
-              <h2 className="text-xl font-extrabold text-white">
+              <h2 className="text-xl font-extrabold text-gray-900">
                 {data.family.name || "家族グループ"}
               </h2>
-              <p className="text-xs text-emerald-200">
+              <p className="text-base font-bold text-gray-900">
                 {data.members?.length || 0} / {data.family.maxMembers} 人
-                {data.family.isOwner && " ・ あなたがオーナー"}
+                {data.family.isOwner && (
+                  <span className="ml-2 inline-block px-2 py-0.5 bg-emerald-600 text-white text-sm font-bold rounded-full">
+                    👑 あなたがオーナー
+                  </span>
+                )}
               </p>
             </div>
 
