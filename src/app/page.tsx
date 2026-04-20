@@ -951,9 +951,9 @@ function HomeScreen({
   return (
     <main className="theme-mint fixed inset-0 bg-gray-950 text-white flex flex-col overflow-y-auto">
       {/* ヘッダー */}
-      <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-xl border-b border-emerald-200/50 px-4 py-3 flex items-center justify-between">
+      <header className="sticky top-0 z-10 bg-gray-950/90 backdrop-blur-xl border-b border-white/5 px-4 py-3 flex items-center justify-between">
         <div className="w-12" />
-        <h1 className="text-lg font-extrabold tracking-[0.2em] text-emerald-700">ZERO-PAIN</h1>
+        <h1 className="text-lg font-extrabold brand-logo tracking-[0.2em]">ZERO-PAIN</h1>
         <button
           onClick={() => setShowMenu(true)}
           aria-label="メニュー"
@@ -967,7 +967,7 @@ function HomeScreen({
             stroke="currentColor"
             strokeWidth="2.5"
             strokeLinecap="round"
-            className="w-5 h-5 text-emerald-700"
+            className="w-5 h-5 text-gray-200"
           >
             <line x1="4" y1="7" x2="20" y2="7" />
             <line x1="4" y1="12" x2="20" y2="12" />
