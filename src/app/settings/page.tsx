@@ -13,6 +13,8 @@ function getDeviceId(): string {
   return id;
 }
 
+type ThemeMode = "light" | "dark" | "system";
+
 export default function SettingsPage() {
   const [userName, setUserName] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
@@ -20,6 +22,30 @@ export default function SettingsPage() {
   const [deleteText, setDeleteText] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [message, setMessage] = useState<{ type: "ok" | "error"; text: string } | null>(null);
+  const [theme, setTheme] = useState<ThemeMode>("light");
+
+  // テーマ初期化
+  useEffect(() => {
+    const saved = (localStorage.getItem("zero_pain_theme") as ThemeMode | null) || "light";
+    setTheme(saved);
+  }, []);
+
+  // テーマ変更時の処理
+  const applyTheme = (mode: ThemeMode) => {
+    setTheme(mode);
+    localStorage.setItem("zero_pain_theme", mode);
+    let resolved: "light" | "dark" = "light";
+    if (mode === "system") {
+      resolved = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    } else {
+      resolved = mode;
+    }
+    if (resolved === "light") {
+      document.documentElement.classList.add("theme-mint");
+    } else {
+      document.documentElement.classList.remove("theme-mint");
+    }
+  };
 
   useEffect(() => {
     (async () => {
@@ -134,6 +160,41 @@ export default function SettingsPage() {
           <p className="text-[11px] text-gray-500 mt-1">
             端末ID: {getDeviceId().slice(0, 8)}...
           </p>
+        </section>
+
+        {/* 🎨 テーマ設定 */}
+        <section>
+          <p className="text-[11px] text-gray-400 font-bold tracking-wide mb-2 px-1">
+            🎨 表示テーマ
+          </p>
+          <div className="card-base p-4 space-y-3">
+            <p className="text-xs text-gray-400 leading-relaxed">
+              アプリの背景色と配色を選べます。お好みやシーン（昼・夜）に合わせて切り替えてください。
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              {([
+                { id: "light", emoji: "☀️", label: "ライト", desc: "ミント" },
+                { id: "dark", emoji: "🌙", label: "ダーク", desc: "ブラック" },
+                { id: "system", emoji: "⚙️", label: "自動", desc: "OS連動" },
+              ] as const).map((opt) => (
+                <button
+                  key={opt.id}
+                  onClick={() => applyTheme(opt.id)}
+                  className={`p-3 rounded-xl border-2 flex flex-col items-center gap-1 transition active:scale-95 ${
+                    theme === opt.id
+                      ? "bg-emerald-500/20 border-emerald-500"
+                      : "bg-gray-800 border-gray-700"
+                  }`}
+                >
+                  <span className="text-2xl">{opt.emoji}</span>
+                  <p className={`text-xs font-bold ${theme === opt.id ? "text-emerald-300" : "text-gray-200"}`}>
+                    {opt.label}
+                  </p>
+                  <p className="text-[10px] text-gray-500">{opt.desc}</p>
+                </button>
+              ))}
+            </div>
+          </div>
         </section>
 
         {/* サポート */}

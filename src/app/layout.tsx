@@ -53,7 +53,7 @@ export const metadata: Metadata = {
   },
   appleWebApp: {
     capable: true,
-    statusBarStyle: "black-translucent",
+    statusBarStyle: "default",  // ライトテーマに合わせて白系（黒文字）に変更
     title: "ZERO-PAIN",
   },
   other: {
@@ -70,7 +70,27 @@ export default function RootLayout({
     <html lang="ja">
       <head>
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#030712" />
+        <meta name="theme-color" content="#ecfdf5" media="(prefers-color-scheme: light)" />
+        <meta name="theme-color" content="#030712" media="(prefers-color-scheme: dark)" />
+        {/* テーマ早期適用スクリプト（FOUC=ちらつき防止） */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var saved = localStorage.getItem('zero_pain_theme') || 'light';
+                  var resolved = saved;
+                  if (saved === 'system') {
+                    resolved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                  }
+                  if (resolved === 'light') {
+                    document.documentElement.classList.add('theme-mint');
+                  }
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
