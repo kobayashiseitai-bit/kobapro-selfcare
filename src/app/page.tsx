@@ -38,7 +38,7 @@ const POSE_CONNECTIONS: [number, number][] = [
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type MediaPipeModules = { PoseLandmarker: any; FilesetResolver: any; DrawingUtils: any };
 
-type Screen = "loading" | "register" | "onboarding" | "home" | "ai-counsel" | "selfcare" | "check" | "history" | "meal" | "subscription" | "report" | "invite" | "before-after" | "sensei-profile";
+type Screen = "loading" | "register" | "onboarding" | "home" | "ai-counsel" | "selfcare" | "check" | "history" | "meal" | "subscription" | "report" | "invite" | "before-after" | "sensei-profile" | "family";
 
 const PREFECTURES = [
   "北海道","青森県","岩手県","宮城県","秋田県","山形県","福島県",
@@ -195,6 +195,7 @@ export default function Home() {
       {screen === "invite" && <InviteScreen onNavigate={setScreen} />}
       {screen === "before-after" && <BeforeAfterScreen onNavigate={setScreen} />}
       {screen === "sensei-profile" && <SenseiProfileScreen onNavigate={setScreen} />}
+      {screen === "family" && <FamilyScreen onNavigate={setScreen} />}
     </>
   );
 }
@@ -996,6 +997,18 @@ function HomeScreen({
                 ✕
               </button>
             </div>
+
+            <button
+              onClick={() => { setShowMenu(false); onNavigate("family"); }}
+              className="card-accent-emerald w-full text-left p-3 flex items-center gap-3 active:scale-[0.98] transition"
+            >
+              <span className="text-2xl">👨‍👩‍👧</span>
+              <div className="flex-1">
+                <p className="text-sm font-bold text-white">家族プラン</p>
+                <p className="text-[11px] text-emerald-200">1契約で家族4人まで使える</p>
+              </div>
+              <span className="text-emerald-300">›</span>
+            </button>
 
             <button
               onClick={() => { setShowMenu(false); onNavigate("invite"); }}
@@ -6930,6 +6943,467 @@ function BeforeAfterScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) 
 }
 
 // ==================== 💀 ガイコツ先生のプロフィール画面 ====================
+// ==================== 👨‍👩‍👧 家族プラン画面 ====================
+interface FamilyMember {
+  id: string;
+  userId: string;
+  name: string;
+  age: number | null;
+  role: "owner" | "member";
+  shareData: boolean;
+  joinedAt: string;
+  isMe: boolean;
+}
+
+interface FamilyData {
+  hasFamily: boolean;
+  reason?: string;
+  family?: {
+    id: string;
+    name: string | null;
+    inviteCode: string;
+    maxMembers: number;
+    isOwner: boolean;
+    ownerUserId: string;
+    createdAt: string;
+  };
+  members?: FamilyMember[];
+  myMembership?: {
+    role: "owner" | "member";
+    shareData: boolean;
+  };
+  ownerSubscription?: {
+    status: string;
+    plan: string | null;
+    current_period_end: string | null;
+    trial_ends_at: string | null;
+  } | null;
+}
+
+function FamilyScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
+  const [data, setData] = useState<FamilyData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [joining, setJoining] = useState(false);
+  const [joinCode, setJoinCode] = useState("");
+  const [showJoinInput, setShowJoinInput] = useState(false);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [copied, setCopied] = useState<"code" | "url" | null>(null);
+  const [removing, setRemoving] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const deviceId = getDeviceId();
+      const res = await fetch(
+        `/api/family?deviceId=${encodeURIComponent(deviceId || "")}&t=${Date.now()}`,
+        { cache: "no-store" }
+      );
+      const json = await res.json();
+      setData(json);
+    } catch {
+      setData({ hasFamily: false, reason: "error" });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const createFamily = async () => {
+    setCreating(true);
+    try {
+      const res = await fetch("/api/family", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "create",
+          deviceId: getDeviceId(),
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message || json.error || "作成失敗");
+      await load();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "作成失敗");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const joinFamily = async () => {
+    if (!joinCode.trim()) return;
+    setJoining(true);
+    try {
+      const res = await fetch("/api/family", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "join",
+          deviceId: getDeviceId(),
+          code: joinCode.trim().toUpperCase(),
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message || json.error || "参加失敗");
+      alert(json.message || "参加しました！");
+      setJoinCode("");
+      setShowJoinInput(false);
+      await load();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "参加失敗");
+    } finally {
+      setJoining(false);
+    }
+  };
+
+  const leaveFamily = async () => {
+    try {
+      const res = await fetch("/api/family", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "leave",
+          deviceId: getDeviceId(),
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "脱退失敗");
+      alert(json.message || "脱退しました");
+      setShowLeaveConfirm(false);
+      await load();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "脱退失敗");
+    }
+  };
+
+  const removeMember = async (memberId: string) => {
+    if (!confirm("このメンバーを家族から削除しますか？")) return;
+    setRemoving(memberId);
+    try {
+      const res = await fetch("/api/family", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "remove",
+          deviceId: getDeviceId(),
+          memberId,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message || json.error || "削除失敗");
+      await load();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "削除失敗");
+    } finally {
+      setRemoving(null);
+    }
+  };
+
+  const copy = async (text: string, kind: "code" | "url") => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(kind);
+      setTimeout(() => setCopied(null), 2000);
+    } catch {
+      alert("コピーに失敗しました");
+    }
+  };
+
+  const shareInvite = async () => {
+    if (!data?.family) return;
+    const code = data.family.inviteCode;
+    const text = `ZERO-PAINの家族プランに招待します！\n招待コード: ${code}\n\n下記URLを開いて、設定 → 家族プラン → 「コードで参加」から入力してください。\nhttps://posture-app-steel.vercel.app`;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const nav = navigator as any;
+    if (nav.share) {
+      try {
+        await nav.share({
+          title: "ZERO-PAIN 家族プラン招待",
+          text,
+        });
+      } catch {
+        /* ignore cancel */
+      }
+    } else {
+      copy(text, "url");
+    }
+  };
+
+  if (loading) {
+    return (
+      <main className="fixed inset-0 bg-gray-950 text-white flex items-center justify-center">
+        <p className="text-gray-400">読み込み中...</p>
+      </main>
+    );
+  }
+
+  return (
+    <main className="fixed inset-0 bg-gray-950 overflow-y-auto text-white flex flex-col items-center p-4 pb-20">
+      <div className="flex items-center gap-3 mb-4 w-full max-w-md">
+        <button
+          onClick={() => onNavigate("home")}
+          className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm"
+        >
+          ← 戻る
+        </button>
+        <h1 className="text-lg font-bold">👨‍👩‍👧 家族プラン</h1>
+      </div>
+
+      <div className="w-full max-w-md space-y-4">
+        {/* 家族未所属の場合: 作成 or 参加 */}
+        {!data?.hasFamily && (
+          <>
+            <div className="card-accent-emerald p-5 space-y-3">
+              <div className="flex items-start gap-3">
+                <span className="text-4xl">👨‍👩‍👧</span>
+                <div>
+                  <p className="text-sm font-bold text-emerald-300 tracking-wider">
+                    FAMILY PLAN
+                  </p>
+                  <h2 className="text-xl font-extrabold text-white mt-1">
+                    家族みんなで健康管理
+                  </h2>
+                </div>
+              </div>
+              <p className="text-sm text-gray-300 leading-relaxed">
+                1契約で<span className="font-bold text-emerald-300">最大4人まで</span>家族メンバーを追加できます。
+                AI機能・無制限利用がみんなに広がります。
+              </p>
+              <ul className="space-y-1.5 text-xs text-gray-300">
+                <li>✓ オーナーの有料プランがメンバー全員に適用</li>
+                <li>✓ お互いの体調を共有・応援できる（任意）</li>
+                <li>✓ 家族でガイコツ先生にアドバイスもらえる</li>
+              </ul>
+            </div>
+
+            {/* 家族を作成 */}
+            <button
+              onClick={createFamily}
+              disabled={creating}
+              className="btn-primary w-full py-4 flex items-center justify-center gap-3"
+            >
+              <span className="text-2xl">✨</span>
+              <div className="text-left">
+                <p className="text-base font-extrabold">{creating ? "作成中..." : "家族グループを作成"}</p>
+                <p className="text-xs opacity-90">あなたがオーナーになります</p>
+              </div>
+            </button>
+
+            {/* 招待コードで参加 */}
+            <button
+              onClick={() => setShowJoinInput(!showJoinInput)}
+              className="btn-neutral w-full py-3.5 flex items-center justify-center gap-2"
+            >
+              <span className="text-xl">🔑</span>
+              <span className="font-bold">招待コードで参加する</span>
+            </button>
+
+            {showJoinInput && (
+              <div className="card-base p-4 space-y-3">
+                <p className="text-xs text-gray-400">
+                  家族のオーナーから受け取った8桁の招待コードを入力
+                </p>
+                <input
+                  type="text"
+                  value={joinCode}
+                  onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                  placeholder="例: ABCD1234"
+                  maxLength={8}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-center font-mono text-lg tracking-widest text-white"
+                />
+                <button
+                  onClick={joinFamily}
+                  disabled={joining || joinCode.trim().length !== 8}
+                  className="btn-primary w-full py-2.5 disabled:opacity-50"
+                >
+                  {joining ? "参加中..." : "参加する"}
+                </button>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* 家族所属中の場合 */}
+        {data?.hasFamily && data.family && (
+          <>
+            {/* 家族情報ヘッダー */}
+            <div className="card-accent-emerald p-5 text-center space-y-2">
+              <div className="text-4xl">👨‍👩‍👧</div>
+              <h2 className="text-xl font-extrabold text-white">
+                {data.family.name || "家族グループ"}
+              </h2>
+              <p className="text-xs text-emerald-200">
+                {data.members?.length || 0} / {data.family.maxMembers} 人
+                {data.family.isOwner && " ・ あなたがオーナー"}
+              </p>
+            </div>
+
+            {/* オーナーのみ: 招待コード表示 */}
+            {data.family.isOwner && (
+              <div className="card-base p-4 space-y-3">
+                <p className="text-xs text-gray-400 font-bold">🔑 招待コード</p>
+                <button
+                  onClick={() => copy(data.family!.inviteCode, "code")}
+                  className="w-full bg-gray-800 border-2 border-emerald-500/40 hover:border-emerald-500 rounded-2xl p-4 transition active:scale-[0.98]"
+                >
+                  <p className="text-3xl font-bold tracking-[0.3em] text-emerald-300 font-mono">
+                    {data.family.inviteCode}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-2">
+                    {copied === "code" ? "✅ コピーしました!" : "タップしてコピー"}
+                  </p>
+                </button>
+                <button
+                  onClick={shareInvite}
+                  className="btn-secondary w-full py-3 flex items-center justify-center gap-2"
+                >
+                  <span className="text-xl">📤</span>
+                  <span className="font-bold">家族にシェアする</span>
+                </button>
+              </div>
+            )}
+
+            {/* メンバー一覧 */}
+            <div className="card-base p-4 space-y-3">
+              <p className="text-xs text-gray-400 font-bold">👥 メンバー</p>
+              <div className="space-y-2">
+                {data.members?.map((m) => (
+                  <div
+                    key={m.id}
+                    className="bg-gray-800 border border-gray-700 rounded-xl p-3 flex items-center gap-3"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold">
+                      {m.name.charAt(0)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-white truncate">
+                        {m.name}
+                        {m.isMe && <span className="text-xs text-emerald-400 ml-1">（あなた）</span>}
+                      </p>
+                      <p className="text-[11px] text-gray-400">
+                        {m.role === "owner" ? "👑 オーナー" : "👤 メンバー"}
+                        {m.age && ` ・ ${m.age}歳`}
+                      </p>
+                    </div>
+                    {/* オーナーが他メンバーを削除 */}
+                    {data.family!.isOwner && !m.isMe && m.role !== "owner" && (
+                      <button
+                        onClick={() => removeMember(m.id)}
+                        disabled={removing === m.id}
+                        className="text-xs text-red-400 hover:text-red-300 px-2 py-1"
+                      >
+                        {removing === m.id ? "..." : "削除"}
+                      </button>
+                    )}
+                  </div>
+                ))}
+                {/* 空きスロット表示 */}
+                {data.family.isOwner &&
+                  Array.from({
+                    length: data.family.maxMembers - (data.members?.length || 0),
+                  }).map((_, i) => (
+                    <div
+                      key={`empty-${i}`}
+                      className="bg-gray-900/30 border-2 border-dashed border-gray-700 rounded-xl p-3 text-center"
+                    >
+                      <p className="text-xs text-gray-500">空きスロット（招待コードで参加可能）</p>
+                    </div>
+                  ))}
+              </div>
+            </div>
+
+            {/* オーナーのサブスク状態 */}
+            {data.ownerSubscription && (
+              <div
+                className={`card-base p-4 flex items-center gap-3 ${
+                  ["trial", "active_monthly", "active_yearly", "cancelled"].includes(
+                    data.ownerSubscription.status
+                  )
+                    ? "border-2 border-emerald-500/30"
+                    : ""
+                }`}
+              >
+                <span className="text-3xl">
+                  {["trial", "active_monthly", "active_yearly"].includes(
+                    data.ownerSubscription.status
+                  )
+                    ? "✨"
+                    : "🆓"}
+                </span>
+                <div className="flex-1">
+                  <p className="text-sm font-bold text-white">
+                    {data.ownerSubscription.status === "active_yearly"
+                      ? "年額プラン（オーナー）"
+                      : data.ownerSubscription.status === "active_monthly"
+                      ? "月額プラン（オーナー）"
+                      : data.ownerSubscription.status === "trial"
+                      ? "無料体験中（オーナー）"
+                      : "無料プラン（オーナー）"}
+                  </p>
+                  <p className="text-[11px] text-gray-400">
+                    {["trial", "active_monthly", "active_yearly"].includes(
+                      data.ownerSubscription.status
+                    )
+                      ? "✓ 家族全員がプレミアム機能を使えます"
+                      : "オーナーがプレミアムにすると家族全員が無制限利用できます"}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* 脱退ボタン */}
+            <button
+              onClick={() => setShowLeaveConfirm(true)}
+              className="w-full py-2.5 text-sm text-red-400 hover:text-red-300"
+            >
+              {data.family.isOwner ? "🚪 家族グループを解散する" : "🚪 家族から脱退する"}
+            </button>
+
+            {/* 脱退確認モーダル */}
+            {showLeaveConfirm && (
+              <div
+                className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-6"
+                onClick={() => setShowLeaveConfirm(false)}
+              >
+                <div
+                  className="w-full max-w-sm bg-gray-900 border border-red-500/40 rounded-3xl p-5 shadow-2xl space-y-4"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <h3 className="text-lg font-extrabold text-red-400">
+                    {data.family.isOwner ? "🚪 家族グループを解散しますか？" : "🚪 家族から脱退しますか？"}
+                  </h3>
+                  <p className="text-sm text-gray-300 leading-relaxed">
+                    {data.family.isOwner
+                      ? "全メンバーが家族から削除され、家族グループが完全に削除されます。この操作は取り消せません。"
+                      : "あなたが家族から外れ、プレミアム機能が使えなくなります（自分でサブスク契約していない場合）。"}
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setShowLeaveConfirm(false)}
+                      className="btn-neutral flex-1 py-2.5"
+                    >
+                      キャンセル
+                    </button>
+                    <button
+                      onClick={leaveFamily}
+                      className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 rounded-xl text-sm font-bold text-white"
+                    >
+                      {data.family.isOwner ? "解散する" : "脱退する"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </main>
+  );
+}
+
 function SenseiProfileScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   return (
     <main className="fixed inset-0 bg-gradient-to-b from-gray-950 via-indigo-950/30 to-gray-950 overflow-y-auto text-white flex flex-col items-center p-4 pb-20">

@@ -83,6 +83,57 @@ export function isPaidStatus(status: SubscriptionStatus): boolean {
   );
 }
 
+// ========== 家族プラン判定: 家族のオーナーがプレミアムなら全員プレミアム ==========
+
+async function isFamilyPremium(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<boolean> {
+  // 自分が所属する家族を探す
+  const { data: membership } = await supabase
+    .from("family_members")
+    .select("family_id")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (!membership) return false;
+
+  // その家族のオーナーIDを取得
+  const { data: family } = await supabase
+    .from("families")
+    .select("owner_user_id")
+    .eq("id", membership.family_id)
+    .maybeSingle();
+
+  if (!family || family.owner_user_id === userId) {
+    // 自分がオーナーなら自分のサブスクをチェック（無限ループ防止）
+    return false;
+  }
+
+  // オーナーのサブスクを取得
+  const { data: ownerSub } = await supabase
+    .from("subscriptions")
+    .select("status, trial_ends_at, current_period_end")
+    .eq("user_id", family.owner_user_id)
+    .maybeSingle();
+
+  if (!ownerSub) return false;
+
+  let ownerStatus = ownerSub.status as SubscriptionStatus;
+  const now = new Date();
+
+  // trial期限チェック
+  if (ownerStatus === "trial" && ownerSub.trial_ends_at) {
+    if (new Date(ownerSub.trial_ends_at) < now) ownerStatus = "expired";
+  }
+  // cancelled期限チェック
+  if (ownerStatus === "cancelled" && ownerSub.current_period_end) {
+    if (new Date(ownerSub.current_period_end) < now) ownerStatus = "expired";
+  }
+
+  return isPaidStatus(ownerStatus);
+}
+
 // ========== サーバー側: サブスク情報取得 ==========
 
 export async function getSubscriptionState(
@@ -131,7 +182,14 @@ export async function getSubscriptionState(
     }
   }
 
-  const isPaid = isPaidStatus(status);
+  // 個人サブスクが無料/期限切れなら、家族オーナーがプレミアムかチェック
+  let isPaid = isPaidStatus(status);
+  if (!isPaid) {
+    const familyPremium = await isFamilyPremium(supabase, userId);
+    if (familyPremium) {
+      isPaid = true;
+    }
+  }
 
   // 3. 今月の利用回数取得
   const period = getCurrentPeriodMonth();
