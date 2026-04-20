@@ -38,7 +38,7 @@ const POSE_CONNECTIONS: [number, number][] = [
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type MediaPipeModules = { PoseLandmarker: any; FilesetResolver: any; DrawingUtils: any };
 
-type Screen = "loading" | "register" | "onboarding" | "home" | "ai-counsel" | "selfcare" | "check" | "history" | "meal" | "subscription" | "report" | "invite" | "before-after" | "sensei-profile" | "family";
+type Screen = "loading" | "register" | "onboarding" | "home" | "ai-counsel" | "selfcare" | "check" | "history" | "meal" | "subscription" | "report" | "invite" | "before-after" | "sensei-profile" | "family" | "coaching";
 
 const PREFECTURES = [
   "北海道","青森県","岩手県","宮城県","秋田県","山形県","福島県",
@@ -196,6 +196,7 @@ export default function Home() {
       {screen === "before-after" && <BeforeAfterScreen onNavigate={setScreen} />}
       {screen === "sensei-profile" && <SenseiProfileScreen onNavigate={setScreen} />}
       {screen === "family" && <FamilyScreen onNavigate={setScreen} />}
+      {screen === "coaching" && <CoachingScreen onNavigate={setScreen} onSelectSymptom={goToSelfcare} />}
     </>
   );
 }
@@ -999,6 +1000,18 @@ function HomeScreen({
             </div>
 
             <button
+              onClick={() => { setShowMenu(false); onNavigate("coaching"); }}
+              className="card-accent-emerald w-full text-left p-3 flex items-center gap-3 active:scale-[0.98] transition"
+            >
+              <span className="text-2xl">🎯</span>
+              <div className="flex-1">
+                <p className="text-sm font-bold text-white">30日コーチング</p>
+                <p className="text-[11px] text-emerald-200">AIがあなた専用プランを生成</p>
+              </div>
+              <span className="text-emerald-300">›</span>
+            </button>
+
+            <button
               onClick={() => { setShowMenu(false); onNavigate("family"); }}
               className="card-accent-emerald w-full text-left p-3 flex items-center gap-3 active:scale-[0.98] transition"
             >
@@ -1185,6 +1198,9 @@ function HomeScreen({
             setShowReminderSetting(true);
           }}
         />
+
+        {/* 🎯 進行中の30日コーチング（あれば今日の課題を表示） */}
+        <CoachingTodayCard onNavigate={onNavigate} onSelectSymptom={onSelectSymptom} />
 
         {/* 🔥 ストリーク（連続記録日数） */}
         <StreakCard />
@@ -4033,6 +4049,147 @@ function MorningCheckinCard({
         </button>
       )}
     </div>
+  );
+}
+
+// ==================== 🎯 今日のコーチング課題カード ====================
+function CoachingTodayCard({
+  onNavigate,
+  onSelectSymptom,
+}: {
+  onNavigate: (s: Screen) => void;
+  onSelectSymptom: (id: SelectableSymptomId) => void;
+}) {
+  const [data, setData] = useState<CoachingData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [completing, setCompleting] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      const deviceId = getDeviceId();
+      const res = await fetch(
+        `/api/coaching?deviceId=${encodeURIComponent(deviceId || "")}&t=${Date.now()}`,
+        { cache: "no-store" }
+      );
+      const json = await res.json();
+      setData(json);
+    } catch {
+      setData(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const completeTask = async () => {
+    if (!data?.todayTask || data.todayTask.completed) return;
+    setCompleting(true);
+    try {
+      await fetch("/api/coaching", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "complete",
+          deviceId: getDeviceId(),
+          taskId: data.todayTask.id,
+        }),
+      });
+      await load();
+    } catch {
+      /* ignore */
+    } finally {
+      setCompleting(false);
+    }
+  };
+
+  if (loading) return null;
+  if (!data?.hasProgram || !data.todayTask || !data.progress) return null;
+
+  const t = data.todayTask;
+  const cat = CATEGORY_BADGE[t.category];
+
+  return (
+    <button
+      onClick={() => onNavigate("coaching")}
+      className={`w-full text-left rounded-2xl p-4 border-2 transition active:scale-[0.99] relative overflow-hidden ${
+        t.completed
+          ? "bg-gradient-to-br from-emerald-500/15 to-teal-500/10 border-emerald-500/40"
+          : "bg-gradient-to-br from-emerald-500/15 to-cyan-500/10 border-emerald-500/40"
+      }`}
+    >
+      {/* バッジ: Day X */}
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[11px] font-bold text-emerald-400 tracking-wider">
+          🎯 30日コーチング ・ Day {t.dayNumber} / {data.progress.totalDays}
+        </span>
+        <span
+          className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${cat.color}`}
+        >
+          {cat.emoji} {cat.label}
+        </span>
+      </div>
+
+      {/* 進捗バー */}
+      <div className="h-1.5 bg-gray-800/50 rounded-full overflow-hidden mb-3">
+        <div
+          className="h-full bg-gradient-to-r from-emerald-500 to-teal-400"
+          style={{ width: `${data.progress.progressPercent}%` }}
+        />
+      </div>
+
+      {/* タスク内容 */}
+      <div className="flex items-start gap-3">
+        <span className="text-3xl">{t.completed ? "✅" : cat.emoji}</span>
+        <div className="flex-1">
+          <p className={`text-sm font-bold leading-tight ${
+            t.completed ? "text-emerald-300" : "text-white"
+          }`}>
+            {t.title}
+          </p>
+          <p className="text-[11px] text-gray-400 mt-0.5 line-clamp-2">
+            {t.description}
+          </p>
+          <p className="text-[10px] text-gray-500 mt-1">
+            ⏱ 約 {t.estimatedMinutes} 分
+          </p>
+        </div>
+      </div>
+
+      {/* 完了ボタン or 完了済み表示 */}
+      {!t.completed && (
+        <div className="flex gap-2 mt-3">
+          {t.symptomId && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onSelectSymptom(t.symptomId as SelectableSymptomId);
+              }}
+              className="flex-1 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 rounded-lg text-xs font-bold text-emerald-300"
+            >
+              🎬 動画を見る
+            </button>
+          )}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              completeTask();
+            }}
+            disabled={completing}
+            className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 rounded-lg text-xs font-bold text-white"
+          >
+            {completing ? "..." : "✅ 完了"}
+          </button>
+        </div>
+      )}
+      {t.completed && (
+        <p className="text-center text-emerald-400 text-xs font-bold mt-2">
+          🎉 今日の課題、完了しました！
+        </p>
+      )}
+    </button>
   );
 }
 
@@ -7407,6 +7564,514 @@ function FamilyScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
           </>
         )}
       </div>
+    </main>
+  );
+}
+
+// ==================== 🎯 30日コーチングプログラム画面 ====================
+type CoachingCategory = "stretch" | "meal" | "mindset" | "check" | "reading";
+
+interface CoachingTaskUI {
+  id: string;
+  dayNumber: number;
+  scheduledDate: string;
+  category: CoachingCategory;
+  title: string;
+  description: string;
+  symptomId: string | null;
+  estimatedMinutes: number;
+  completed: boolean;
+  completedAt?: string;
+}
+
+interface CoachingProgramUI {
+  id: string;
+  status: string;
+  goalType: string;
+  goalText: string;
+  summary: string;
+  advice: string;
+  startDate: string;
+  endDate: string;
+  totalDays: number;
+}
+
+interface CoachingData {
+  hasProgram: boolean;
+  reason?: string;
+  program?: CoachingProgramUI;
+  todayTask?: CoachingTaskUI | null;
+  progress?: {
+    completedCount: number;
+    totalDays: number;
+    progressPercent: number;
+    currentDayNumber: number;
+  };
+  allTasks?: CoachingTaskUI[];
+}
+
+const COACHING_GOALS: Array<{
+  id: string;
+  emoji: string;
+  label: string;
+  desc: string;
+}> = [
+  { id: "posture", emoji: "🧍", label: "姿勢改善", desc: "猫背・反り腰の改善" },
+  { id: "pain", emoji: "💊", label: "痛み軽減", desc: "首・肩・腰のお悩み" },
+  { id: "weight", emoji: "⚖️", label: "体重管理", desc: "理想の体型へ" },
+  { id: "fitness", emoji: "💪", label: "体力アップ", desc: "運動習慣をつける" },
+  { id: "wellness", emoji: "🌿", label: "全体の健康", desc: "総合的なウェルネス" },
+];
+
+const CATEGORY_BADGE: Record<CoachingCategory, { emoji: string; label: string; color: string }> = {
+  stretch: { emoji: "🧘", label: "ストレッチ", color: "text-emerald-300 bg-emerald-500/20" },
+  meal: { emoji: "🍱", label: "食事", color: "text-amber-300 bg-amber-500/20" },
+  mindset: { emoji: "🧠", label: "心構え", color: "text-indigo-300 bg-indigo-500/20" },
+  check: { emoji: "📋", label: "チェック", color: "text-blue-300 bg-blue-500/20" },
+  reading: { emoji: "📖", label: "学び", color: "text-purple-300 bg-purple-500/20" },
+};
+
+function CoachingScreen({
+  onNavigate,
+  onSelectSymptom,
+}: {
+  onNavigate: (s: Screen) => void;
+  onSelectSymptom: (id: SelectableSymptomId) => void;
+}) {
+  const [data, setData] = useState<CoachingData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [starting, setStarting] = useState(false);
+  const [selectedGoal, setSelectedGoal] = useState<string | null>(null);
+  const [showAbandonConfirm, setShowAbandonConfirm] = useState(false);
+  const [showAllTasks, setShowAllTasks] = useState(false);
+  const [completing, setCompleting] = useState<string | null>(null);
+  const [celebrationTask, setCelebrationTask] = useState<CoachingTaskUI | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const deviceId = getDeviceId();
+      const res = await fetch(
+        `/api/coaching?deviceId=${encodeURIComponent(deviceId || "")}&t=${Date.now()}`,
+        { cache: "no-store" }
+      );
+      const json = await res.json();
+      setData(json);
+    } catch {
+      setData({ hasProgram: false, reason: "error" });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const startProgram = async () => {
+    if (!selectedGoal) return;
+    setStarting(true);
+    try {
+      const res = await fetch("/api/coaching", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "start",
+          deviceId: getDeviceId(),
+          goalType: selectedGoal,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        const detail = json.detail ? `\n\n【詳細】${json.detail}` : "";
+        const hint =
+          json.error === "program_create_failed"
+            ? "\n\n💡 ヒント: SupabaseのTable Editorで coaching_programs と coaching_tasks テーブルの「Enable Row Level Security」を外してください。"
+            : "";
+        throw new Error((json.message || json.error || "開始失敗") + detail + hint);
+      }
+      await load();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "開始失敗");
+    } finally {
+      setStarting(false);
+    }
+  };
+
+  const completeTask = async (task: CoachingTaskUI) => {
+    if (task.completed) return;
+    setCompleting(task.id);
+    try {
+      const res = await fetch("/api/coaching", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "complete",
+          deviceId: getDeviceId(),
+          taskId: task.id,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "完了失敗");
+      // 達成演出
+      setCelebrationTask({ ...task, completed: true });
+      await load();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "完了失敗");
+    } finally {
+      setCompleting(null);
+    }
+  };
+
+  const abandonProgram = async () => {
+    try {
+      const res = await fetch("/api/coaching", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "abandon",
+          deviceId: getDeviceId(),
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "中止失敗");
+      setShowAbandonConfirm(false);
+      await load();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "中止失敗");
+    }
+  };
+
+  if (loading) {
+    return (
+      <main className="fixed inset-0 bg-gray-950 text-white flex items-center justify-center">
+        <p className="text-gray-400">読み込み中...</p>
+      </main>
+    );
+  }
+
+  return (
+    <main className="fixed inset-0 bg-gray-950 overflow-y-auto text-white flex flex-col items-center p-4 pb-20">
+      <div className="flex items-center gap-3 mb-4 w-full max-w-md">
+        <button
+          onClick={() => onNavigate("home")}
+          className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm"
+        >
+          ← 戻る
+        </button>
+        <h1 className="text-lg font-bold">🎯 30日コーチング</h1>
+      </div>
+
+      <div className="w-full max-w-md space-y-4">
+        {/* プログラム未開始: ゴール選択 */}
+        {!data?.hasProgram && (
+          <>
+            <div className="card-accent-emerald p-5 space-y-3">
+              <div className="flex items-start gap-3">
+                <span className="text-4xl">🎯</span>
+                <div>
+                  <p className="text-sm font-bold text-emerald-300 tracking-wider">
+                    30-DAY COACHING
+                  </p>
+                  <h2 className="text-xl font-extrabold text-white mt-1">
+                    あなた専用30日プログラム
+                  </h2>
+                </div>
+              </div>
+              <p className="text-sm text-gray-300 leading-relaxed">
+                ガイコツ先生が<span className="font-bold text-emerald-300">あなたの体・お悩み・目標</span>から、
+                毎日の課題を組み立てます。1日5〜10分、続けるだけで体が変わる。
+              </p>
+              <ul className="space-y-1.5 text-xs text-gray-300">
+                <li>✓ AIが個別の30タスクを自動生成</li>
+                <li>✓ 1日1タスク、5〜10分で完結</li>
+                <li>✓ 達成バッジで継続モチベ</li>
+                <li>✓ 1ヶ月後に効果が見える</li>
+              </ul>
+            </div>
+
+            {/* ゴール選択 */}
+            <div className="space-y-2">
+              <p className="text-xs font-bold text-gray-400 px-1">
+                🎯 STEP 1: ゴールを選んでください
+              </p>
+              {COACHING_GOALS.map((g) => (
+                <button
+                  key={g.id}
+                  onClick={() => setSelectedGoal(g.id)}
+                  className={`w-full p-3 rounded-xl border-2 flex items-center gap-3 transition active:scale-[0.98] text-left ${
+                    selectedGoal === g.id
+                      ? "bg-emerald-500/20 border-emerald-500"
+                      : "bg-gray-900 border-gray-700"
+                  }`}
+                >
+                  <span className="text-3xl">{g.emoji}</span>
+                  <div className="flex-1">
+                    <p className={`text-sm font-bold ${selectedGoal === g.id ? "text-emerald-300" : "text-white"}`}>
+                      {g.label}
+                    </p>
+                    <p className="text-[11px] text-gray-400">{g.desc}</p>
+                  </div>
+                  {selectedGoal === g.id && (
+                    <span className="text-emerald-400 text-xl">✓</span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {/* 開始ボタン */}
+            <button
+              onClick={startProgram}
+              disabled={!selectedGoal || starting}
+              className="btn-primary w-full py-4 disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {starting ? (
+                <>
+                  <span className="text-xl animate-spin">⚙️</span>
+                  <span className="font-extrabold">AIが30日プランを生成中...</span>
+                </>
+              ) : (
+                <>
+                  <span className="text-2xl">✨</span>
+                  <span className="font-extrabold">30日プログラムを始める</span>
+                </>
+              )}
+            </button>
+
+            {starting && (
+              <p className="text-[11px] text-gray-400 text-center">
+                30秒〜1分かかります。少々お待ちください。
+              </p>
+            )}
+          </>
+        )}
+
+        {/* プログラム進行中 */}
+        {data?.hasProgram && data.program && data.progress && (
+          <>
+            {/* プログラム概要 */}
+            <div className="card-accent-emerald p-5 space-y-3">
+              <div className="flex items-start gap-3">
+                <span className="text-4xl">🎯</span>
+                <div>
+                  <p className="text-sm font-bold text-emerald-300 tracking-wider">
+                    30-DAY COACHING
+                  </p>
+                  <h2 className="text-base font-extrabold text-white mt-1 leading-tight">
+                    {data.program.summary}
+                  </h2>
+                </div>
+              </div>
+              {/* 進捗バー */}
+              <div className="bg-black/30 rounded-xl p-3 space-y-2">
+                <div className="flex items-baseline justify-between">
+                  <span className="text-xs text-gray-300">継続日数</span>
+                  <span className="text-sm font-bold text-white">
+                    <span className="text-2xl text-emerald-300">{data.progress.completedCount}</span>
+                    <span className="text-xs text-gray-400"> / {data.progress.totalDays}日</span>
+                  </span>
+                </div>
+                <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all"
+                    style={{ width: `${data.progress.progressPercent}%` }}
+                  />
+                </div>
+                <p className="text-[11px] text-gray-400">
+                  {data.progress.progressPercent}% 完了
+                  {data.progress.currentDayNumber > 0 && ` ・ 今日は ${data.progress.currentDayNumber}日目`}
+                </p>
+              </div>
+              {/* ガイコツ先生の励まし */}
+              <div className="flex items-start gap-2 bg-black/30 rounded-xl p-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/icon-skeleton-sensei-face.png"
+                  alt="ガイコツ先生"
+                  className="w-10 h-10 object-contain flex-shrink-0"
+                />
+                <p className="text-xs text-gray-200 leading-relaxed">
+                  {data.program.advice}
+                </p>
+              </div>
+            </div>
+
+            {/* 今日の課題 */}
+            {data.todayTask && (
+              <div className="space-y-2">
+                <p className="text-xs font-bold text-gray-400 px-1">
+                  ☀️ 今日の課題（Day {data.todayTask.dayNumber}）
+                </p>
+                <div
+                  className={`card-base p-4 space-y-3 border-2 ${
+                    data.todayTask.completed
+                      ? "border-emerald-500/40"
+                      : "border-amber-500/40"
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <span className="text-3xl">
+                      {data.todayTask.completed ? "✅" : CATEGORY_BADGE[data.todayTask.category].emoji}
+                    </span>
+                    <div className="flex-1">
+                      <span
+                        className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          CATEGORY_BADGE[data.todayTask.category].color
+                        }`}
+                      >
+                        {CATEGORY_BADGE[data.todayTask.category].label}
+                      </span>
+                      <p className="text-base font-bold text-white mt-1.5 leading-tight">
+                        {data.todayTask.title}
+                      </p>
+                      <p className="text-xs text-gray-300 mt-1 leading-relaxed">
+                        {data.todayTask.description}
+                      </p>
+                      <p className="text-[11px] text-gray-400 mt-1">
+                        ⏱ 約 {data.todayTask.estimatedMinutes} 分
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* ストレッチタスクなら関連動画ボタン */}
+                  {data.todayTask.symptomId && !data.todayTask.completed && (
+                    <button
+                      onClick={() => onSelectSymptom(data.todayTask!.symptomId as SelectableSymptomId)}
+                      className="w-full py-2 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 rounded-lg text-xs font-bold text-emerald-300 flex items-center justify-center gap-2 transition"
+                    >
+                      <span>🎬</span>
+                      <span>関連ストレッチ動画を見る</span>
+                    </button>
+                  )}
+
+                  {/* 完了ボタン */}
+                  {!data.todayTask.completed ? (
+                    <button
+                      onClick={() => completeTask(data.todayTask!)}
+                      disabled={completing === data.todayTask.id}
+                      className="btn-primary w-full py-3"
+                    >
+                      {completing === data.todayTask.id ? "保存中..." : "✅ 今日の課題を完了する"}
+                    </button>
+                  ) : (
+                    <div className="text-center py-2 text-emerald-400 font-bold text-sm">
+                      🎉 今日の課題、完了しました！
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* 全タスク表示トグル */}
+            <button
+              onClick={() => setShowAllTasks(!showAllTasks)}
+              className="btn-neutral w-full py-2.5 text-sm flex items-center justify-center gap-2"
+            >
+              <span>📅</span>
+              <span>{showAllTasks ? "閉じる" : "30日全タスクを見る"}</span>
+              <span>{showAllTasks ? "▲" : "▼"}</span>
+            </button>
+
+            {showAllTasks && data.allTasks && (
+              <div className="space-y-1.5">
+                {data.allTasks.map((t) => (
+                  <div
+                    key={t.id}
+                    className={`p-3 rounded-xl text-left flex items-center gap-3 ${
+                      t.completed
+                        ? "bg-emerald-500/10 border border-emerald-500/30"
+                        : "bg-gray-900 border border-gray-800"
+                    }`}
+                  >
+                    <span className="text-2xl">
+                      {t.completed ? "✅" : CATEGORY_BADGE[t.category].emoji}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] text-gray-400">Day {t.dayNumber}</p>
+                      <p className={`text-xs font-bold truncate ${
+                        t.completed ? "text-emerald-300" : "text-white"
+                      }`}>
+                        {t.title}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* 中止ボタン */}
+            <button
+              onClick={() => setShowAbandonConfirm(true)}
+              className="w-full py-2.5 text-sm text-red-400 hover:text-red-300"
+            >
+              プログラムを中止する
+            </button>
+
+            {/* 中止確認モーダル */}
+            {showAbandonConfirm && (
+              <div
+                className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-6"
+                onClick={() => setShowAbandonConfirm(false)}
+              >
+                <div
+                  className="w-full max-w-sm bg-gray-900 border border-red-500/40 rounded-3xl p-5 shadow-2xl space-y-4"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <h3 className="text-lg font-extrabold text-red-400">
+                    プログラムを中止しますか？
+                  </h3>
+                  <p className="text-sm text-gray-300 leading-relaxed">
+                    現在の進捗（{data.progress.completedCount}/{data.progress.totalDays}日）は保存されますが、
+                    新しいプログラムを始めるとリセットされます。
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setShowAbandonConfirm(false)}
+                      className="btn-neutral flex-1 py-2.5"
+                    >
+                      キャンセル
+                    </button>
+                    <button
+                      onClick={abandonProgram}
+                      className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 rounded-xl text-sm font-bold text-white"
+                    >
+                      中止する
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* タスク達成お祝いモーダル */}
+      {celebrationTask && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-6"
+          onClick={() => setCelebrationTask(null)}
+        >
+          <div
+            className="w-full max-w-sm bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-600 rounded-3xl p-6 shadow-2xl space-y-4 text-center animate-slide-up-fade"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-6xl">🎉</div>
+            <h2 className="text-2xl font-extrabold text-white">
+              Day {celebrationTask.dayNumber} 達成！
+            </h2>
+            <p className="text-sm text-emerald-100 leading-relaxed">
+              「{celebrationTask.title}」を完了しました。
+              この一歩が、未来の体を変えていきます ✨
+            </p>
+            <button
+              onClick={() => setCelebrationTask(null)}
+              className="w-full py-3 bg-white text-emerald-700 rounded-xl font-extrabold active:scale-[0.98] transition"
+            >
+              続ける
+            </button>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
