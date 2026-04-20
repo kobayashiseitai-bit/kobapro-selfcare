@@ -7024,7 +7024,14 @@ function FamilyScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
         }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.message || json.error || "作成失敗");
+      if (!res.ok) {
+        const detail = json.detail ? `\n\n【詳細】${json.detail}` : "";
+        const hint =
+          json.error === "family_create_failed"
+            ? "\n\n💡 ヒント: Supabaseの Table Editor で families と family_members テーブルの「Enable Row Level Security」を外してください。"
+            : "";
+        throw new Error((json.message || json.error || "作成失敗") + detail + hint);
+      }
       await load();
     } catch (e) {
       alert(e instanceof Error ? e.message : "作成失敗");
