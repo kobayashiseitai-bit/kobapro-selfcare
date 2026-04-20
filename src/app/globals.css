@@ -291,12 +291,22 @@ img, video, canvas {
      - シンプルだけど奥行きのある上質な印象
    ========================================================== */
 
+/* html要素自体にもミントの背景（body透過時のフォールバック） */
 .theme-mint {
   background:
     radial-gradient(ellipse at top, rgba(16, 185, 129, 0.06), transparent 60%),
     linear-gradient(180deg, #ecfdf5 0%, #f0fdfa 40%, #ffffff 100%) !important;
   color: #0f172a !important;
   min-height: 100vh;
+}
+
+/* 重要: body要素のデフォルト黒背景を上書き */
+.theme-mint body,
+html.theme-mint body {
+  background:
+    radial-gradient(ellipse at top, rgba(16, 185, 129, 0.06), transparent 60%),
+    linear-gradient(180deg, #ecfdf5 0%, #f0fdfa 40%, #ffffff 100%) !important;
+  color: #0f172a !important;
 }
 
 /* テキストカラー: ニュートラルで読みやすく */
