@@ -289,7 +289,7 @@ function OnboardingScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   const current = slides[slide];
 
   return (
-    <main className="fixed inset-0 bg-gradient-to-b from-gray-950 via-indigo-950/30 to-gray-950 text-white flex flex-col">
+    <main className="theme-mint fixed inset-0 bg-gradient-to-b from-gray-950 via-indigo-950/30 to-gray-950 text-white flex flex-col">
       {/* スキップボタン */}
       <div className="flex justify-end px-4 pt-4">
         <button
@@ -449,7 +449,7 @@ function RegisterScreen({ onComplete }: { onComplete: () => void }) {
   };
 
   return (
-    <main className="fixed inset-0 bg-gray-950 text-white flex flex-col overflow-y-auto">
+    <main className="theme-mint fixed inset-0 bg-gray-950 text-white flex flex-col overflow-y-auto">
       <div className="flex-1 flex items-center justify-center px-4 py-8">
         <form onSubmit={handleSubmit} className="w-full max-w-md space-y-6">
           <div className="text-center mb-8">
@@ -1775,7 +1775,7 @@ function AiCounselScreen({
   const recommendedSymptom = SYMPTOMS.find((s) => s.id === recommendedId);
 
   return (
-    <main className="fixed inset-0 bg-gray-950 text-white flex flex-col">
+    <main className="theme-mint fixed inset-0 bg-gray-950 text-white flex flex-col">
       <header className="sticky top-0 z-10 bg-gray-950/95 backdrop-blur-sm border-b border-gray-800/50 px-4 py-3">
         <div className="flex items-center gap-3">
           <button onClick={() => onNavigate("home")} className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm">← 戻る</button>
@@ -1936,7 +1936,7 @@ function SelfcareScreen({ onNavigate, initialSymptomId }: { onNavigate: (s: Scre
   const stretches = selectedId ? getStretchesBySymptom(selectedId) : [];
 
   return (
-    <main className="fixed inset-0 bg-gray-950 overflow-y-auto text-white flex flex-col items-center p-4 pb-20">
+    <main className="theme-mint fixed inset-0 bg-gray-950 overflow-y-auto text-white flex flex-col items-center p-4 pb-20">
       <div className="flex items-center gap-3 mb-4 w-full max-w-md">
         <button onClick={() => onNavigate("home")} className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm">← 戻る</button>
         <h1 className="text-lg font-bold">セルフケア</h1>
@@ -2616,7 +2616,7 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   const levelEmoji = (l: string) => l === "good" ? "○" : l === "caution" ? "△" : "✕";
 
   return (
-    <main className="fixed inset-0 bg-gray-950 overflow-y-auto text-white flex flex-col items-center p-4 pb-20">
+    <main className="theme-mint fixed inset-0 bg-gray-950 overflow-y-auto text-white flex flex-col items-center p-4 pb-20">
       <div className="flex items-center gap-3 mb-2 w-full max-w-md">
         <button onClick={() => { reset(); onNavigate("home"); }} className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm">← 戻る</button>
         <h1 className="text-lg font-bold">全身の姿勢チェック</h1>
@@ -2887,7 +2887,7 @@ function HistoryScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   const levelColor = (l: string) => l === "good" ? "text-green-400" : l === "caution" ? "text-yellow-400" : "text-red-400";
 
   return (
-    <main className="fixed inset-0 bg-gray-950 overflow-y-auto text-white flex flex-col items-center p-4 pb-20">
+    <main className="theme-mint fixed inset-0 bg-gray-950 overflow-y-auto text-white flex flex-col items-center p-4 pb-20">
       <div className="flex items-center gap-3 mb-4 w-full max-w-lg">
         <button onClick={() => onNavigate("home")} className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm">← 戻る</button>
         <h1 className="text-lg font-bold">過去の記録</h1>
@@ -4708,7 +4708,7 @@ function MealScreen({
   };
 
   return (
-    <main className="fixed inset-0 bg-gray-950 overflow-y-auto text-white flex flex-col items-center p-4 pb-20">
+    <main className="theme-mint fixed inset-0 bg-gray-950 overflow-y-auto text-white flex flex-col items-center p-4 pb-20">
       <div className="flex items-center gap-3 mb-4 w-full max-w-md">
         <button
           onClick={() => onNavigate("home")}
@@ -6084,7 +6084,7 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
   };
 
   return (
-    <main className="fixed inset-0 bg-gray-950 overflow-y-auto text-white flex flex-col items-center p-4 pb-20">
+    <main className="theme-mint fixed inset-0 bg-gray-950 overflow-y-auto text-white flex flex-col items-center p-4 pb-20">
       <div className="flex items-center gap-3 mb-4 w-full max-w-md">
         <button
           onClick={() => onNavigate("home")}
@@ -6334,7 +6334,7 @@ function ReportScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   }, [period, load]);
 
   return (
-    <main className="fixed inset-0 bg-gray-950 overflow-y-auto text-white flex flex-col items-center p-4 pb-20">
+    <main className="theme-mint fixed inset-0 bg-gray-950 overflow-y-auto text-white flex flex-col items-center p-4 pb-20">
       <div className="flex items-center gap-3 mb-4 w-full max-w-md">
         <button
           onClick={() => onNavigate("home")}
@@ -6664,7 +6664,7 @@ function BeforeAfterScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) 
   // ローディング
   if (loading) {
     return (
-      <main className="fixed inset-0 bg-gray-950 text-white flex items-center justify-center">
+      <main className="theme-mint fixed inset-0 bg-gray-950 text-white flex items-center justify-center">
         <p className="text-gray-400">読み込み中...</p>
       </main>
     );
@@ -6674,7 +6674,7 @@ function BeforeAfterScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) 
   if (!data?.hasData) {
     const reason = data?.reason;
     return (
-      <main className="fixed inset-0 bg-gray-950 overflow-y-auto text-white flex flex-col items-center p-4 pb-20">
+      <main className="theme-mint fixed inset-0 bg-gray-950 overflow-y-auto text-white flex flex-col items-center p-4 pb-20">
         <div className="flex items-center gap-3 mb-4 w-full max-w-md">
           <button
             onClick={() => onNavigate("home")}
@@ -6750,7 +6750,7 @@ function BeforeAfterScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) 
   const isImproved = delta > 0;
 
   return (
-    <main className="fixed inset-0 bg-gray-950 overflow-y-auto text-white flex flex-col items-center p-4 pb-20">
+    <main className="theme-mint fixed inset-0 bg-gray-950 overflow-y-auto text-white flex flex-col items-center p-4 pb-20">
       <div className="flex items-center gap-3 mb-4 w-full max-w-md">
         <button
           onClick={() => onNavigate("home")}
@@ -6932,7 +6932,7 @@ function BeforeAfterScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) 
 // ==================== 💀 ガイコツ先生のプロフィール画面 ====================
 function SenseiProfileScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   return (
-    <main className="fixed inset-0 bg-gradient-to-b from-gray-950 via-indigo-950/30 to-gray-950 overflow-y-auto text-white flex flex-col items-center p-4 pb-20">
+    <main className="theme-mint fixed inset-0 bg-gradient-to-b from-gray-950 via-indigo-950/30 to-gray-950 overflow-y-auto text-white flex flex-col items-center p-4 pb-20">
       <div className="flex items-center gap-3 mb-4 w-full max-w-md">
         <button
           onClick={() => onNavigate("home")}
@@ -7145,7 +7145,7 @@ ${data.shareUrl}
   };
 
   return (
-    <main className="fixed inset-0 bg-gray-950 overflow-y-auto text-white flex flex-col items-center p-4 pb-20">
+    <main className="theme-mint fixed inset-0 bg-gray-950 overflow-y-auto text-white flex flex-col items-center p-4 pb-20">
       <div className="flex items-center gap-3 mb-4 w-full max-w-md">
         <button
           onClick={() => onNavigate("home")}

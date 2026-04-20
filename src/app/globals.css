@@ -526,3 +526,125 @@ img, video, canvas {
   color: #ffffff !important;
   box-shadow: 0 2px 6px rgba(16, 185, 129, 0.4) !important;
 }
+
+/* ============================================
+   追加エッジケース対応
+   ============================================ */
+
+/* ブルー系ボタン（Enter/送信系） */
+.theme-mint .bg-blue-600 { background: #10b981 !important; color: #ffffff !important; }
+.theme-mint .bg-blue-700 { background: #059669 !important; color: #ffffff !important; }
+.theme-mint .hover\:bg-blue-700:hover { background: #047857 !important; }
+.theme-mint .text-blue-400 { color: #0d9488 !important; }
+.theme-mint .text-blue-500 { color: #0891b2 !important; }
+.theme-mint .border-blue-500 { border-color: #10b981 !important; }
+.theme-mint .focus\:border-blue-500:focus { border-color: #10b981 !important; }
+
+/* グリーン系（セルフケア等） */
+.theme-mint .from-green-600 { --tw-gradient-from: #10b981 !important; }
+.theme-mint .to-emerald-600 { --tw-gradient-to: #059669 !important; }
+.theme-mint .hover\:from-green-700:hover { --tw-gradient-from: #059669 !important; }
+.theme-mint .hover\:to-emerald-700:hover { --tw-gradient-to: #047857 !important; }
+
+/* パープル系 */
+.theme-mint .bg-purple-600 { background: #6366f1 !important; color: #ffffff !important; }
+.theme-mint .hover\:bg-purple-700:hover { background: #4f46e5 !important; }
+.theme-mint .text-purple-400 { color: #6366f1 !important; }
+
+/* レッド系（エラー・警告）: やや抑えめに */
+.theme-mint .bg-red-900\/50 { background: rgba(254, 226, 226, 0.85) !important; }
+.theme-mint .bg-red-900\/20 { background: rgba(254, 226, 226, 0.5) !important; }
+.theme-mint .border-red-500 { border-color: #ef4444 !important; }
+.theme-mint .text-red-200 { color: #991b1b !important; }
+.theme-mint .text-red-300 { color: #b91c1c !important; }
+.theme-mint .text-red-400 { color: #dc2626 !important; }
+
+/* ブルー系（通知・情報）: 明るめに */
+.theme-mint .bg-blue-900\/50 { background: rgba(219, 234, 254, 0.85) !important; }
+.theme-mint .bg-blue-900\/20 { background: rgba(219, 234, 254, 0.5) !important; }
+.theme-mint .text-blue-200 { color: #1e3a8a !important; }
+.theme-mint .text-blue-300 { color: #1e40af !important; }
+.theme-mint .border-blue-500 { border-color: #3b82f6 !important; }
+
+/* インディゴ濃色 */
+.theme-mint .bg-indigo-900\/40 { background: rgba(224, 231, 255, 0.7) !important; }
+.theme-mint .bg-indigo-900\/30 { background: rgba(224, 231, 255, 0.55) !important; }
+.theme-mint .bg-indigo-900\/20 { background: rgba(224, 231, 255, 0.4) !important; }
+.theme-mint .from-indigo-500 { --tw-gradient-from: #6366f1 !important; }
+.theme-mint .to-indigo-800 { --tw-gradient-to: #4338ca !important; }
+.theme-mint .via-indigo-600 { --tw-gradient-via: #4f46e5 !important; }
+.theme-mint .from-indigo-900\/40 { --tw-gradient-from: rgba(224, 231, 255, 0.7) !important; }
+.theme-mint .to-purple-900\/30 { --tw-gradient-to: rgba(233, 213, 255, 0.55) !important; }
+
+/* エメラルド濃色 */
+.theme-mint .bg-emerald-600 { background: #10b981 !important; color: #ffffff !important; }
+.theme-mint .bg-emerald-600\/20 { background: rgba(16, 185, 129, 0.15) !important; }
+.theme-mint .bg-emerald-500 { background: #10b981 !important; color: #ffffff !important; }
+.theme-mint .bg-emerald-500\/30 { background: rgba(16, 185, 129, 0.2) !important; }
+.theme-mint .hover\:bg-emerald-500:hover { background: #059669 !important; }
+.theme-mint .hover\:bg-emerald-600:hover { background: #047857 !important; }
+
+/* アンバー濃色 */
+.theme-mint .bg-amber-600 { background: #f59e0b !important; color: #ffffff !important; }
+.theme-mint .bg-amber-500\/20 { background: rgba(245, 158, 11, 0.15) !important; }
+.theme-mint .bg-amber-500\/30 { background: rgba(245, 158, 11, 0.2) !important; }
+.theme-mint .from-amber-500 { --tw-gradient-from: #f59e0b !important; }
+.theme-mint .via-amber-500 { --tw-gradient-via: #f59e0b !important; }
+.theme-mint .to-yellow-600 { --tw-gradient-to: #ca8a04 !important; }
+.theme-mint .to-yellow-500 { --tw-gradient-to: #eab308 !important; }
+.theme-mint .from-amber-400 { --tw-gradient-from: #fbbf24 !important; }
+
+/* ピンク系 */
+.theme-mint .bg-pink-500\/20 { background: rgba(236, 72, 153, 0.15) !important; }
+.theme-mint .bg-pink-500\/30 { background: rgba(236, 72, 153, 0.2) !important; }
+.theme-mint .text-pink-200 { color: #be185d !important; }
+.theme-mint .text-pink-300 { color: #db2777 !important; }
+.theme-mint .text-pink-400 { color: #ec4899 !important; }
+.theme-mint .from-pink-500 { --tw-gradient-from: #ec4899 !important; }
+.theme-mint .via-purple-500 { --tw-gradient-via: #a855f7 !important; }
+.theme-mint .to-indigo-500 { --tw-gradient-to: #6366f1 !important; }
+
+/* 黒背景（モーダル等）はそのまま（使い勝手優先） */
+.theme-mint .bg-black\/50 { background: rgba(0, 0, 0, 0.5) !important; }
+.theme-mint .bg-black\/70 { background: rgba(0, 0, 0, 0.7) !important; }
+.theme-mint .bg-black\/80 { background: rgba(0, 0, 0, 0.8) !important; }
+.theme-mint .bg-black\/85 { background: rgba(0, 0, 0, 0.85) !important; }
+.theme-mint .bg-black\/30 { background: rgba(16, 185, 129, 0.08) !important; }
+
+/* 無効状態のボタン */
+.theme-mint .disabled\:bg-gray-600:disabled { background: #cbd5e1 !important; color: #64748b !important; }
+.theme-mint .disabled\:opacity-40:disabled { opacity: 0.5 !important; }
+
+/* その他細かい調整 */
+.theme-mint .from-emerald-500 { --tw-gradient-from: #10b981 !important; }
+.theme-mint .to-teal-600 { --tw-gradient-to: #0d9488 !important; }
+.theme-mint .from-teal-600 { --tw-gradient-from: #0d9488 !important; }
+.theme-mint .to-emerald-600 { --tw-gradient-to: #059669 !important; }
+
+/* 食事画面のエメラルドアクセントカラー */
+.theme-mint .bg-emerald-600 { background: #10b981 !important; }
+.theme-mint .border-emerald-400 { border-color: #10b981 !important; }
+
+/* カードアクセントのエメラルド枠線 */
+.theme-mint .border-emerald-500 { border-color: #10b981 !important; }
+.theme-mint .border-emerald-500\/30 { border-color: rgba(16, 185, 129, 0.3) !important; }
+
+/* ホバー状態 */
+.theme-mint .hover\:bg-gray-600:hover { background: #e2e8f0 !important; color: #0f172a !important; }
+.theme-mint .hover\:bg-gray-700:hover { background: #cbd5e1 !important; color: #0f172a !important; }
+
+/* リンク色 */
+.theme-mint a { color: #059669; }
+.theme-mint a:hover { color: #047857; }
+
+/* チャットメッセージのバブル */
+.theme-mint .bg-blue-600.rounded-br-md {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2) !important;
+}
+
+/* 食事区分（朝食・昼食等）のハイライト */
+.theme-mint .bg-gradient-to-br.from-emerald-500\/20 {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.05)) !important;
+}
