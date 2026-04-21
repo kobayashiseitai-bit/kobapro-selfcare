@@ -58,17 +58,31 @@ const SYMPTOMS = [
     label: "首こり",
     emoji: "🦴",
     icon: "/menyu2.jpg",
+    colorTheme: "emerald" as const,
+    gradientFrom: "from-emerald-400/30",
+    gradientTo: "to-teal-500/20",
+    borderColor: "border-emerald-500/40",
+    iconBg: "from-emerald-400 to-teal-500",
+    accentText: "text-emerald-600",
+    subtitle: "デスクワークの疲れをリセット",
     videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
     videoTitle: "首こり解消セルフケア",
     description: "首周りの筋肉をほぐし、痛みを和らげるストレッチです。",
   },
   {
     id: "shoulder_stiff",
-    label: "肩凝り",
+    label: "肩こり",
     emoji: "💪",
     icon: "/menyu6.jpg",
+    colorTheme: "teal" as const,
+    gradientFrom: "from-teal-400/30",
+    gradientTo: "to-cyan-500/20",
+    borderColor: "border-teal-500/40",
+    iconBg: "from-teal-400 to-cyan-500",
+    accentText: "text-teal-600",
+    subtitle: "肩甲骨まわりをじんわり緩める",
     videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-    videoTitle: "肩凝り解消セルフケア",
+    videoTitle: "肩こり解消セルフケア",
     description: "固まった肩周りをほぐすストレッチです。",
   },
   {
@@ -76,6 +90,13 @@ const SYMPTOMS = [
     label: "腰痛",
     emoji: "🔥",
     icon: "/menyu5.jpg",
+    colorTheme: "sky" as const,
+    gradientFrom: "from-sky-400/30",
+    gradientTo: "to-blue-500/20",
+    borderColor: "border-sky-500/40",
+    iconBg: "from-sky-400 to-blue-500",
+    accentText: "text-sky-600",
+    subtitle: "重だるい腰をふわっと軽く",
     videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
     videoTitle: "腰痛改善セルフケア",
     description: "腰回りの筋肉を緩め、腰痛を予防・改善するストレッチです。",
@@ -85,6 +106,13 @@ const SYMPTOMS = [
     label: "頭痛",
     emoji: "🧠",
     icon: "/menyu3.jpg",
+    colorTheme: "indigo" as const,
+    gradientFrom: "from-indigo-400/30",
+    gradientTo: "to-purple-500/20",
+    borderColor: "border-indigo-500/40",
+    iconBg: "from-indigo-400 to-purple-500",
+    accentText: "text-indigo-600",
+    subtitle: "ズキズキを和らげるツボ押し",
     videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
     videoTitle: "頭痛緩和セルフケア",
     description: "頭痛を和らげるツボ押しと首肩のストレッチです。",
@@ -94,6 +122,13 @@ const SYMPTOMS = [
     label: "眼精疲労",
     emoji: "👁️",
     icon: "/menyu4.jpg",
+    colorTheme: "rose" as const,
+    gradientFrom: "from-rose-400/30",
+    gradientTo: "to-pink-500/20",
+    borderColor: "border-rose-500/40",
+    iconBg: "from-rose-400 to-pink-500",
+    accentText: "text-rose-600",
+    subtitle: "目の疲れをリフレッシュ",
     videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
     videoTitle: "眼精疲労解消セルフケア",
     description: "目の疲れを取り、スッキリさせるツボ押し＆エクササイズです。",
@@ -101,8 +136,15 @@ const SYMPTOMS = [
   {
     id: "kyphosis",
     label: "猫背改善",
-    emoji: "🐱",
+    emoji: "🧍",
     icon: "/menyu1.jpg",
+    colorTheme: "amber" as const,
+    gradientFrom: "from-amber-400/30",
+    gradientTo: "to-orange-500/20",
+    borderColor: "border-amber-500/40",
+    iconBg: "from-amber-400 to-orange-500",
+    accentText: "text-amber-600",
+    subtitle: "美しい姿勢をインストール",
     videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
     videoTitle: "猫背改善エクササイズ",
     description: "猫背を矯正し、正しい姿勢を身につけるエクササイズです。",
@@ -1961,8 +2003,23 @@ function AiCounselScreen({
 // ==================== セルフケア画面（症状→動画） ====================
 function SelfcareScreen({ onNavigate, initialSymptomId }: { onNavigate: (s: Screen) => void; initialSymptomId: string | null }) {
   const [selectedId, setSelectedId] = useState<string | null>(initialSymptomId);
+  const [viewMode, setViewMode] = useState<"body" | "cards">("body");
   const activeSymptom = SYMPTOMS.find((s) => s.id === selectedId);
   const stretches = selectedId ? getStretchesBySymptom(selectedId) : [];
+
+  // 選択された症状の詳細へスクロール
+  const detailRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (selectedId && detailRef.current) {
+      setTimeout(() => {
+        detailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
+    }
+  }, [selectedId]);
+
+  const handleSelect = (id: string) => {
+    setSelectedId(selectedId === id ? null : id);
+  };
 
   return (
     <main className="fixed inset-0 bg-gray-950 overflow-y-auto text-white flex flex-col items-center p-4 pb-20">
@@ -1971,35 +2028,68 @@ function SelfcareScreen({ onNavigate, initialSymptomId }: { onNavigate: (s: Scre
         <h1 className="text-lg font-bold">セルフケア</h1>
       </div>
 
-      <p className="text-gray-400 text-sm mb-4 w-full max-w-md">
-        気になる箇所を選んでください
-      </p>
-
-      <div className="w-full max-w-md grid grid-cols-2 gap-3">
-        {SYMPTOMS.map((symptom) => (
+      {/* モード切替トグル */}
+      <div className="w-full max-w-md mb-4">
+        <div className="bg-gray-900/60 border border-gray-700/50 rounded-2xl p-1 flex relative">
           <button
-            key={symptom.id}
-            onClick={() => setSelectedId(selectedId === symptom.id ? null : symptom.id)}
-            className={`font-semibold transition-all active:scale-95 ${
-              selectedId === symptom.id
-                ? "ring-2 ring-blue-400 rounded-2xl"
-                : ""
+            onClick={() => setViewMode("body")}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all relative z-10 ${
+              viewMode === "body" ? "text-white" : "text-gray-400"
             }`}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={symptom.icon} alt={symptom.label} className="w-full aspect-square object-cover rounded-2xl" />
-            <p className={`text-sm font-bold py-2 text-center ${selectedId === symptom.id ? "text-blue-400" : "text-white"}`}>{symptom.label}</p>
+            🧍 ボディマップ
           </button>
-        ))}
+          <button
+            onClick={() => setViewMode("cards")}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all relative z-10 ${
+              viewMode === "cards" ? "text-white" : "text-gray-400"
+            }`}
+          >
+            📋 カード一覧
+          </button>
+          {/* スライドする背景 */}
+          <div
+            className="absolute top-1 bottom-1 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl transition-all duration-300 shadow-lg"
+            style={{
+              left: viewMode === "body" ? "4px" : "50%",
+              right: viewMode === "body" ? "50%" : "4px",
+            }}
+          />
+        </div>
       </div>
 
+      <p className="text-gray-400 text-sm mb-4 w-full max-w-md text-center">
+        {viewMode === "body"
+          ? "気になる部位を人体図からタップしてください"
+          : "気になる箇所を選んでください"}
+      </p>
+
+      {viewMode === "body" ? (
+        <BodyMapView selectedId={selectedId} onSelect={handleSelect} />
+      ) : (
+        <ModernCardGrid selectedId={selectedId} onSelect={handleSelect} />
+      )}
+
       {activeSymptom && stretches.length > 0 && (
-        <div className="w-full max-w-md mt-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="font-bold text-lg text-blue-400">
-              {activeSymptom.label}のセルフケア
-            </h3>
-            <span className="text-xs text-gray-500">{stretches.length}種類</span>
+        <div ref={detailRef} className="w-full max-w-md mt-6 space-y-4 scroll-mt-4">
+          <div
+            className={`rounded-2xl p-4 border-2 bg-gradient-to-br ${activeSymptom.gradientFrom} ${activeSymptom.gradientTo} ${activeSymptom.borderColor}`}
+          >
+            <div className="flex items-center gap-3">
+              <div
+                className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${activeSymptom.iconBg} flex items-center justify-center text-2xl shadow-lg`}
+              >
+                {activeSymptom.emoji}
+              </div>
+              <div className="flex-1">
+                <h3 className={`font-extrabold text-lg ${activeSymptom.accentText}`}>
+                  {activeSymptom.label}のセルフケア
+                </h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {stretches.length}種類 ・ {activeSymptom.subtitle}
+                </p>
+              </div>
+            </div>
           </div>
 
 
@@ -2013,7 +2103,7 @@ function SelfcareScreen({ onNavigate, initialSymptomId }: { onNavigate: (s: Scre
                   alt={stretch.title}
                   className="absolute inset-0 w-full h-full object-cover"
                 />
-                <div className="absolute top-2 left-2 bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded">
+                <div className={`absolute top-2 left-2 bg-gradient-to-r ${activeSymptom.iconBg} text-white text-xs font-bold px-2 py-1 rounded-full shadow`}>
                   {i + 1}/{stretches.length}
                 </div>
               </div>
@@ -2060,13 +2150,264 @@ function SelfcareScreen({ onNavigate, initialSymptomId }: { onNavigate: (s: Scre
 
           <button
             onClick={() => setSelectedId(null)}
-            className="w-full py-3 bg-gray-700 hover:bg-gray-600 rounded-xl text-sm font-semibold"
+            className="btn-neutral w-full py-3 text-sm"
           >
             閉じる
           </button>
         </div>
       )}
     </main>
+  );
+}
+
+// ==================== 🧍 ボディマップビュー ====================
+function BodyMapView({
+  selectedId,
+  onSelect,
+}: {
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+}) {
+  const activeSymptom = SYMPTOMS.find((s) => s.id === selectedId);
+
+  // ホットスポット（SVG上の位置とラベル）
+  const hotspots: Array<{
+    id: string;
+    cx: number;
+    cy: number;
+    r: number;
+    labelX: number;
+    labelY: number;
+    labelAnchor: "start" | "middle" | "end";
+  }> = [
+    { id: "headache", cx: 100, cy: 30, r: 10, labelX: 150, labelY: 30, labelAnchor: "start" },
+    { id: "eye_fatigue", cx: 100, cy: 38, r: 6, labelX: 50, labelY: 38, labelAnchor: "end" },
+    { id: "neck", cx: 100, cy: 58, r: 8, labelX: 150, labelY: 58, labelAnchor: "start" },
+    { id: "shoulder_stiff", cx: 77, cy: 74, r: 10, labelX: 50, labelY: 74, labelAnchor: "end" },
+    { id: "kyphosis", cx: 100, cy: 95, r: 10, labelX: 150, labelY: 95, labelAnchor: "start" },
+    { id: "back", cx: 100, cy: 135, r: 10, labelX: 150, labelY: 135, labelAnchor: "start" },
+  ];
+
+  const symptomById = (id: string) => SYMPTOMS.find((s) => s.id === id);
+
+  return (
+    <div className="w-full max-w-md space-y-4">
+      {/* ボディマップ */}
+      <div className="relative bg-gradient-to-br from-gray-900/50 via-gray-900/30 to-gray-900/50 rounded-3xl p-4 border border-gray-700/30">
+        <svg
+          viewBox="0 0 200 260"
+          className="w-full h-auto"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          {/* 人体シルエット（やわらかい色） */}
+          <defs>
+            <linearGradient id="bodyGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#d1fae5" stopOpacity="0.9" />
+              <stop offset="100%" stopColor="#99f6e4" stopOpacity="0.6" />
+            </linearGradient>
+            <radialGradient id="pulseGradient">
+              <stop offset="0%" stopColor="currentColor" stopOpacity="0.6" />
+              <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
+            </radialGradient>
+          </defs>
+
+          {/* 頭 */}
+          <circle cx="100" cy="30" r="18" fill="url(#bodyGradient)" stroke="#10b981" strokeWidth="1.5" strokeOpacity="0.5" />
+          {/* 首 */}
+          <rect x="94" y="48" width="12" height="10" fill="url(#bodyGradient)" stroke="#10b981" strokeWidth="1.5" strokeOpacity="0.5" />
+          {/* 胴体 */}
+          <path
+            d="M 70 60 Q 70 55 80 55 L 120 55 Q 130 55 130 60 L 135 130 Q 135 140 125 140 L 75 140 Q 65 140 65 130 Z"
+            fill="url(#bodyGradient)"
+            stroke="#10b981"
+            strokeWidth="1.5"
+            strokeOpacity="0.5"
+          />
+          {/* 左腕 */}
+          <path d="M 70 65 Q 55 70 50 95 Q 48 115 52 135" stroke="#10b981" strokeWidth="10" strokeOpacity="0.3" fill="none" strokeLinecap="round" />
+          {/* 右腕 */}
+          <path d="M 130 65 Q 145 70 150 95 Q 152 115 148 135" stroke="#10b981" strokeWidth="10" strokeOpacity="0.3" fill="none" strokeLinecap="round" />
+          {/* 左脚 */}
+          <path d="M 85 140 L 82 200 L 80 240" stroke="#10b981" strokeWidth="14" strokeOpacity="0.3" fill="none" strokeLinecap="round" />
+          {/* 右脚 */}
+          <path d="M 115 140 L 118 200 L 120 240" stroke="#10b981" strokeWidth="14" strokeOpacity="0.3" fill="none" strokeLinecap="round" />
+
+          {/* ホットスポット（タップ可能領域） */}
+          {hotspots.map((h) => {
+            const symptom = symptomById(h.id);
+            if (!symptom) return null;
+            const isSelected = selectedId === h.id;
+            const color =
+              symptom.colorTheme === "emerald" ? "#10b981"
+              : symptom.colorTheme === "teal" ? "#14b8a6"
+              : symptom.colorTheme === "sky" ? "#0ea5e9"
+              : symptom.colorTheme === "indigo" ? "#6366f1"
+              : symptom.colorTheme === "rose" ? "#f43f5e"
+              : "#f59e0b";
+
+            return (
+              <g key={h.id} style={{ color }}>
+                {/* パルスアニメーション（選択時） */}
+                {isSelected && (
+                  <circle cx={h.cx} cy={h.cy} r={h.r + 6} fill="url(#pulseGradient)">
+                    <animate
+                      attributeName="r"
+                      from={h.r}
+                      to={h.r + 12}
+                      dur="1.5s"
+                      repeatCount="indefinite"
+                    />
+                    <animate
+                      attributeName="opacity"
+                      from="0.8"
+                      to="0"
+                      dur="1.5s"
+                      repeatCount="indefinite"
+                    />
+                  </circle>
+                )}
+                {/* タップエリア本体 */}
+                <circle
+                  cx={h.cx}
+                  cy={h.cy}
+                  r={h.r}
+                  fill={color}
+                  fillOpacity={isSelected ? 1 : 0.85}
+                  stroke="#ffffff"
+                  strokeWidth="2"
+                  style={{ cursor: "pointer" }}
+                  onClick={() => onSelect(h.id)}
+                />
+                {/* 絵文字 */}
+                <text
+                  x={h.cx}
+                  y={h.cy + 3}
+                  textAnchor="middle"
+                  fontSize="9"
+                  style={{ pointerEvents: "none" }}
+                >
+                  {symptom.emoji}
+                </text>
+                {/* ラベル（サイド表示） */}
+                <text
+                  x={h.labelX}
+                  y={h.labelY + 3}
+                  textAnchor={h.labelAnchor}
+                  fontSize="10"
+                  fontWeight="bold"
+                  fill={color}
+                  style={{ pointerEvents: "none" }}
+                >
+                  {symptom.label}
+                </text>
+                {/* ラインコネクター */}
+                <line
+                  x1={h.cx + (h.labelAnchor === "start" ? h.r : -h.r)}
+                  y1={h.cy}
+                  x2={h.labelX + (h.labelAnchor === "start" ? -3 : 3)}
+                  y2={h.labelY}
+                  stroke={color}
+                  strokeWidth="1"
+                  strokeOpacity="0.4"
+                  strokeDasharray="2 2"
+                  style={{ pointerEvents: "none" }}
+                />
+              </g>
+            );
+          })}
+        </svg>
+
+        {/* 凡例 */}
+        <p className="text-[11px] text-center text-gray-500 mt-2">
+          💡 色のついた点をタップすると、該当部位のケアが始まります
+        </p>
+      </div>
+
+      {/* 選択中の症状 */}
+      {activeSymptom && (
+        <div
+          className={`rounded-2xl p-4 border-2 bg-gradient-to-br ${activeSymptom.gradientFrom} ${activeSymptom.gradientTo} ${activeSymptom.borderColor} animate-slide-up-fade`}
+        >
+          <div className="flex items-center gap-3">
+            <div
+              className={`w-12 h-12 rounded-xl bg-gradient-to-br ${activeSymptom.iconBg} flex items-center justify-center text-xl shadow-lg`}
+            >
+              {activeSymptom.emoji}
+            </div>
+            <div className="flex-1">
+              <p className={`text-base font-extrabold ${activeSymptom.accentText}`}>
+                {activeSymptom.label}
+              </p>
+              <p className="text-xs text-gray-600">{activeSymptom.subtitle}</p>
+            </div>
+            <span className={`text-2xl ${activeSymptom.accentText}`}>→</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ==================== 📋 モダンカードグリッド ====================
+function ModernCardGrid({
+  selectedId,
+  onSelect,
+}: {
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <div className="w-full max-w-md grid grid-cols-2 gap-3">
+      {SYMPTOMS.map((symptom) => {
+        const stretches = getStretchesBySymptom(symptom.id);
+        const isSelected = selectedId === symptom.id;
+        return (
+          <button
+            key={symptom.id}
+            onClick={() => onSelect(symptom.id)}
+            className={`relative rounded-2xl p-4 text-left transition-all active:scale-95 overflow-hidden bg-gradient-to-br ${symptom.gradientFrom} ${symptom.gradientTo} border-2 ${
+              isSelected ? symptom.borderColor : "border-transparent"
+            } shadow-lg hover:shadow-xl`}
+          >
+            {/* 絵文字アイコン（大きめ・円形グラデ背景） */}
+            <div
+              className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${symptom.iconBg} flex items-center justify-center text-3xl shadow-lg mb-3`}
+            >
+              {symptom.emoji}
+            </div>
+
+            {/* タイトル */}
+            <p className={`text-base font-extrabold ${symptom.accentText} leading-tight`}>
+              {symptom.label}
+            </p>
+
+            {/* サブタイトル */}
+            <p className="text-[11px] text-gray-600 mt-1 leading-snug line-clamp-2">
+              {symptom.subtitle}
+            </p>
+
+            {/* メタ情報 */}
+            <div className="flex items-center gap-1.5 mt-2">
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/60 ${symptom.accentText}`}>
+                {stretches.length}種類
+              </span>
+              <span className="text-[10px] text-gray-500">
+                5〜10分
+              </span>
+            </div>
+
+            {/* 選択中インジケーター */}
+            {isSelected && (
+              <div
+                className={`absolute top-2 right-2 w-6 h-6 rounded-full bg-gradient-to-br ${symptom.iconBg} flex items-center justify-center text-white text-xs font-bold shadow-lg`}
+              >
+                ✓
+              </div>
+            )}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
