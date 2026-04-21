@@ -1468,10 +1468,24 @@ function HomeScreen({
               <button
                 key={symptom.id}
                 onClick={() => onSelectSymptom(symptom.id)}
-                className="btn-3d rounded-2xl overflow-hidden aspect-square"
+                className={`relative rounded-2xl p-4 text-left transition-all active:scale-95 overflow-hidden bg-gradient-to-br ${symptom.gradientFrom} ${symptom.gradientTo} border-2 ${symptom.borderColor} shadow-md hover:shadow-xl`}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={symptom.icon} alt={symptom.label} className="w-full h-full object-cover block" />
+                {/* 絵文字アイコン（円形グラデ背景） */}
+                <div
+                  className={`w-12 h-12 rounded-xl bg-gradient-to-br ${symptom.iconBg} flex items-center justify-center text-2xl shadow-lg mb-2`}
+                >
+                  {symptom.emoji}
+                </div>
+                {/* タイトル */}
+                <p className={`text-sm font-extrabold ${symptom.accentText} leading-tight`}>
+                  {symptom.label}
+                </p>
+                {/* サブタイトル */}
+                <p className="text-[10px] text-gray-600 mt-0.5 leading-snug line-clamp-2">
+                  {symptom.subtitle}
+                </p>
+                {/* 右下矢印 */}
+                <span className={`absolute bottom-2 right-3 text-sm ${symptom.accentText}`}>→</span>
               </button>
             ))}
           </div>
@@ -2095,16 +2109,31 @@ function SelfcareScreen({ onNavigate, initialSymptomId }: { onNavigate: (s: Scre
 
           {stretches.map((stretch, i) => (
             <div key={stretch.id} className="bg-gray-800 rounded-2xl overflow-hidden border border-gray-700">
-              {/* 画像エリア */}
-              <div className="relative w-full aspect-video bg-gray-900">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={stretch.image}
-                  alt={stretch.title}
-                  className="absolute inset-0 w-full h-full object-cover"
-                />
-                <div className={`absolute top-2 left-2 bg-gradient-to-r ${activeSymptom.iconBg} text-white text-xs font-bold px-2 py-1 rounded-full shadow`}>
-                  {i + 1}/{stretches.length}
+              {/* ビジュアルエリア（絵文字+グラデ・ブランド統一） */}
+              <div
+                className={`relative w-full aspect-video overflow-hidden bg-gradient-to-br ${activeSymptom.gradientFrom} ${activeSymptom.gradientTo}`}
+              >
+                {/* 背景装飾（ぼかし円） */}
+                <div className={`absolute -top-12 -right-12 w-48 h-48 rounded-full bg-gradient-to-br ${activeSymptom.iconBg} opacity-30 blur-3xl`} />
+                <div className={`absolute -bottom-16 -left-16 w-40 h-40 rounded-full bg-gradient-to-br ${activeSymptom.iconBg} opacity-20 blur-3xl`} />
+
+                {/* 中央の大きなアイコン */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div
+                    className={`w-24 h-24 rounded-3xl bg-gradient-to-br ${activeSymptom.iconBg} flex items-center justify-center text-5xl shadow-2xl ring-4 ring-white/30`}
+                  >
+                    {activeSymptom.emoji}
+                  </div>
+                </div>
+
+                {/* 番号バッジ */}
+                <div className={`absolute top-3 left-3 bg-gradient-to-r ${activeSymptom.iconBg} text-white text-xs font-extrabold px-3 py-1 rounded-full shadow-lg`}>
+                  {i + 1} / {stretches.length}
+                </div>
+
+                {/* カテゴリーバッジ */}
+                <div className={`absolute bottom-3 right-3 bg-white/90 backdrop-blur text-xs font-bold px-2.5 py-1 rounded-full shadow-md ${activeSymptom.accentText}`}>
+                  {activeSymptom.label}
                 </div>
               </div>
 
