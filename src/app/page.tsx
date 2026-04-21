@@ -1331,9 +1331,9 @@ function HomeScreen({
             </button>
             <button
               onClick={() => onNavigate("before-after")}
-              className="relative btn-neutral px-3 py-3.5 flex flex-col items-center gap-1 border-2 border-pink-500/30"
+              className="relative btn-neutral px-3 py-3.5 flex flex-col items-center gap-1 border-2 border-red-500/40"
             >
-              <span className="absolute top-1 right-1.5 bg-pink-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+              <span className="absolute top-1 right-1.5 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-[0_2px_6px_rgba(239,68,68,0.4)]">
                 NEW
               </span>
               <span className="text-xl">📸</span>

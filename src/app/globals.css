@@ -530,11 +530,11 @@ html.theme-mint body {
   letter-spacing: 0.3em !important;
 }
 
-/* NEWバッジ: クリーンなエメラルド */
+/* NEWバッジ: 赤系グラデーション（目立ちやすく） */
 .theme-mint .badge-new {
-  background: linear-gradient(135deg, #10b981, #059669) !important;
+  background: linear-gradient(135deg, #ef4444, #dc2626) !important;
   color: #ffffff !important;
-  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.4) !important;
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4) !important;
 }
 
 /* ============================================
