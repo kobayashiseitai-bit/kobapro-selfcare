@@ -2108,70 +2108,43 @@ function SelfcareScreen({ onNavigate, initialSymptomId }: { onNavigate: (s: Scre
 
 
           {stretches.map((stretch, i) => (
-            <div key={stretch.id} className="bg-gray-800 rounded-2xl overflow-hidden border border-gray-700">
-              {/* ビジュアルエリア（絵文字+グラデ・ブランド統一） */}
-              <div
-                className={`relative w-full aspect-video overflow-hidden bg-gradient-to-br ${activeSymptom.gradientFrom} ${activeSymptom.gradientTo}`}
-              >
-                {/* 背景装飾（ぼかし円） */}
-                <div className={`absolute -top-12 -right-12 w-48 h-48 rounded-full bg-gradient-to-br ${activeSymptom.iconBg} opacity-30 blur-3xl`} />
-                <div className={`absolute -bottom-16 -left-16 w-40 h-40 rounded-full bg-gradient-to-br ${activeSymptom.iconBg} opacity-20 blur-3xl`} />
-
-                {/* 中央の大きなアイコン */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div
-                    className={`w-24 h-24 rounded-3xl bg-gradient-to-br ${activeSymptom.iconBg} flex items-center justify-center text-5xl shadow-2xl ring-4 ring-white/30`}
-                  >
-                    {activeSymptom.emoji}
-                  </div>
-                </div>
-
-                {/* 番号バッジ */}
-                <div className={`absolute top-3 left-3 bg-gradient-to-r ${activeSymptom.iconBg} text-white text-xs font-extrabold px-3 py-1 rounded-full shadow-lg`}>
+            <div
+              key={stretch.id}
+              className="rounded-2xl overflow-hidden border border-gray-200 bg-white shadow-lg"
+            >
+              {/* メインビジュアル（プロ品質インストラクション画像） */}
+              <div className="relative w-full aspect-video overflow-hidden bg-gray-100">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={stretch.image}
+                  alt={stretch.title}
+                  className="w-full h-full object-cover block"
+                  loading="lazy"
+                />
+                {/* 番号バッジ（画像の上に重ねる） */}
+                <div
+                  className={`absolute top-3 left-3 bg-gradient-to-r ${activeSymptom.iconBg} text-white text-xs font-extrabold px-3 py-1.5 rounded-full shadow-lg ring-2 ring-white/60`}
+                >
                   {i + 1} / {stretches.length}
-                </div>
-
-                {/* カテゴリーバッジ */}
-                <div className={`absolute bottom-3 right-3 bg-white/90 backdrop-blur text-xs font-bold px-2.5 py-1 rounded-full shadow-md ${activeSymptom.accentText}`}>
-                  {activeSymptom.label}
                 </div>
               </div>
 
-              {/* 内容 */}
-              <div className="p-4 space-y-3">
-                <h4 className="font-bold text-base">{stretch.title}</h4>
-
-                {/* 時間・回数 */}
-                <div className="flex gap-2">
-                  <span className="bg-blue-900/40 text-blue-300 text-xs px-3 py-1 rounded-full font-semibold">
-                    ⏱ {stretch.duration}
-                  </span>
-                  <span className="bg-purple-900/40 text-purple-300 text-xs px-3 py-1 rounded-full font-semibold">
-                    🔄 {stretch.reps}
-                  </span>
+              {/* 補足情報（画像に無い tips と benefit のみ） */}
+              <div className="p-4 space-y-3 bg-white">
+                {/* コツ（💡 画像に無い追加情報） */}
+                <div className="bg-amber-50 border-l-4 border-amber-400 pl-3 py-2 rounded-r-lg">
+                  <p className="text-xs text-amber-700 font-bold mb-0.5">💡 ポイント</p>
+                  <p className="text-xs text-gray-700 leading-relaxed">{stretch.tips}</p>
                 </div>
 
-                {/* 手順 */}
-                <div>
-                  <p className="text-xs text-gray-400 font-semibold mb-1">▶ やり方</p>
-                  <ol className="space-y-1 pl-4">
-                    {stretch.steps.map((step, j) => (
-                      <li key={j} className="text-sm text-gray-200 list-decimal">
-                        {step}
-                      </li>
-                    ))}
-                  </ol>
-                </div>
-
-                {/* コツ */}
-                <div className="bg-amber-900/20 border-l-2 border-amber-400 pl-3 py-1">
-                  <p className="text-xs text-amber-300 font-semibold mb-0.5">💡 ポイント</p>
-                  <p className="text-xs text-gray-300">{stretch.tips}</p>
-                </div>
-
-                {/* 効果 */}
-                <div className="text-xs text-gray-500">
-                  <span className="font-semibold">効果:</span> {stretch.benefit}
+                {/* 効果（画像に無い追加情報） */}
+                <div
+                  className={`bg-gradient-to-r ${activeSymptom.gradientFrom} ${activeSymptom.gradientTo} pl-3 py-2 rounded-lg border ${activeSymptom.borderColor}`}
+                >
+                  <p className={`text-xs ${activeSymptom.accentText} font-bold mb-0.5`}>
+                    ✨ 効果
+                  </p>
+                  <p className="text-xs text-gray-700 leading-relaxed">{stretch.benefit}</p>
                 </div>
               </div>
             </div>
