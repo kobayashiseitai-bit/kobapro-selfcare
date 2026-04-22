@@ -2218,12 +2218,12 @@ function BodyMapView({
     labelY: number;
     labelAnchor: "start" | "middle" | "end";
   }> = [
-    { id: "headache", cx: 100, cy: 30, r: 10, labelX: 150, labelY: 30, labelAnchor: "start" },
-    { id: "eye_fatigue", cx: 100, cy: 38, r: 6, labelX: 50, labelY: 38, labelAnchor: "end" },
-    { id: "neck", cx: 100, cy: 58, r: 8, labelX: 150, labelY: 58, labelAnchor: "start" },
-    { id: "shoulder_stiff", cx: 77, cy: 74, r: 10, labelX: 50, labelY: 74, labelAnchor: "end" },
-    { id: "kyphosis", cx: 100, cy: 95, r: 10, labelX: 150, labelY: 95, labelAnchor: "start" },
-    { id: "back", cx: 100, cy: 135, r: 10, labelX: 150, labelY: 135, labelAnchor: "start" },
+    { id: "headache", cx: 100, cy: 22, r: 9, labelX: 155, labelY: 22, labelAnchor: "start" },
+    { id: "eye_fatigue", cx: 100, cy: 34, r: 6, labelX: 45, labelY: 34, labelAnchor: "end" },
+    { id: "neck", cx: 100, cy: 52, r: 7, labelX: 155, labelY: 52, labelAnchor: "start" },
+    { id: "shoulder_stiff", cx: 72, cy: 62, r: 9, labelX: 45, labelY: 62, labelAnchor: "end" },
+    { id: "kyphosis", cx: 100, cy: 85, r: 9, labelX: 155, labelY: 85, labelAnchor: "start" },
+    { id: "back", cx: 100, cy: 130, r: 9, labelX: 155, labelY: 130, labelAnchor: "start" },
   ];
 
   const symptomById = (id: string) => SYMPTOMS.find((s) => s.id === id);
@@ -2237,38 +2237,122 @@ function BodyMapView({
           className="w-full h-auto"
           xmlns="http://www.w3.org/2000/svg"
         >
-          {/* 人体シルエット（やわらかい色） */}
+          {/* 人体シルエット（やわらかい・人間らしい） */}
           <defs>
-            <linearGradient id="bodyGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#d1fae5" stopOpacity="0.9" />
-              <stop offset="100%" stopColor="#99f6e4" stopOpacity="0.6" />
+            <linearGradient id="bodyGradient" x1="50%" y1="0%" x2="50%" y2="100%">
+              <stop offset="0%" stopColor="#ecfdf5" stopOpacity="1" />
+              <stop offset="40%" stopColor="#d1fae5" stopOpacity="0.95" />
+              <stop offset="100%" stopColor="#a7f3d0" stopOpacity="0.85" />
+            </linearGradient>
+            <linearGradient id="headGradient" x1="50%" y1="0%" x2="50%" y2="100%">
+              <stop offset="0%" stopColor="#ecfdf5" stopOpacity="1" />
+              <stop offset="100%" stopColor="#a7f3d0" stopOpacity="0.9" />
             </linearGradient>
             <radialGradient id="pulseGradient">
               <stop offset="0%" stopColor="currentColor" stopOpacity="0.6" />
               <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
             </radialGradient>
+            {/* ソフトシャドウフィルター */}
+            <filter id="bodyShadow" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur in="SourceAlpha" stdDeviation="2" />
+              <feOffset dx="0" dy="2" result="offsetblur" />
+              <feFlood floodColor="#059669" floodOpacity="0.2" />
+              <feComposite in2="offsetblur" operator="in" />
+              <feMerge>
+                <feMergeNode />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
           </defs>
 
-          {/* 頭 */}
-          <circle cx="100" cy="30" r="18" fill="url(#bodyGradient)" stroke="#10b981" strokeWidth="1.5" strokeOpacity="0.5" />
-          {/* 首 */}
-          <rect x="94" y="48" width="12" height="10" fill="url(#bodyGradient)" stroke="#10b981" strokeWidth="1.5" strokeOpacity="0.5" />
-          {/* 胴体 */}
-          <path
-            d="M 70 60 Q 70 55 80 55 L 120 55 Q 130 55 130 60 L 135 130 Q 135 140 125 140 L 75 140 Q 65 140 65 130 Z"
-            fill="url(#bodyGradient)"
-            stroke="#10b981"
-            strokeWidth="1.5"
-            strokeOpacity="0.5"
-          />
-          {/* 左腕 */}
-          <path d="M 70 65 Q 55 70 50 95 Q 48 115 52 135" stroke="#10b981" strokeWidth="10" strokeOpacity="0.3" fill="none" strokeLinecap="round" />
-          {/* 右腕 */}
-          <path d="M 130 65 Q 145 70 150 95 Q 152 115 148 135" stroke="#10b981" strokeWidth="10" strokeOpacity="0.3" fill="none" strokeLinecap="round" />
-          {/* 左脚 */}
-          <path d="M 85 140 L 82 200 L 80 240" stroke="#10b981" strokeWidth="14" strokeOpacity="0.3" fill="none" strokeLinecap="round" />
-          {/* 右脚 */}
-          <path d="M 115 140 L 118 200 L 120 240" stroke="#10b981" strokeWidth="14" strokeOpacity="0.3" fill="none" strokeLinecap="round" />
+          <g filter="url(#bodyShadow)">
+            {/* 頭（丸く温かく） */}
+            <ellipse
+              cx="100" cy="28" rx="19" ry="21"
+              fill="url(#headGradient)"
+              stroke="#10b981" strokeWidth="1.2" strokeOpacity="0.45"
+            />
+
+            {/* 首 */}
+            <path
+              d="M 92 47 Q 92 55 100 56 Q 108 55 108 47 Z"
+              fill="url(#bodyGradient)"
+              stroke="#10b981" strokeWidth="1" strokeOpacity="0.4"
+            />
+
+            {/* 肩（丸み） */}
+            <circle cx="72" cy="62" r="10" fill="url(#bodyGradient)" stroke="#10b981" strokeWidth="1" strokeOpacity="0.4" />
+            <circle cx="128" cy="62" r="10" fill="url(#bodyGradient)" stroke="#10b981" strokeWidth="1" strokeOpacity="0.4" />
+
+            {/* 胴体（砂時計型: 肩広め→くびれ→ヒップ） */}
+            <path
+              d="
+                M 72 66
+                Q 68 75 68 90
+                L 70 105
+                Q 72 118 74 128
+                Q 72 135 74 143
+                Q 78 152 85 154
+                L 115 154
+                Q 122 152 126 143
+                Q 128 135 126 128
+                Q 128 118 130 105
+                L 132 90
+                Q 132 75 128 66
+                Z
+              "
+              fill="url(#bodyGradient)"
+              stroke="#10b981" strokeWidth="1.2" strokeOpacity="0.5"
+            />
+
+            {/* 左腕（肩から下へ自然にカーブ） */}
+            <path
+              d="M 64 68 Q 55 85 52 108 Q 51 125 55 140"
+              fill="none"
+              stroke="#10b981"
+              strokeWidth="13"
+              strokeOpacity="0.35"
+              strokeLinecap="round"
+            />
+            {/* 左手 */}
+            <circle cx="56" cy="143" r="5" fill="url(#bodyGradient)" stroke="#10b981" strokeWidth="1" strokeOpacity="0.4" />
+
+            {/* 右腕 */}
+            <path
+              d="M 136 68 Q 145 85 148 108 Q 149 125 145 140"
+              fill="none"
+              stroke="#10b981"
+              strokeWidth="13"
+              strokeOpacity="0.35"
+              strokeLinecap="round"
+            />
+            {/* 右手 */}
+            <circle cx="144" cy="143" r="5" fill="url(#bodyGradient)" stroke="#10b981" strokeWidth="1" strokeOpacity="0.4" />
+
+            {/* 左脚（ヒップから足首へテーパー） */}
+            <path
+              d="M 88 154 Q 85 190 84 225"
+              fill="none"
+              stroke="#10b981"
+              strokeWidth="18"
+              strokeOpacity="0.35"
+              strokeLinecap="round"
+            />
+            {/* 左足 */}
+            <ellipse cx="84" cy="238" rx="10" ry="5" fill="url(#bodyGradient)" stroke="#10b981" strokeWidth="1" strokeOpacity="0.4" />
+
+            {/* 右脚 */}
+            <path
+              d="M 112 154 Q 115 190 116 225"
+              fill="none"
+              stroke="#10b981"
+              strokeWidth="18"
+              strokeOpacity="0.35"
+              strokeLinecap="round"
+            />
+            {/* 右足 */}
+            <ellipse cx="116" cy="238" rx="10" ry="5" fill="url(#bodyGradient)" stroke="#10b981" strokeWidth="1" strokeOpacity="0.4" />
+          </g>
 
           {/* ホットスポット（タップ可能領域） */}
           {hotspots.map((h) => {
