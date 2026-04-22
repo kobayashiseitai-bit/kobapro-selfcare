@@ -2129,22 +2129,58 @@ function SelfcareScreen({ onNavigate, initialSymptomId }: { onNavigate: (s: Scre
                 </div>
               </div>
 
-              {/* 補足情報（画像に無い tips と benefit のみ） */}
-              <div className="p-4 space-y-3 bg-white">
-                {/* コツ（💡 画像に無い追加情報） */}
-                <div className="bg-amber-50 border-l-4 border-amber-400 pl-3 py-2 rounded-r-lg">
-                  <p className="text-xs text-amber-700 font-bold mb-0.5">💡 ポイント</p>
-                  <p className="text-xs text-gray-700 leading-relaxed">{stretch.tips}</p>
+              {/* 補足情報 */}
+              <div className="p-4 space-y-4 bg-white">
+                {/* 時間・回数の要約バッジ */}
+                <div className="flex flex-wrap gap-2">
+                  <span className={`inline-flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-full bg-gradient-to-br ${activeSymptom.iconBg} text-white shadow-sm`}>
+                    ⏱ {stretch.duration}
+                  </span>
+                  <span className={`inline-flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-full bg-white border-2 ${activeSymptom.borderColor} ${activeSymptom.accentText} shadow-sm`}>
+                    🔄 {stretch.reps}
+                  </span>
                 </div>
 
-                {/* 効果（画像に無い追加情報） */}
-                <div
-                  className={`bg-gradient-to-r ${activeSymptom.gradientFrom} ${activeSymptom.gradientTo} pl-3 py-2 rounded-lg border ${activeSymptom.borderColor}`}
-                >
-                  <p className={`text-xs ${activeSymptom.accentText} font-bold mb-0.5`}>
-                    ✨ 効果
+                {/* 詳しいやり方（ステップ番号付き） */}
+                <div>
+                  <p className="text-sm font-extrabold text-gray-800 mb-3 flex items-center gap-2">
+                    <span className="text-lg">📋</span>
+                    <span>詳しいやり方</span>
                   </p>
-                  <p className="text-xs text-gray-700 leading-relaxed">{stretch.benefit}</p>
+                  <ol className="space-y-2.5">
+                    {stretch.steps.map((step, j) => (
+                      <li key={j} className="flex gap-3 items-start">
+                        <span
+                          className={`flex-shrink-0 w-7 h-7 rounded-full bg-gradient-to-br ${activeSymptom.iconBg} text-white font-extrabold flex items-center justify-center text-xs shadow-md`}
+                        >
+                          {j + 1}
+                        </span>
+                        <span className="text-sm text-gray-700 leading-relaxed pt-0.5">
+                          {step}
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+
+                {/* コツ */}
+                <div className="bg-amber-50 border-l-4 border-amber-400 pl-3 py-2.5 pr-3 rounded-r-lg">
+                  <p className="text-xs text-amber-700 font-extrabold mb-1 flex items-center gap-1">
+                    <span>💡</span>
+                    <span>ポイント</span>
+                  </p>
+                  <p className="text-sm text-gray-700 leading-relaxed">{stretch.tips}</p>
+                </div>
+
+                {/* 効果 */}
+                <div
+                  className={`bg-gradient-to-br ${activeSymptom.gradientFrom} ${activeSymptom.gradientTo} pl-3 py-2.5 pr-3 rounded-lg border ${activeSymptom.borderColor}`}
+                >
+                  <p className={`text-xs ${activeSymptom.accentText} font-extrabold mb-1 flex items-center gap-1`}>
+                    <span>✨</span>
+                    <span>効果</span>
+                  </p>
+                  <p className="text-sm text-gray-700 leading-relaxed">{stretch.benefit}</p>
                 </div>
               </div>
             </div>
