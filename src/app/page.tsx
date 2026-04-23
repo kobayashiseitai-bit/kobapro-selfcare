@@ -2266,92 +2266,80 @@ function BodyMapView({
           </defs>
 
           <g filter="url(#bodyShadow)">
-            {/* 頭（丸く温かく） */}
-            <ellipse
-              cx="100" cy="28" rx="19" ry="21"
-              fill="url(#headGradient)"
-              stroke="#10b981" strokeWidth="1.2" strokeOpacity="0.45"
-            />
-
-            {/* 首 */}
-            <path
-              d="M 92 47 Q 92 55 100 56 Q 108 55 108 47 Z"
-              fill="url(#bodyGradient)"
-              stroke="#10b981" strokeWidth="1" strokeOpacity="0.4"
-            />
-
-            {/* 肩（丸み） */}
-            <circle cx="72" cy="62" r="10" fill="url(#bodyGradient)" stroke="#10b981" strokeWidth="1" strokeOpacity="0.4" />
-            <circle cx="128" cy="62" r="10" fill="url(#bodyGradient)" stroke="#10b981" strokeWidth="1" strokeOpacity="0.4" />
-
-            {/* 胴体（砂時計型: 肩広め→くびれ→ヒップ） */}
+            {/* 統合された一筆書きのシルエット（人間らしい自然な曲線） */}
             <path
               d="
-                M 72 66
-                Q 68 75 68 90
-                L 70 105
-                Q 72 118 74 128
-                Q 72 135 74 143
-                Q 78 152 85 154
-                L 115 154
-                Q 122 152 126 143
-                Q 128 135 126 128
-                Q 128 118 130 105
-                L 132 90
-                Q 132 75 128 66
+                M 100 14
+                C 88 14 78 22 76 36
+                C 74 44 77 50 80 52
+                C 79 55 77 58 76 62
+                C 74 64 72 64 68 65
+                C 62 67 57 71 54 77
+                C 50 85 49 96 50 108
+                C 51 120 54 132 57 142
+                C 58 147 63 149 66 146
+                C 68 142 67 136 65 130
+                C 63 122 61 112 62 102
+                C 63 94 66 88 70 85
+                C 72 98 74 112 75 125
+                C 76 138 77 150 82 160
+                C 84 165 85 172 85 180
+                C 84 195 83 210 82 225
+                C 81 232 80 238 80 244
+                C 82 248 90 248 92 244
+                C 93 238 93 230 94 220
+                C 95 205 95 190 96 180
+                C 97 176 98 175 100 175
+                C 102 175 103 176 104 180
+                C 105 190 105 205 106 220
+                C 107 230 107 238 108 244
+                C 110 248 118 248 120 244
+                C 120 238 119 232 118 225
+                C 117 210 116 195 115 180
+                C 115 172 116 165 118 160
+                C 123 150 124 138 125 125
+                C 126 112 128 98 130 85
+                C 134 88 137 94 138 102
+                C 139 112 137 122 135 130
+                C 133 136 132 142 134 146
+                C 137 149 142 147 143 142
+                C 146 132 149 120 150 108
+                C 151 96 150 85 146 77
+                C 143 71 138 67 132 65
+                C 128 64 126 64 124 62
+                C 123 58 121 55 120 52
+                C 123 50 126 44 124 36
+                C 122 22 112 14 100 14
                 Z
               "
               fill="url(#bodyGradient)"
-              stroke="#10b981" strokeWidth="1.2" strokeOpacity="0.5"
+              stroke="#10b981"
+              strokeWidth="1.2"
+              strokeOpacity="0.55"
+              strokeLinejoin="round"
             />
 
-            {/* 左腕（肩から下へ自然にカーブ） */}
+            {/* 顔の微妙な表情（親しみを演出：ほっぺの淡い影） */}
+            <ellipse cx="88" cy="32" rx="3" ry="2" fill="#fecaca" opacity="0.5" />
+            <ellipse cx="112" cy="32" rx="3" ry="2" fill="#fecaca" opacity="0.5" />
+            {/* やさしい微笑み（口元） */}
             <path
-              d="M 64 68 Q 55 85 52 108 Q 51 125 55 140"
+              d="M 94 38 Q 100 41 106 38"
               fill="none"
-              stroke="#10b981"
-              strokeWidth="13"
+              stroke="#047857"
+              strokeWidth="1.2"
+              strokeLinecap="round"
+              strokeOpacity="0.4"
+            />
+            {/* 髪のヒント（頭頂部のライン） */}
+            <path
+              d="M 82 18 Q 100 10 118 18"
+              fill="none"
+              stroke="#059669"
+              strokeWidth="1.5"
               strokeOpacity="0.35"
               strokeLinecap="round"
             />
-            {/* 左手 */}
-            <circle cx="56" cy="143" r="5" fill="url(#bodyGradient)" stroke="#10b981" strokeWidth="1" strokeOpacity="0.4" />
-
-            {/* 右腕 */}
-            <path
-              d="M 136 68 Q 145 85 148 108 Q 149 125 145 140"
-              fill="none"
-              stroke="#10b981"
-              strokeWidth="13"
-              strokeOpacity="0.35"
-              strokeLinecap="round"
-            />
-            {/* 右手 */}
-            <circle cx="144" cy="143" r="5" fill="url(#bodyGradient)" stroke="#10b981" strokeWidth="1" strokeOpacity="0.4" />
-
-            {/* 左脚（ヒップから足首へテーパー） */}
-            <path
-              d="M 88 154 Q 85 190 84 225"
-              fill="none"
-              stroke="#10b981"
-              strokeWidth="18"
-              strokeOpacity="0.35"
-              strokeLinecap="round"
-            />
-            {/* 左足 */}
-            <ellipse cx="84" cy="238" rx="10" ry="5" fill="url(#bodyGradient)" stroke="#10b981" strokeWidth="1" strokeOpacity="0.4" />
-
-            {/* 右脚 */}
-            <path
-              d="M 112 154 Q 115 190 116 225"
-              fill="none"
-              stroke="#10b981"
-              strokeWidth="18"
-              strokeOpacity="0.35"
-              strokeLinecap="round"
-            />
-            {/* 右足 */}
-            <ellipse cx="116" cy="238" rx="10" ry="5" fill="url(#bodyGradient)" stroke="#10b981" strokeWidth="1" strokeOpacity="0.4" />
           </g>
 
           {/* ホットスポット（タップ可能領域） */}
