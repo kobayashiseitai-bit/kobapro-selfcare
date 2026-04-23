@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
+import { getSignedImageUrl } from "../../lib/supabase-storage";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -93,6 +94,11 @@ export async function GET(req: NextRequest) {
 
     if (validRecords.length === 1) {
       const only = validRecords[0];
+      const signedUrl = await getSignedImageUrl(
+        supabase,
+        only.image_url,
+        "posture-images"
+      );
       return NextResponse.json(
         {
           hasData: false,
@@ -100,7 +106,7 @@ export async function GET(req: NextRequest) {
           userName: user.name,
           firstRecord: {
             id: only.id,
-            imageUrl: only.image_url,
+            imageUrl: signedUrl,
             createdAt: only.created_at,
             score: only.score ?? calcScoreFromDiagnosis(only.diagnosis),
             issueCount: issueCount(only.diagnosis),
@@ -137,13 +143,28 @@ export async function GET(req: NextRequest) {
       })
       .slice(0, 8);
 
+    // Signed URL に変換
+    const [firstSignedUrl, latestSignedUrl, timelineSigned] = await Promise.all([
+      getSignedImageUrl(supabase, first.image_url, "posture-images"),
+      getSignedImageUrl(supabase, latest.image_url, "posture-images"),
+      Promise.all(
+        timelinePoints.map(async (r) => ({
+          id: r.id,
+          imageUrl: await getSignedImageUrl(supabase, r.image_url, "posture-images"),
+          createdAt: r.created_at,
+          score: r.score ?? calcScoreFromDiagnosis(r.diagnosis),
+          issueCount: issueCount(r.diagnosis),
+        }))
+      ),
+    ]);
+
     return NextResponse.json(
       {
         hasData: true,
         userName: user.name,
         first: {
           id: first.id,
-          imageUrl: first.image_url,
+          imageUrl: firstSignedUrl,
           createdAt: first.created_at,
           score: firstScore,
           issueCount: firstIssues,
@@ -151,7 +172,7 @@ export async function GET(req: NextRequest) {
         },
         latest: {
           id: latest.id,
-          imageUrl: latest.image_url,
+          imageUrl: latestSignedUrl,
           createdAt: latest.created_at,
           score: latestScore,
           issueCount: latestIssues,
@@ -163,13 +184,7 @@ export async function GET(req: NextRequest) {
           scoreDelta,
           issueDelta,
         },
-        timeline: timelinePoints.map((r) => ({
-          id: r.id,
-          imageUrl: r.image_url,
-          createdAt: r.created_at,
-          score: r.score ?? calcScoreFromDiagnosis(r.diagnosis),
-          issueCount: issueCount(r.diagnosis),
-        })),
+        timeline: timelineSigned,
       },
       { headers: NO_CACHE_HEADERS }
     );

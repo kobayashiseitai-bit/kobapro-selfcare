@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 import { checkAndIncrementUsage } from "../../lib/subscription";
+import { getSignedImageUrl, signImageUrls } from "../../lib/supabase-storage";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -337,10 +338,17 @@ export async function POST(req: NextRequest) {
       .select("id, created_at")
       .single();
 
+    // クライアント表示用は Signed URL に変換
+    const signedImageUrl = await getSignedImageUrl(
+      supabase,
+      filePath,
+      "meal-images"
+    );
+
     return NextResponse.json({
       ok: true,
       id: savedRecord?.id,
-      imageUrl,
+      imageUrl: signedImageUrl || imageUrl,
       analysis,
       createdAt: savedRecord?.created_at,
     });
@@ -381,7 +389,14 @@ export async function GET(req: NextRequest) {
       .order("created_at", { ascending: false })
       .limit(30);
 
-    return NextResponse.json({ records: records || [] });
+    // Signed URL に変換してから返す
+    const signedRecords = await signImageUrls(
+      supabase,
+      records || [],
+      "meal-images"
+    );
+
+    return NextResponse.json({ records: signedRecords });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     return NextResponse.json(

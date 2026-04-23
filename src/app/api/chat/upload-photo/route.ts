@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
+import { getSignedImageUrl } from "../../../lib/supabase-storage";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -60,13 +61,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { data: urlData } = supabase.storage
-      .from("posture-images")
-      .getPublicUrl(filePath);
+    // Signed URL を返す（Privateバケット対応）
+    const signedUrl = await getSignedImageUrl(
+      supabase,
+      filePath,
+      "posture-images"
+    );
 
     return NextResponse.json({
       ok: true,
-      imageUrl: urlData.publicUrl,
+      imageUrl: signedUrl,
       uploadedAt: new Date().toISOString(),
     });
   } catch (e) {

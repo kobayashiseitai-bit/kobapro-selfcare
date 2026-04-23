@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
+import { signImageUrls } from "../../../lib/supabase-storage";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -65,7 +66,12 @@ export async function GET(req: NextRequest) {
         .maybeSingle(),
     ]);
 
-    const meals = mealRes.data || [];
+    // Signed URL に変換
+    const meals = await signImageUrls(
+      supabase,
+      mealRes.data || [],
+      "meal-images"
+    );
 
     // 日別集計
     interface DayData {

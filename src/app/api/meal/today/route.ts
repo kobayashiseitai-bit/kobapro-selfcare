@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
+import { signImageUrls } from "../../../lib/supabase-storage";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -117,7 +118,10 @@ export async function GET(req: NextRequest) {
 
     const total = { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0 };
 
-    meals.forEach((m) => {
+    // Signed URL に変換
+    const signedMeals = await signImageUrls(supabase, meals, "meal-images");
+
+    signedMeals.forEach((m) => {
       const type = m.meal_type && byMealType[m.meal_type] ? m.meal_type : "間食";
       byMealType[type].meals.push(m);
       byMealType[type].totals.calories += m.calories || 0;

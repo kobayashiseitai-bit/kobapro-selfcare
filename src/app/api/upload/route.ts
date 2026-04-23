@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
+import { getSignedImageUrl } from "../../lib/supabase-storage";
 
 export const dynamic = "force-dynamic";
 
@@ -48,12 +49,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "upload failed", detail: uploadError.message }, { status: 500 });
     }
 
-    // 公開URLを取得
+    // 公開URLを取得（DB保存用・既存互換）
     const { data: urlData } = supabase.storage
       .from("posture-images")
       .getPublicUrl(filePath);
 
-    return NextResponse.json({ url: urlData.publicUrl });
+    // クライアント表示用は Signed URL に変換（Privateバケット対応）
+    const signedUrl = await getSignedImageUrl(
+      supabase,
+      filePath,
+      "posture-images"
+    );
+
+    return NextResponse.json({
+      url: urlData.publicUrl,  // DBに保存される公開URL（Privateでも同じ形式）
+      signedUrl,               // クライアントが表示用に使うSigned URL
+      path: filePath,
+    });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ error: "upload failed", detail: msg }, { status: 500 });

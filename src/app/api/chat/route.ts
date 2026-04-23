@@ -6,6 +6,7 @@ import {
   checkAndIncrementUsage,
   getUserIdByDeviceId,
 } from "../../lib/subscription";
+import { getSignedImageUrl } from "../../lib/supabase-storage";
 import {
   calculateRecommendation,
   GENDER_LABELS,
@@ -589,16 +590,32 @@ export async function POST(req: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let apiMessages: any[];
 
+    // ========= Claude Vision 用に Signed URL に変換（Privateバケット対応） =========
+    const supabaseForSign = getSupabase();
+    const [
+      signedLatestPostureUrl,
+      signedFirstPostureUrl,
+      signedLatestMealUrl,
+      signedAttachedPhotoUrl,
+    ] = await Promise.all([
+      getSignedImageUrl(supabaseForSign, latestPostureImageUrl, "posture-images"),
+      getSignedImageUrl(supabaseForSign, firstPostureImageUrl, "posture-images"),
+      getSignedImageUrl(supabaseForSign, latestMealImageUrl, "meal-images"),
+      typeof attachedPhotoUrl === "string" && attachedPhotoUrl.startsWith("http")
+        ? getSignedImageUrl(supabaseForSign, attachedPhotoUrl, "posture-images")
+        : Promise.resolve(null),
+    ]);
+
     // ========= 優先順位: compareMode > attachedPhotoUrl > 食事相談 > 自動添付 =========
 
     // Before/After 比較モード（ユーザーが明示的にリクエスト）
     const shouldCompare =
-      compareMode === true && firstPostureImageUrl && latestPostureImageUrl;
+      compareMode === true && signedFirstPostureUrl && signedLatestPostureUrl;
 
     // ユーザーが直接アップロードした写真
     const hasAttachedPhoto =
-      typeof attachedPhotoUrl === "string" &&
-      attachedPhotoUrl.startsWith("http");
+      typeof signedAttachedPhotoUrl === "string" &&
+      signedAttachedPhotoUrl.startsWith("http");
 
     // 食事相談モード: 食事画面から遷移してきた場合、食事写真を優先して添付
     const shouldAttachMeal =
@@ -606,7 +623,7 @@ export async function POST(req: NextRequest) {
       !hasAttachedPhoto &&
       isFirstMessage &&
       consultMeal === true &&
-      latestMealImageUrl;
+      signedLatestMealUrl;
 
     // 姿勢写真が「3日以内に撮影された最新のもの」のみ自動添付
     const shouldAttachPhoto =
@@ -614,11 +631,11 @@ export async function POST(req: NextRequest) {
       !hasAttachedPhoto &&
       !shouldAttachMeal &&
       isFirstMessage &&
-      latestPostureImageUrl &&
+      signedLatestPostureUrl &&
       latestPostureDaysAgo !== null &&
       latestPostureDaysAgo <= 3;
 
-    if (shouldCompare && firstPostureImageUrl && latestPostureImageUrl) {
+    if (shouldCompare && signedFirstPostureUrl && signedLatestPostureUrl) {
       // Before/After比較: 初回写真と最新写真の両方を送る
       const firstDaysText =
         firstPostureDaysAgo !== null && firstPostureDaysAgo > 0
@@ -650,11 +667,11 @@ export async function POST(req: NextRequest) {
           content: [
             {
               type: "image",
-              source: { type: "url", url: firstPostureImageUrl },
+              source: { type: "url", url: signedFirstPostureUrl },
             },
             {
               type: "image",
-              source: { type: "url", url: latestPostureImageUrl },
+              source: { type: "url", url: signedLatestPostureUrl },
             },
             {
               type: "text",
@@ -681,7 +698,7 @@ export async function POST(req: NextRequest) {
           content: [
             {
               type: "image",
-              source: { type: "url", url: attachedPhotoUrl },
+              source: { type: "url", url: signedAttachedPhotoUrl },
             },
             {
               type: "text",
@@ -690,7 +707,7 @@ export async function POST(req: NextRequest) {
           ],
         },
       ];
-    } else if (shouldAttachMeal && latestMealImageUrl && latestMealInfo) {
+    } else if (shouldAttachMeal && signedLatestMealUrl && latestMealInfo) {
       // 食事相談モード: 食事写真を添付して、食事について聞く前提で始める
       const mt = latestMealInfo.mealType || "食事";
       const menu = latestMealInfo.menuName || "この食事";
@@ -709,7 +726,7 @@ export async function POST(req: NextRequest) {
               type: "image",
               source: {
                 type: "url",
-                url: latestMealImageUrl,
+                url: signedLatestMealUrl,
               },
             },
             {
@@ -719,7 +736,7 @@ export async function POST(req: NextRequest) {
           ],
         },
       ];
-    } else if (shouldAttachPhoto && latestPostureImageUrl) {
+    } else if (shouldAttachPhoto && signedLatestPostureUrl) {
       // 写真の経過日数で初回メッセージを出し分ける
       let introText: string;
       if (latestPostureDaysAgo === 0) {
@@ -738,7 +755,7 @@ export async function POST(req: NextRequest) {
               type: "image",
               source: {
                 type: "url",
-                url: latestPostureImageUrl,
+                url: signedLatestPostureUrl,
               },
             },
             {
