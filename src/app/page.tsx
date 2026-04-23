@@ -2208,228 +2208,109 @@ function BodyMapView({
 }) {
   const activeSymptom = SYMPTOMS.find((s) => s.id === selectedId);
 
-  // ホットスポット（SVG上の位置とラベル）
+  // 骸骨画像に対応するホットスポット位置（％ベース）
+  // bodymap-skeleton.png (2816x1536) の解剖学的位置に合わせて調整
   const hotspots: Array<{
     id: string;
-    cx: number;
-    cy: number;
-    r: number;
-    labelX: number;
-    labelY: number;
-    labelAnchor: "start" | "middle" | "end";
+    xPercent: number;  // 画像の左からの% (50% = 中心)
+    yPercent: number;  // 画像の上からの%
+    labelSide: "left" | "right";
   }> = [
-    { id: "headache", cx: 100, cy: 22, r: 9, labelX: 155, labelY: 22, labelAnchor: "start" },
-    { id: "eye_fatigue", cx: 100, cy: 34, r: 6, labelX: 45, labelY: 34, labelAnchor: "end" },
-    { id: "neck", cx: 100, cy: 52, r: 7, labelX: 155, labelY: 52, labelAnchor: "start" },
-    { id: "shoulder_stiff", cx: 72, cy: 62, r: 9, labelX: 45, labelY: 62, labelAnchor: "end" },
-    { id: "kyphosis", cx: 100, cy: 85, r: 9, labelX: 155, labelY: 85, labelAnchor: "start" },
-    { id: "back", cx: 100, cy: 130, r: 9, labelX: 155, labelY: 130, labelAnchor: "start" },
+    { id: "headache", xPercent: 50, yPercent: 8, labelSide: "right" },       // 頭蓋骨上部
+    { id: "eye_fatigue", xPercent: 50, yPercent: 12, labelSide: "left" },    // 眼窩
+    { id: "neck", xPercent: 50, yPercent: 19, labelSide: "right" },          // 頸椎
+    { id: "shoulder_stiff", xPercent: 42, yPercent: 24, labelSide: "left" }, // 肩関節
+    { id: "kyphosis", xPercent: 50, yPercent: 35, labelSide: "right" },      // 胸椎中部（猫背）
+    { id: "back", xPercent: 50, yPercent: 47, labelSide: "right" },          // 腰椎
   ];
 
   const symptomById = (id: string) => SYMPTOMS.find((s) => s.id === id);
 
+  const colorForTheme = (theme: string): string => {
+    switch (theme) {
+      case "emerald": return "#10b981";
+      case "teal": return "#14b8a6";
+      case "sky": return "#0ea5e9";
+      case "indigo": return "#6366f1";
+      case "rose": return "#f43f5e";
+      case "amber": return "#f59e0b";
+      default: return "#10b981";
+    }
+  };
+
   return (
     <div className="w-full max-w-md space-y-4">
-      {/* ボディマップ */}
-      <div className="relative bg-gradient-to-br from-gray-900/50 via-gray-900/30 to-gray-900/50 rounded-3xl p-4 border border-gray-700/30">
-        <svg
-          viewBox="0 0 200 260"
-          className="w-full h-auto"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          {/* 人体シルエット（やわらかい・人間らしい） */}
-          <defs>
-            <linearGradient id="bodyGradient" x1="50%" y1="0%" x2="50%" y2="100%">
-              <stop offset="0%" stopColor="#ecfdf5" stopOpacity="1" />
-              <stop offset="40%" stopColor="#d1fae5" stopOpacity="0.95" />
-              <stop offset="100%" stopColor="#a7f3d0" stopOpacity="0.85" />
-            </linearGradient>
-            <linearGradient id="headGradient" x1="50%" y1="0%" x2="50%" y2="100%">
-              <stop offset="0%" stopColor="#ecfdf5" stopOpacity="1" />
-              <stop offset="100%" stopColor="#a7f3d0" stopOpacity="0.9" />
-            </linearGradient>
-            <radialGradient id="pulseGradient">
-              <stop offset="0%" stopColor="currentColor" stopOpacity="0.6" />
-              <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
-            </radialGradient>
-            {/* ソフトシャドウフィルター */}
-            <filter id="bodyShadow" x="-20%" y="-20%" width="140%" height="140%">
-              <feGaussianBlur in="SourceAlpha" stdDeviation="2" />
-              <feOffset dx="0" dy="2" result="offsetblur" />
-              <feFlood floodColor="#059669" floodOpacity="0.2" />
-              <feComposite in2="offsetblur" operator="in" />
-              <feMerge>
-                <feMergeNode />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
-          </defs>
+      {/* ボディマップ: 骸骨イラスト+タップ可能なホットスポット */}
+      <div className="relative bg-gradient-to-br from-amber-50 via-white to-emerald-50 rounded-3xl p-4 border border-emerald-200/50 shadow-inner">
+        <div className="relative aspect-[3/4] w-full overflow-hidden rounded-2xl bg-white">
+          {/* 骸骨の人体図（ガイコツ先生のブランドにマッチ） */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/bodymap-skeleton.png"
+            alt="人体骨格図"
+            className="absolute inset-0 w-full h-full object-cover object-center select-none pointer-events-none"
+            draggable={false}
+          />
 
-          <g filter="url(#bodyShadow)">
-            {/* 統合された一筆書きのシルエット（人間らしい自然な曲線） */}
-            <path
-              d="
-                M 100 14
-                C 88 14 78 22 76 36
-                C 74 44 77 50 80 52
-                C 79 55 77 58 76 62
-                C 74 64 72 64 68 65
-                C 62 67 57 71 54 77
-                C 50 85 49 96 50 108
-                C 51 120 54 132 57 142
-                C 58 147 63 149 66 146
-                C 68 142 67 136 65 130
-                C 63 122 61 112 62 102
-                C 63 94 66 88 70 85
-                C 72 98 74 112 75 125
-                C 76 138 77 150 82 160
-                C 84 165 85 172 85 180
-                C 84 195 83 210 82 225
-                C 81 232 80 238 80 244
-                C 82 248 90 248 92 244
-                C 93 238 93 230 94 220
-                C 95 205 95 190 96 180
-                C 97 176 98 175 100 175
-                C 102 175 103 176 104 180
-                C 105 190 105 205 106 220
-                C 107 230 107 238 108 244
-                C 110 248 118 248 120 244
-                C 120 238 119 232 118 225
-                C 117 210 116 195 115 180
-                C 115 172 116 165 118 160
-                C 123 150 124 138 125 125
-                C 126 112 128 98 130 85
-                C 134 88 137 94 138 102
-                C 139 112 137 122 135 130
-                C 133 136 132 142 134 146
-                C 137 149 142 147 143 142
-                C 146 132 149 120 150 108
-                C 151 96 150 85 146 77
-                C 143 71 138 67 132 65
-                C 128 64 126 64 124 62
-                C 123 58 121 55 120 52
-                C 123 50 126 44 124 36
-                C 122 22 112 14 100 14
-                Z
-              "
-              fill="url(#bodyGradient)"
-              stroke="#10b981"
-              strokeWidth="1.2"
-              strokeOpacity="0.55"
-              strokeLinejoin="round"
-            />
-
-            {/* 顔の微妙な表情（親しみを演出：ほっぺの淡い影） */}
-            <ellipse cx="88" cy="32" rx="3" ry="2" fill="#fecaca" opacity="0.5" />
-            <ellipse cx="112" cy="32" rx="3" ry="2" fill="#fecaca" opacity="0.5" />
-            {/* やさしい微笑み（口元） */}
-            <path
-              d="M 94 38 Q 100 41 106 38"
-              fill="none"
-              stroke="#047857"
-              strokeWidth="1.2"
-              strokeLinecap="round"
-              strokeOpacity="0.4"
-            />
-            {/* 髪のヒント（頭頂部のライン） */}
-            <path
-              d="M 82 18 Q 100 10 118 18"
-              fill="none"
-              stroke="#059669"
-              strokeWidth="1.5"
-              strokeOpacity="0.35"
-              strokeLinecap="round"
-            />
-          </g>
-
-          {/* ホットスポット（タップ可能領域） */}
+          {/* ホットスポット（該当部位にカラフルな円） */}
           {hotspots.map((h) => {
             const symptom = symptomById(h.id);
             if (!symptom) return null;
             const isSelected = selectedId === h.id;
-            const color =
-              symptom.colorTheme === "emerald" ? "#10b981"
-              : symptom.colorTheme === "teal" ? "#14b8a6"
-              : symptom.colorTheme === "sky" ? "#0ea5e9"
-              : symptom.colorTheme === "indigo" ? "#6366f1"
-              : symptom.colorTheme === "rose" ? "#f43f5e"
-              : "#f59e0b";
+            const color = colorForTheme(symptom.colorTheme);
 
             return (
-              <g key={h.id} style={{ color }}>
+              <button
+                key={h.id}
+                onClick={() => onSelect(h.id)}
+                className="absolute flex items-center justify-center rounded-full shadow-lg transition active:scale-90 group"
+                style={{
+                  left: `${h.xPercent}%`,
+                  top: `${h.yPercent}%`,
+                  transform: "translate(-50%, -50%)",
+                  width: "40px",
+                  height: "40px",
+                  backgroundColor: color,
+                  border: "3px solid white",
+                  boxShadow: isSelected
+                    ? `0 0 0 6px ${color}40, 0 4px 12px rgba(0,0,0,0.2)`
+                    : "0 4px 12px rgba(0,0,0,0.15)",
+                }}
+                aria-label={symptom.label}
+              >
+                <span className="text-base">{symptom.emoji}</span>
+
                 {/* パルスアニメーション（選択時） */}
                 {isSelected && (
-                  <circle cx={h.cx} cy={h.cy} r={h.r + 6} fill="url(#pulseGradient)">
-                    <animate
-                      attributeName="r"
-                      from={h.r}
-                      to={h.r + 12}
-                      dur="1.5s"
-                      repeatCount="indefinite"
-                    />
-                    <animate
-                      attributeName="opacity"
-                      from="0.8"
-                      to="0"
-                      dur="1.5s"
-                      repeatCount="indefinite"
-                    />
-                  </circle>
+                  <span
+                    className="absolute inset-0 rounded-full animate-ping"
+                    style={{ backgroundColor: color, opacity: 0.4 }}
+                  />
                 )}
-                {/* タップエリア本体 */}
-                <circle
-                  cx={h.cx}
-                  cy={h.cy}
-                  r={h.r}
-                  fill={color}
-                  fillOpacity={isSelected ? 1 : 0.85}
-                  stroke="#ffffff"
-                  strokeWidth="2"
-                  style={{ cursor: "pointer" }}
-                  onClick={() => onSelect(h.id)}
-                />
-                {/* 絵文字 */}
-                <text
-                  x={h.cx}
-                  y={h.cy + 3}
-                  textAnchor="middle"
-                  fontSize="9"
-                  style={{ pointerEvents: "none" }}
-                >
-                  {symptom.emoji}
-                </text>
-                {/* ラベル（サイド表示） */}
-                <text
-                  x={h.labelX}
-                  y={h.labelY + 3}
-                  textAnchor={h.labelAnchor}
-                  fontSize="10"
-                  fontWeight="bold"
-                  fill={color}
-                  style={{ pointerEvents: "none" }}
+
+                {/* ラベル（横に表示） */}
+                <span
+                  className={`absolute top-1/2 -translate-y-1/2 whitespace-nowrap text-xs font-extrabold px-2 py-1 rounded-lg shadow-md ${
+                    h.labelSide === "right"
+                      ? "left-full ml-3"
+                      : "right-full mr-3"
+                  }`}
+                  style={{
+                    backgroundColor: "white",
+                    color: color,
+                    border: `1.5px solid ${color}`,
+                  }}
                 >
                   {symptom.label}
-                </text>
-                {/* ラインコネクター */}
-                <line
-                  x1={h.cx + (h.labelAnchor === "start" ? h.r : -h.r)}
-                  y1={h.cy}
-                  x2={h.labelX + (h.labelAnchor === "start" ? -3 : 3)}
-                  y2={h.labelY}
-                  stroke={color}
-                  strokeWidth="1"
-                  strokeOpacity="0.4"
-                  strokeDasharray="2 2"
-                  style={{ pointerEvents: "none" }}
-                />
-              </g>
+                </span>
+              </button>
             );
           })}
-        </svg>
+        </div>
 
         {/* 凡例 */}
-        <p className="text-[11px] text-center text-gray-500 mt-2">
-          💡 色のついた点をタップすると、該当部位のケアが始まります
+        <p className="text-[11px] text-center text-gray-500 mt-3">
+          🦴 気になる部位をタップしてください
         </p>
       </div>
 
