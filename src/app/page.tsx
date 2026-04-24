@@ -497,8 +497,15 @@ function RegisterScreen({ onComplete }: { onComplete: () => void }) {
       <div className="flex-1 flex items-center justify-center px-4 py-8">
         <form onSubmit={handleSubmit} className="w-full max-w-md space-y-6">
           <div className="text-center mb-8">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/splash-logo.png" alt="ZERO-PAIN" className="w-48 h-auto mx-auto mb-4" />
+            <h1
+              aria-label="ZERO-PAIN"
+              className="mb-5 text-5xl font-black tracking-[0.08em] leading-none"
+              style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif" }}
+            >
+              <span className="text-white">ZER</span>
+              <span className="text-emerald-400">O</span>
+              <span className="text-white">-PAIN</span>
+            </h1>
             <p className="text-lg font-bold text-white">
               あなた専用の<span className="text-amber-400">AIパーソナルトレーナー</span>
             </p>
