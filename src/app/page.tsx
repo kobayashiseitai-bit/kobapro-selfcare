@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useEffect, useCallback, useMemo } from "react";
+import { useRef, useState, useEffect, useCallback, useMemo, memo } from "react";
 import { addRecord, getRecords, deleteRecord, Landmark, PostureRecord } from "./lib/storage";
 import { analyzeFrontPosture, analyzeSidePosture, drawDiagnosisOverlay, drawSideDiagnosisOverlay, addLandmarkFrame, clearLandmarkBuffer } from "./lib/postureAnalysis";
 import { getStretchesBySymptom } from "./lib/stretches";
@@ -1506,6 +1506,22 @@ function HomeScreen({
 // ==================== AIカウンセリング画面 ====================
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
+// 個別メッセージ(memo化:旧メッセージはストリーミング中に再描画されない)
+const MessageBubble = memo(function MessageBubble({ msg }: { msg: ChatMessage }) {
+  return (
+    <div className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+      <div className={`max-w-[85%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${
+        msg.role === "user"
+          ? "bg-blue-600 rounded-br-md"
+          : "bg-gray-800 rounded-bl-md"
+      }`}>
+        {msg.role === "assistant" && <p className="text-xs text-gray-400 mb-1">💀 ガイコツ先生</p>}
+        <p className="whitespace-pre-wrap">{msg.content}</p>
+      </div>
+    </div>
+  );
+});
+
 function AiCounselScreen({
   onNavigate,
   onSelectSymptom,
@@ -1528,6 +1544,35 @@ function AiCounselScreen({
   const [compareRequested, setCompareRequested] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+
+  // ストリーミング中のsetMessages呼び出しをrequestAnimationFrameでスロットリングするヘルパー
+  // (旧スマホでトークンごとの再描画によるフリーズを防止)
+  const makeThrottledOnText = (
+    baseMessages: ChatMessage[],
+    setStreamedRef: { current: string }
+  ) => {
+    let pending = false;
+    let dirty = false;
+    const flush = () => {
+      pending = false;
+      if (!dirty) return;
+      dirty = false;
+      const display = setStreamedRef.current.replace(/<recommendation>[\s\S]*$/, "");
+      setMessages([...baseMessages, { role: "assistant", content: display }]);
+    };
+    return (delta: string) => {
+      setStreamedRef.current += delta;
+      dirty = true;
+      if (pending) return;
+      pending = true;
+      // rAFはタブが背面の時は呼ばれないので、フォールバックでsetTimeoutも併用
+      if (typeof requestAnimationFrame !== "undefined") {
+        requestAnimationFrame(flush);
+      } else {
+        setTimeout(flush, 50);
+      }
+    };
+  };
 
   // ストリーミングAPIを呼び出す共通関数
   const streamChat = async (
@@ -1635,15 +1680,11 @@ function AiCounselScreen({
         setLoading(true);
         setMessages([{ role: "assistant", content: "" }]);
         setPhotoViewingBadge("食事写真");
-        let streamedText = "";
+        const streamedRef = { current: "" };
         try {
           const result = await streamChat(
             [],
-            (delta) => {
-              streamedText += delta;
-              const display = streamedText.replace(/<recommendation>[\s\S]*$/, "");
-              setMessages([{ role: "assistant", content: display }]);
-            },
+            makeThrottledOnText([], streamedRef),
             { consultMeal: true }
           );
           if (result.cleanText) {
@@ -1708,13 +1749,9 @@ function AiCounselScreen({
       // 2. 履歴がない or 失敗：初回メッセージをAIに生成させる
       setLoading(true);
       setMessages([{ role: "assistant", content: "" }]);
-      let streamedText = "";
+      const streamedRef = { current: "" };
       try {
-        const result = await streamChat([], (delta) => {
-          streamedText += delta;
-          const display = streamedText.replace(/<recommendation>[\s\S]*$/, "");
-          setMessages([{ role: "assistant", content: display }]);
-        });
+        const result = await streamChat([], makeThrottledOnText([], streamedRef));
         if (result.cleanText) {
           setMessages([{ role: "assistant", content: result.cleanText }]);
         }
@@ -1729,7 +1766,15 @@ function AiCounselScreen({
   }, []);
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    // 旧スマホ対策:smoothはストリーミング中の頻繁な更新で重くなるためautoに
+    // メインスレッドを譲るためにrAFでスケジュール
+    if (typeof requestAnimationFrame !== "undefined") {
+      requestAnimationFrame(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: "auto", block: "end" });
+      });
+    } else {
+      chatEndRef.current?.scrollIntoView({ behavior: "auto", block: "end" });
+    }
   }, [messages]);
 
   // カメラで撮影した画像をSupabase Storageへアップロード
@@ -1778,19 +1823,15 @@ function AiCounselScreen({
     setCompareRequested(true);
     setPhotoViewingBadge("Before/After 比較中");
 
-    let streamedText = "";
+    const streamedRef = { current: "" };
     try {
       const result = await streamChat(
         newMessages,
-        (delta) => {
-          streamedText += delta;
-          const display = streamedText.replace(/<recommendation>[\s\S]*$/, "");
-          setMessages([...newMessages, { role: "assistant", content: display }]);
-        },
+        makeThrottledOnText(newMessages, streamedRef),
         { compareMode: true }
       );
 
-      const finalText = result.cleanText || streamedText;
+      const finalText = result.cleanText || streamedRef.current;
       setMessages([...newMessages, { role: "assistant", content: finalText }]);
 
       saveToDb({ type: "chat", role: "user", content: userMsg.content });
@@ -1827,19 +1868,15 @@ function AiCounselScreen({
     const photoForThisSend = attachedPhotoUrl;
     setAttachedPhotoUrl(null);
 
-    let streamedText = "";
+    const streamedRef = { current: "" };
     try {
       const result = await streamChat(
         newMessages,
-        (delta) => {
-          streamedText += delta;
-          const display = streamedText.replace(/<recommendation>[\s\S]*$/, "");
-          setMessages([...newMessages, { role: "assistant", content: display }]);
-        },
+        makeThrottledOnText(newMessages, streamedRef),
         { attachedPhotoUrl: photoForThisSend }
       );
 
-      const finalText = result.cleanText || streamedText;
+      const finalText = result.cleanText || streamedRef.current;
       setMessages([...newMessages, { role: "assistant", content: finalText }]);
 
       saveToDb({ type: "chat", role: "user", content: userMsg.content });
@@ -1868,7 +1905,7 @@ function AiCounselScreen({
 
   return (
     <main className="fixed inset-0 bg-gray-950 text-white flex flex-col">
-      <header className="sticky top-0 z-10 bg-gray-950/95 backdrop-blur-sm border-b border-gray-800/50 px-4 py-3">
+      <header className="sticky top-0 z-10 bg-gray-950 border-b border-gray-800/50 px-4 py-3">
         <div className="flex items-center gap-3">
           <button onClick={() => onNavigate("home")} className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm">← 戻る</button>
           <div className="flex items-center gap-2">
@@ -1889,24 +1926,18 @@ function AiCounselScreen({
       </header>
 
       {/* チャットエリア */}
-      <div className="flex-1 overflow-y-auto space-y-3 px-4 py-4 max-w-md w-full mx-auto">
+      <div
+        className="flex-1 overflow-y-auto space-y-3 px-4 py-4 max-w-md w-full mx-auto"
+        style={{ contain: "layout paint" }}
+      >
         {messages.map((msg, i) => (
-          <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-            <div className={`max-w-[85%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${
-              msg.role === "user"
-                ? "bg-blue-600 rounded-br-md"
-                : "bg-gray-800 rounded-bl-md"
-            }`}>
-              {msg.role === "assistant" && <p className="text-xs text-gray-400 mb-1">💀 ガイコツ先生</p>}
-              <p className="whitespace-pre-wrap">{msg.content}</p>
-            </div>
-          </div>
+          <MessageBubble key={i} msg={msg} />
         ))}
-        {loading && (
+        {loading && messages.length === 0 && (
           <div className="flex justify-start">
             <div className="bg-gray-800 px-4 py-3 rounded-2xl rounded-bl-md">
               <p className="text-xs text-gray-400 mb-1">💀 ガイコツ先生</p>
-              <p className="text-sm animate-pulse">考え中...</p>
+              <p className="text-sm">考え中...</p>
             </div>
           </div>
         )}
