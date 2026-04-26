@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest } from "next/server";
 import { STRETCH_DATA } from "../../lib/stretches";
+import { buildAvailableImagesForPrompt } from "../../lib/chat-images";
 import {
   checkAndIncrementUsage,
   getUserIdByDeviceId,
@@ -584,7 +585,7 @@ export async function POST(req: NextRequest) {
       latestMealImageUrl,
       latestMealInfo,
     } = await buildUserContext(deviceId || "");
-    const systemPrompt = BASE_PROMPT + STRETCH_CATALOG_PROMPT + contextText;
+    const systemPrompt = BASE_PROMPT + STRETCH_CATALOG_PROMPT + buildAvailableImagesForPrompt() + contextText;
 
     const isFirstMessage = !messages || messages.length === 0;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

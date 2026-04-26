@@ -1506,19 +1506,120 @@ function HomeScreen({
 // ==================== AIカウンセリング画面 ====================
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
+// <image id="xxx" /> タグをパースして文字とimage IDのセグメントに分解
+// ストリーミング中の不完全なタグは末尾から除去
+type MessageSegment = { type: "text"; content: string } | { type: "image"; id: string };
+function parseMessageSegments(raw: string): MessageSegment[] {
+  // 1. ストリーミング中の不完全な末尾タグを除去 (例: "<imag" や "<image id=\"ne")
+  const cleaned = raw.replace(/<image[^>]*$/i, "");
+  const segments: MessageSegment[] = [];
+  const regex = /<image\s+id="([a-z0-9_-]+)"\s*\/?>/gi;
+  let lastIdx = 0;
+  let m: RegExpExecArray | null;
+  while ((m = regex.exec(cleaned)) !== null) {
+    if (m.index > lastIdx) {
+      segments.push({ type: "text", content: cleaned.slice(lastIdx, m.index) });
+    }
+    segments.push({ type: "image", id: m[1] });
+    lastIdx = m.index + m[0].length;
+  }
+  if (lastIdx < cleaned.length) {
+    segments.push({ type: "text", content: cleaned.slice(lastIdx) });
+  }
+  if (segments.length === 0) {
+    segments.push({ type: "text", content: "" });
+  }
+  return segments;
+}
+
+// チャット画像をフルスクリーンで表示するモーダル(タップで開く)
+const ChatImageViewer = memo(function ChatImageViewer({
+  src,
+  onClose,
+}: {
+  src: string;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-[60] bg-black/90 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt="拡大表示"
+        className="max-w-full max-h-full object-contain rounded-xl"
+      />
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white text-xl"
+        aria-label="閉じる"
+      >
+        ✕
+      </button>
+    </div>
+  );
+});
+
+// 画像IDから path を解決(ファイル名規則ベース・カタログ未登録でも動くフォールバック付き)
+function resolveImagePath(id: string): string | null {
+  // 既知のストレッチ画像はファイル名がそのまま使える
+  if (/^(neck|shoulder|back|eye|headache|kyphosis)-[1-5]$/.test(id)) {
+    return `/stretches/${id}.png`;
+  }
+  return null;
+}
+
 // 個別メッセージ(memo化:旧メッセージはストリーミング中に再描画されない)
 const MessageBubble = memo(function MessageBubble({ msg }: { msg: ChatMessage }) {
+  const [zoomedSrc, setZoomedSrc] = useState<string | null>(null);
+
+  // assistant メッセージは画像タグをパース、user メッセージはそのまま表示
+  const segments = msg.role === "assistant"
+    ? parseMessageSegments(msg.content)
+    : [{ type: "text" as const, content: msg.content }];
+
   return (
-    <div className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-      <div className={`max-w-[85%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${
-        msg.role === "user"
-          ? "bg-blue-600 rounded-br-md"
-          : "bg-gray-800 rounded-bl-md"
-      }`}>
-        {msg.role === "assistant" && <p className="text-xs text-gray-400 mb-1">💀 ガイコツ先生</p>}
-        <p className="whitespace-pre-wrap">{msg.content}</p>
+    <>
+      <div className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+        <div className={`max-w-[85%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${
+          msg.role === "user"
+            ? "bg-blue-600 rounded-br-md"
+            : "bg-gray-800 rounded-bl-md"
+        }`}>
+          {msg.role === "assistant" && <p className="text-xs text-gray-400 mb-1">💀 ガイコツ先生</p>}
+          {segments.map((seg, i) => {
+            if (seg.type === "text") {
+              return seg.content ? (
+                <p key={i} className="whitespace-pre-wrap">{seg.content}</p>
+              ) : null;
+            }
+            // image segment
+            const path = resolveImagePath(seg.id);
+            if (!path) return null;
+            return (
+              <button
+                key={i}
+                onClick={() => setZoomedSrc(path)}
+                className="block my-2 w-full rounded-xl overflow-hidden border border-emerald-500/30 bg-gray-900 active:scale-[0.99] transition"
+                aria-label="画像を拡大表示"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={path}
+                  alt={seg.id}
+                  loading="lazy"
+                  decoding="async"
+                  className="w-full h-auto object-contain"
+                />
+              </button>
+            );
+          })}
+        </div>
       </div>
-    </div>
+      {zoomedSrc && <ChatImageViewer src={zoomedSrc} onClose={() => setZoomedSrc(null)} />}
+    </>
   );
 });
 
