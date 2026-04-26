@@ -405,3 +405,110 @@ export async function GET(req: NextRequest) {
     );
   }
 }
+
+// 食事記録の手動修正（メニュー名・栄養素・食事区分など）
+export async function PATCH(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const {
+      deviceId,
+      recordId,
+      menu_name,
+      meal_type,
+      calories,
+      protein_g,
+      carbs_g,
+      fat_g,
+      score,
+    } = body as {
+      deviceId?: string;
+      recordId?: string;
+      menu_name?: string | null;
+      meal_type?: string | null;
+      calories?: number | null;
+      protein_g?: number | null;
+      carbs_g?: number | null;
+      fat_g?: number | null;
+      score?: number | null;
+    };
+
+    if (!deviceId || !recordId) {
+      return NextResponse.json(
+        { error: "deviceId and recordId required" },
+        { status: 400 }
+      );
+    }
+
+    const validMealTypes = ["朝食", "昼食", "夕食", "間食"];
+    if (
+      meal_type !== undefined &&
+      meal_type !== null &&
+      !validMealTypes.includes(meal_type)
+    ) {
+      return NextResponse.json(
+        { error: "invalid meal_type" },
+        { status: 400 }
+      );
+    }
+
+    const supabase = getSupabase();
+
+    // ユーザー特定
+    const { data: users } = await supabase
+      .from("users")
+      .select("id")
+      .eq("device_id", deviceId);
+    if (!users || users.length === 0) {
+      return NextResponse.json({ error: "user not found" }, { status: 404 });
+    }
+    const userId = users[0].id;
+
+    // レコード所有確認
+    const { data: existing } = await supabase
+      .from("meal_records")
+      .select("id, user_id")
+      .eq("id", recordId)
+      .maybeSingle();
+    if (!existing || existing.user_id !== userId) {
+      return NextResponse.json({ error: "forbidden" }, { status: 403 });
+    }
+
+    // 更新フィールドの組み立て(指定されたものだけ)
+    const updates: Record<string, unknown> = {};
+    if (menu_name !== undefined) updates.menu_name = menu_name;
+    if (meal_type !== undefined) updates.meal_type = meal_type;
+    if (calories !== undefined) updates.calories = calories;
+    if (protein_g !== undefined) updates.protein_g = protein_g;
+    if (carbs_g !== undefined) updates.carbs_g = carbs_g;
+    if (fat_g !== undefined) updates.fat_g = fat_g;
+    if (score !== undefined) updates.score = score;
+
+    if (Object.keys(updates).length === 0) {
+      return NextResponse.json({ error: "no fields to update" }, { status: 400 });
+    }
+
+    const { data: updated, error: updErr } = await supabase
+      .from("meal_records")
+      .update(updates)
+      .eq("id", recordId)
+      .select(
+        "id, image_url, meal_type, menu_name, calories, protein_g, carbs_g, fat_g, advice, score, created_at"
+      )
+      .single();
+
+    if (updErr || !updated) {
+      return NextResponse.json(
+        { error: "update failed", detail: updErr?.message },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ ok: true, record: updated });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return NextResponse.json(
+      { error: "修正の保存に失敗しました", detail: msg },
+      { status: 500 }
+    );
+  }
+}

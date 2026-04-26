@@ -5125,7 +5125,7 @@ function MealScreen({
   onModeConsumed?: () => void;
   onConsultMeal?: () => void;
 }) {
-  const [mode, setMode] = useState<"home" | "analyzing" | "result" | "history" | "calendar" | "goal">(
+  const [mode, setMode] = useState<"home" | "analyzing" | "result" | "edit" | "history" | "calendar" | "goal">(
     initialMode === "goal" || initialMode === "calendar" ? initialMode : "home"
   );
   const [selectedMealType, setSelectedMealType] = useState<"朝食" | "昼食" | "夕食" | "間食">(
@@ -5148,6 +5148,9 @@ function MealScreen({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<MealAnalysis | null>(null);
   const [analysisImageUrl, setAnalysisImageUrl] = useState<string | null>(null);
+  const [analysisRecordId, setAnalysisRecordId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState<MealAnalysis | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [records, setRecords] = useState<MealRecord[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
@@ -5183,6 +5186,7 @@ function MealScreen({
       }
       setAnalysis(data.analysis);
       setAnalysisImageUrl(data.imageUrl);
+      setAnalysisRecordId(data.id || null);
       setMode("result");
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -5213,7 +5217,68 @@ function MealScreen({
     setPreviewUrl(null);
     setAnalysis(null);
     setAnalysisImageUrl(null);
+    setAnalysisRecordId(null);
+    setEditDraft(null);
     setError(null);
+  };
+
+  // 修正画面を開く
+  const openEdit = () => {
+    if (!analysis) return;
+    setEditDraft({ ...analysis });
+    setError(null);
+    setMode("edit");
+  };
+
+  // 修正をキャンセル
+  const cancelEdit = () => {
+    setEditDraft(null);
+    setMode("result");
+  };
+
+  // 修正を保存
+  const saveEdit = async () => {
+    if (!editDraft || !analysisRecordId) return;
+    setSavingEdit(true);
+    setError(null);
+    try {
+      const deviceId = getDeviceId();
+      const res = await fetch("/api/meal", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          deviceId,
+          recordId: analysisRecordId,
+          menu_name: editDraft.menu_name ?? null,
+          meal_type: editDraft.meal_type ?? null,
+          calories: editDraft.calories ?? null,
+          protein_g: editDraft.protein_g ?? null,
+          carbs_g: editDraft.carbs_g ?? null,
+          fat_g: editDraft.fat_g ?? null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "保存に失敗しました");
+      }
+      // ローカル状態を更新
+      setAnalysis({
+        ...analysis,
+        menu_name: editDraft.menu_name,
+        meal_type: editDraft.meal_type,
+        calories: editDraft.calories,
+        protein_g: editDraft.protein_g,
+        carbs_g: editDraft.carbs_g,
+        fat_g: editDraft.fat_g,
+      });
+      setEditDraft(null);
+      setMode("result");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(msg);
+    } finally {
+      setSavingEdit(false);
+    }
   };
 
   return (
@@ -5393,11 +5458,22 @@ function MealScreen({
           <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs text-gray-500">ガイコツ先生の推定</span>
-              {analysis.meal_type && (
-                <span className="text-xs px-2 py-0.5 bg-emerald-600/30 text-emerald-300 rounded-full">
-                  {analysis.meal_type}
-                </span>
-              )}
+              <div className="flex items-center gap-2">
+                {analysis.meal_type && (
+                  <span className="text-xs px-2 py-0.5 bg-emerald-600/30 text-emerald-300 rounded-full">
+                    {analysis.meal_type}
+                  </span>
+                )}
+                {analysisRecordId && (
+                  <button
+                    onClick={openEdit}
+                    className="text-xs px-2 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded-full active:scale-95 transition"
+                    aria-label="分析結果を修正する"
+                  >
+                    ✏️ 修正
+                  </button>
+                )}
+              </div>
             </div>
             <p className="text-lg font-bold">{analysis.menu_name || "判定不能"}</p>
             {typeof analysis.score === "number" && (
@@ -5462,6 +5538,120 @@ function MealScreen({
             </button>
           </div>
 
+        </div>
+      )}
+
+      {/* 修正モード(分析結果の手動編集) */}
+      {mode === "edit" && editDraft && (
+        <div className="w-full max-w-md space-y-4">
+          {analysisImageUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={analysisImageUrl}
+              alt={editDraft.menu_name || "食事写真"}
+              className="w-full aspect-square object-cover rounded-2xl"
+            />
+          )}
+
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3">
+            <p className="text-xs text-amber-300 font-bold mb-1">✏️ 分析結果を修正</p>
+            <p className="text-[11px] text-gray-400 leading-relaxed">
+              ガイコツ先生の判定が間違っていた場合は、ここで正しい内容に修正できます。修正内容は履歴にも反映されます。
+            </p>
+          </div>
+
+          {error && (
+            <div className="bg-red-500/20 border border-red-500/40 rounded-xl px-4 py-3 text-sm text-red-300">
+              ⚠️ {error}
+            </div>
+          )}
+
+          {/* メニュー名 */}
+          <div>
+            <label className="text-xs text-gray-400 mb-1 block">🍽️ メニュー名</label>
+            <input
+              type="text"
+              value={editDraft.menu_name || ""}
+              onChange={(e) =>
+                setEditDraft({ ...editDraft, menu_name: e.target.value })
+              }
+              placeholder="例: 鶏の唐揚げ定食"
+              className="w-full px-4 py-3 bg-gray-900 border border-gray-800 rounded-xl text-sm focus:outline-none focus:border-emerald-500"
+            />
+          </div>
+
+          {/* 食事区分 */}
+          <div>
+            <label className="text-xs text-gray-400 mb-1 block">🕐 食事区分</label>
+            <div className="grid grid-cols-4 gap-2">
+              {(["朝食", "昼食", "夕食", "間食"] as const).map((mt) => (
+                <button
+                  key={mt}
+                  type="button"
+                  onClick={() => setEditDraft({ ...editDraft, meal_type: mt })}
+                  className={`py-2.5 rounded-xl text-sm font-bold transition ${
+                    editDraft.meal_type === mt
+                      ? "bg-emerald-600 text-white"
+                      : "bg-gray-900 border border-gray-800 text-gray-300"
+                  }`}
+                >
+                  {mt}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 栄養素 */}
+          <div>
+            <label className="text-xs text-gray-400 mb-2 block">🍙 栄養素</label>
+            <div className="grid grid-cols-2 gap-3">
+              <NutritionInput
+                label="カロリー"
+                unit="kcal"
+                value={editDraft.calories}
+                onChange={(v) => setEditDraft({ ...editDraft, calories: v })}
+              />
+              <NutritionInput
+                label="タンパク質"
+                unit="g"
+                value={editDraft.protein_g}
+                onChange={(v) => setEditDraft({ ...editDraft, protein_g: v })}
+              />
+              <NutritionInput
+                label="炭水化物"
+                unit="g"
+                value={editDraft.carbs_g}
+                onChange={(v) => setEditDraft({ ...editDraft, carbs_g: v })}
+              />
+              <NutritionInput
+                label="脂質"
+                unit="g"
+                value={editDraft.fat_g}
+                onChange={(v) => setEditDraft({ ...editDraft, fat_g: v })}
+              />
+            </div>
+            <p className="text-[10px] text-gray-500 mt-2">
+              ※ 数値は半角で入力してください。空欄にすると未記録になります。
+            </p>
+          </div>
+
+          {/* ボタン */}
+          <div className="flex gap-2 pt-2">
+            <button
+              onClick={cancelEdit}
+              disabled={savingEdit}
+              className="btn-neutral flex-1 px-4 py-3 text-sm disabled:opacity-50"
+            >
+              キャンセル
+            </button>
+            <button
+              onClick={saveEdit}
+              disabled={savingEdit}
+              className="btn-primary flex-1 px-4 py-3 text-sm disabled:opacity-50"
+            >
+              {savingEdit ? "保存中..." : "✅ 保存する"}
+            </button>
+          </div>
         </div>
       )}
 
@@ -5548,6 +5738,46 @@ function NutritionCell({
         {value !== null && value !== undefined ? value : "-"}
         <span className="text-[11px] font-normal text-gray-400 ml-0.5">{unit}</span>
       </p>
+    </div>
+  );
+}
+
+// 栄養素入力フィールド(修正画面用)
+function NutritionInput({
+  label,
+  unit,
+  value,
+  onChange,
+}: {
+  label: string;
+  unit: string;
+  value: number | null | undefined;
+  onChange: (v: number | undefined) => void;
+}) {
+  return (
+    <div className="bg-gray-900 border border-gray-800 rounded-xl p-3">
+      <label className="text-[11px] text-gray-500 block mb-1">{label}</label>
+      <div className="flex items-center gap-1">
+        <input
+          type="number"
+          inputMode="decimal"
+          step="0.1"
+          min="0"
+          value={value ?? ""}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v === "") {
+              onChange(undefined);
+            } else {
+              const n = Number(v);
+              onChange(Number.isFinite(n) ? n : undefined);
+            }
+          }}
+          placeholder="-"
+          className="flex-1 min-w-0 bg-transparent text-base font-bold text-white focus:outline-none"
+        />
+        <span className="text-[11px] text-gray-400 flex-shrink-0">{unit}</span>
+      </div>
     </div>
   );
 }
