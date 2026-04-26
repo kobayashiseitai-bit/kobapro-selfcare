@@ -4,6 +4,7 @@ import { NextRequest } from "next/server";
 import { STRETCH_DATA } from "../../lib/stretches";
 import { buildAvailableImagesForPrompt } from "../../lib/chat-images";
 import { SAFE_LANGUAGE_RULES } from "../../lib/safe-language";
+import { getCharacterById, type SenseiCharacter } from "../../lib/sensei-characters";
 import {
   checkAndIncrementUsage,
   getUserIdByDeviceId,
@@ -42,17 +43,10 @@ const SYMPTOM_LABELS: Record<string, string> = {
   eye_recovery: "視力回復",
 };
 
-const BASE_PROMPT = `あなたは「ガイコツ先生」、ZERO-PAINセルフケアアプリ専属のAIカイロプラクターです。
+function buildBasePrompt(character: SenseiCharacter): string {
+  return `あなたは「${character.displayName}」、ZERO-PAINセルフケアアプリ専属のAIカイロプラクターです。
 ${SAFE_LANGUAGE_RULES}
-【キャラクター設定（必ず守る）】
-- 名前: ガイコツ先生（ガイコツせんせい）
-- 本名: 骨田 健太郎（ほねだ けんたろう）
-- 見た目: 白い骨、丸メガネ、優しい眼窩
-- 中身: 永遠の35歳、情熱的で愛情深いカイロプラクター
-- バックストーリー: 生前は30年間、1万人以上の体を整えてきた名カイロプラクター。骨だけになった今もZERO-PAINアプリに宿り、ユーザーの体と人生を支えている
-- 信条: 「体の軸が整えば、人生の軸も整う」
-- 口癖: 「骨の髄まで分析しましょう」「今日も一緒にコツコツやりましょう」「あなたのこと、ちゃんと見てますよ」
-- 得意分野: 姿勢分析・筋肉と骨格・食事×体の関係・ストレスケア・睡眠・ストレッチ指導
+${character.prompt}
 
 【話し方】
 20年以上の経験を持つベテランカイロプラクターとして、深い専門知識と豊富な臨床経験を持っています。
@@ -157,6 +151,7 @@ ${SAFE_LANGUAGE_RULES}
 - 仙腸関節 → 骨盤の真ん中の動く部分
 
 カイロプラクターとしての深い知識を活かしつつも、言葉は誰にでもわかるやさしい表現で答えてください。`;
+}
 
 // アプリ内に用意されている30種類のストレッチカタログを文字列化
 function buildStretchCatalog(): string {
@@ -567,8 +562,10 @@ export async function POST(req: NextRequest) {
       attachedPhotoUrl,  // ユーザーがチャット中に撮影してアップロードした写真URL
       compareMode,       // Before/After比較モード（初回写真と最新写真の両方を送る）
       dialect,           // 口調設定: "standard" | "kansai" (デフォルト: "standard")
+      characterId,       // キャラクター: "kentaro" | "honemi" | "honeta" | "koturi"
     } = await req.json();
     const dialectSafe: Dialect = dialect === "kansai" ? "kansai" : "standard";
+    const character = getCharacterById(characterId);
 
     // 利用制限チェック（ユーザーメッセージ=初回以外をカウント）
     const isFirst = !messages || messages.length === 0;
@@ -610,7 +607,7 @@ export async function POST(req: NextRequest) {
       latestMealImageUrl,
       latestMealInfo,
     } = await buildUserContext(deviceId || "", dialectSafe);
-    const systemPrompt = BASE_PROMPT + STRETCH_CATALOG_PROMPT + buildAvailableImagesForPrompt() + contextText;
+    const systemPrompt = buildBasePrompt(character) + STRETCH_CATALOG_PROMPT + buildAvailableImagesForPrompt() + contextText;
 
     const isFirstMessage = !messages || messages.length === 0;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

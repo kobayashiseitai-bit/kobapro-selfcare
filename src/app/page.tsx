@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useEffect, useCallback, useMemo, memo } from "react";
+import { CHARACTERS } from "./lib/sensei-characters";
 import { addRecord, getRecords, deleteRecord, Landmark, PostureRecord } from "./lib/storage";
 import { analyzeFrontPosture, analyzeSidePosture, drawDiagnosisOverlay, drawSideDiagnosisOverlay, addLandmarkFrame, clearLandmarkBuffer } from "./lib/postureAnalysis";
 import { getStretchesBySymptom } from "./lib/stretches";
@@ -23,6 +24,15 @@ function getDialectPreference(): DialectPref {
 function setDialectPreference(d: DialectPref) {
   if (typeof window === "undefined") return;
   localStorage.setItem("zero_pain_dialect", d);
+}
+
+// ガイコツ先生のキャラクター設定(localStorage に保存)
+export type CharacterPref = "kentaro" | "honemi" | "honeta" | "koturi";
+function getCharacterPreference(): CharacterPref {
+  if (typeof window === "undefined") return "kentaro";
+  const v = localStorage.getItem("zero_pain_character");
+  if (v === "honemi" || v === "honeta" || v === "koturi") return v;
+  return "kentaro";
 }
 function saveToDb(data: Record<string, unknown>) {
   const deviceId = getDeviceId();
@@ -1707,6 +1717,7 @@ function AiCounselScreen({
         attachedPhotoUrl: extra?.attachedPhotoUrl || null,
         compareMode: extra?.compareMode === true,
         dialect: getDialectPreference(),
+        characterId: getCharacterPreference(),
       }),
     });
     if (!res.body) throw new Error("No response body");
@@ -2017,15 +2028,20 @@ function AiCounselScreen({
 
   const recommendedSymptom = SYMPTOMS.find((s) => s.id === recommendedId);
 
+  // 選択中のキャラクター(ヘッダー表示用)
+  const selectedCharacter = useMemo(() => {
+    const id = getCharacterPreference();
+    return CHARACTERS.find((c) => c.id === id) || CHARACTERS[0];
+  }, []);
+
   return (
     <main className="fixed inset-0 bg-gray-950 text-white flex flex-col">
       <header className="sticky top-0 z-10 bg-gray-950 border-b border-gray-800/50 px-4 py-3">
         <div className="flex items-center gap-3">
           <button onClick={() => onNavigate("home")} className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm">← 戻る</button>
           <div className="flex items-center gap-2">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/icon-skeleton-sensei-face.png" alt="ガイコツ先生" className="w-10 h-10 object-contain" />
-            <h1 className="text-base font-bold">ガイコツ先生のカウンセリング</h1>
+            <span className="text-2xl" aria-hidden>{selectedCharacter.emoji}</span>
+            <h1 className="text-base font-bold">{selectedCharacter.displayName.split("(")[0].trim()}のカウンセリング</h1>
           </div>
         </div>
         {/* 📸 Vision モードバッジ（写真を見ながら会話中の視覚フィードバック） */}

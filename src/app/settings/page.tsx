@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { CHARACTERS, type SenseiCharacterId } from "../lib/sensei-characters";
 
 function getDeviceId(): string {
   if (typeof window === "undefined") return "";
@@ -25,6 +26,7 @@ export default function SettingsPage() {
   const [message, setMessage] = useState<{ type: "ok" | "error"; text: string } | null>(null);
   const [theme, setTheme] = useState<ThemeMode>("light");
   const [dialect, setDialect] = useState<DialectPref>("standard");
+  const [character, setCharacter] = useState<SenseiCharacterId>("kentaro");
 
   // 口調設定の初期化
   useEffect(() => {
@@ -32,9 +34,22 @@ export default function SettingsPage() {
     setDialect(saved === "kansai" ? "kansai" : "standard");
   }, []);
 
+  // キャラクター設定の初期化
+  useEffect(() => {
+    const saved = localStorage.getItem("zero_pain_character") as SenseiCharacterId | null;
+    if (saved && (saved === "kentaro" || saved === "honemi" || saved === "honeta" || saved === "koturi")) {
+      setCharacter(saved);
+    }
+  }, []);
+
   const applyDialect = (d: DialectPref) => {
     setDialect(d);
     localStorage.setItem("zero_pain_dialect", d);
+  };
+
+  const applyCharacter = (c: SenseiCharacterId) => {
+    setCharacter(c);
+    localStorage.setItem("zero_pain_character", c);
   };
 
   // テーマ初期化
@@ -207,6 +222,40 @@ export default function SettingsPage() {
                 </button>
               ))}
             </div>
+          </div>
+        </section>
+
+        {/* 🎭 ガイコツ先生のキャラクター選択 */}
+        <section>
+          <p className="text-[11px] text-gray-400 font-bold tracking-wide mb-2 px-1">
+            🎭 ガイコツ先生のキャラ
+          </p>
+          <div className="card-base p-4 space-y-3">
+            <p className="text-xs text-gray-400 leading-relaxed">
+              4人のキャラクターから、あなたに合うガイコツ先生を選べます。それぞれ性格やアプローチが異なります。
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {CHARACTERS.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => applyCharacter(c.id)}
+                  className={`p-3 rounded-xl border-2 flex flex-col items-center gap-1 transition active:scale-95 text-center ${
+                    character === c.id
+                      ? "bg-emerald-500/20 border-emerald-500"
+                      : "bg-gray-800 border-gray-700"
+                  }`}
+                >
+                  <span className="text-3xl">{c.emoji}</span>
+                  <p className={`text-[11px] font-bold leading-tight ${character === c.id ? "text-emerald-300" : "text-gray-200"}`}>
+                    {c.displayName.split("(")[0].trim()}
+                  </p>
+                  <p className="text-[10px] text-gray-500">{c.shortDesc}</p>
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] text-gray-500 leading-relaxed">
+              ※ 設定後、次回のメッセージから新しいキャラで応答します
+            </p>
           </div>
         </section>
 
