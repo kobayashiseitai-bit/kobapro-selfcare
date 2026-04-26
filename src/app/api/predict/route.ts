@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
+import { SAFE_LANGUAGE_RULES } from "../../lib/safe-language";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -134,6 +135,7 @@ ${postureIssues.length > 0 ? postureIssues.join("\n") : "特になし"}
     const response = await getClient().messages.create({
       model: "claude-sonnet-4-20250514",
       max_tokens: 200,
+      system: SAFE_LANGUAGE_RULES,
       messages: [{ role: "user", content: analysisPrompt }],
     });
 

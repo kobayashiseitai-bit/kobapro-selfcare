@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { NextRequest } from "next/server";
 import { STRETCH_DATA } from "../../lib/stretches";
 import { buildAvailableImagesForPrompt } from "../../lib/chat-images";
+import { SAFE_LANGUAGE_RULES } from "../../lib/safe-language";
 import {
   checkAndIncrementUsage,
   getUserIdByDeviceId,
@@ -42,7 +43,7 @@ const SYMPTOM_LABELS: Record<string, string> = {
 };
 
 const BASE_PROMPT = `あなたは「ガイコツ先生」、ZERO-PAINセルフケアアプリ専属のAIカイロプラクターです。
-
+${SAFE_LANGUAGE_RULES}
 【キャラクター設定（必ず守る）】
 - 名前: ガイコツ先生（ガイコツせんせい）
 - 本名: 骨田 健太郎（ほねだ けんたろう）

@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
+import { SAFE_LANGUAGE_RULES } from "../../lib/safe-language";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -274,6 +275,7 @@ recommendedCare は1〜2個まで。体調が ${moodLabel} ならそれに合う
     const response = await client.messages.create({
       model: "claude-sonnet-4-5",
       max_tokens: 500,
+      system: SAFE_LANGUAGE_RULES,
       messages: [{ role: "user", content: analysisPrompt }],
     });
 

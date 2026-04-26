@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
+import { SAFE_LANGUAGE_RULES } from "../../lib/safe-language";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -161,6 +162,7 @@ neck / shoulder_stiff / back / headache / eye_fatigue / kyphosis
   const response = await client.messages.create({
     model: "claude-sonnet-4-5",
     max_tokens: 8000,
+    system: SAFE_LANGUAGE_RULES,
     messages: [{ role: "user", content: prompt }],
   });
 

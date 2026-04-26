@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 import { checkAndIncrementUsage } from "../../lib/subscription";
 import { getSignedImageUrl, signImageUrls } from "../../lib/supabase-storage";
+import { SAFE_LANGUAGE_RULES } from "../../lib/safe-language";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -258,7 +259,7 @@ export async function POST(req: NextRequest) {
     const response = await client.messages.create({
       model: "claude-sonnet-4-5",
       max_tokens: 1200,
-      system: MEAL_SYSTEM_PROMPT + userContext,
+      system: SAFE_LANGUAGE_RULES + "\n\n" + MEAL_SYSTEM_PROMPT + userContext,
       messages: [
         {
           role: "user",

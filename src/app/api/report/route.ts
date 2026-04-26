@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
+import { SAFE_LANGUAGE_RULES } from "../../lib/safe-language";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -221,6 +222,7 @@ ${goalRes.data ? `- 目標: ${goalRes.data.goal_type} / 目標カロリー${goal
     const response = await getClient().messages.create({
       model: "claude-sonnet-4-5",
       max_tokens: 800,
+      system: SAFE_LANGUAGE_RULES,
       messages: [{ role: "user", content: analysisPrompt }],
     });
 
