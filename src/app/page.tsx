@@ -12,6 +12,18 @@ function getDeviceId(): string {
   if (!id) { id = crypto.randomUUID(); localStorage.setItem("zero_pain_device_id", id); }
   return id;
 }
+
+// ガイコツ先生の口調設定(localStorage に保存)
+export type DialectPref = "standard" | "kansai";
+function getDialectPreference(): DialectPref {
+  if (typeof window === "undefined") return "standard";
+  const v = localStorage.getItem("zero_pain_dialect");
+  return v === "kansai" ? "kansai" : "standard";
+}
+function setDialectPreference(d: DialectPref) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem("zero_pain_dialect", d);
+}
 function saveToDb(data: Record<string, unknown>) {
   const deviceId = getDeviceId();
   if (!deviceId) return;
@@ -1694,6 +1706,7 @@ function AiCounselScreen({
         consultMeal: extra?.consultMeal === true,
         attachedPhotoUrl: extra?.attachedPhotoUrl || null,
         compareMode: extra?.compareMode === true,
+        dialect: getDialectPreference(),
       }),
     });
     if (!res.body) throw new Error("No response body");

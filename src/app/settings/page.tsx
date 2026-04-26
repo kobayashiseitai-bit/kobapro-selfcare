@@ -14,6 +14,7 @@ function getDeviceId(): string {
 }
 
 type ThemeMode = "light" | "dark" | "system";
+type DialectPref = "standard" | "kansai";
 
 export default function SettingsPage() {
   const [userName, setUserName] = useState<string | null>(null);
@@ -23,6 +24,18 @@ export default function SettingsPage() {
   const [deleting, setDeleting] = useState(false);
   const [message, setMessage] = useState<{ type: "ok" | "error"; text: string } | null>(null);
   const [theme, setTheme] = useState<ThemeMode>("light");
+  const [dialect, setDialect] = useState<DialectPref>("standard");
+
+  // 口調設定の初期化
+  useEffect(() => {
+    const saved = (localStorage.getItem("zero_pain_dialect") as DialectPref | null) || "standard";
+    setDialect(saved === "kansai" ? "kansai" : "standard");
+  }, []);
+
+  const applyDialect = (d: DialectPref) => {
+    setDialect(d);
+    localStorage.setItem("zero_pain_dialect", d);
+  };
 
   // テーマ初期化
   useEffect(() => {
@@ -194,6 +207,43 @@ export default function SettingsPage() {
                 </button>
               ))}
             </div>
+          </div>
+        </section>
+
+        {/* 💀 ガイコツ先生の口調設定 */}
+        <section>
+          <p className="text-[11px] text-gray-400 font-bold tracking-wide mb-2 px-1">
+            💀 ガイコツ先生の口調
+          </p>
+          <div className="card-base p-4 space-y-3">
+            <p className="text-xs text-gray-400 leading-relaxed">
+              ガイコツ先生の話し方を選べます。1週間以上ご利用いただくと、自動的に親しみのあるタメ口に切り替わります。
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {([
+                { id: "standard", emoji: "🗾", label: "標準語", desc: "丁寧で親しみやすい" },
+                { id: "kansai", emoji: "🐯", label: "関西弁", desc: "ノリよく親しみ全開" },
+              ] as const).map((opt) => (
+                <button
+                  key={opt.id}
+                  onClick={() => applyDialect(opt.id)}
+                  className={`p-3 rounded-xl border-2 flex flex-col items-center gap-1 transition active:scale-95 ${
+                    dialect === opt.id
+                      ? "bg-emerald-500/20 border-emerald-500"
+                      : "bg-gray-800 border-gray-700"
+                  }`}
+                >
+                  <span className="text-2xl">{opt.emoji}</span>
+                  <p className={`text-xs font-bold ${dialect === opt.id ? "text-emerald-300" : "text-gray-200"}`}>
+                    {opt.label}
+                  </p>
+                  <p className="text-[10px] text-gray-500">{opt.desc}</p>
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] text-gray-500 leading-relaxed">
+              ※ 設定後、次回のメッセージから反映されます
+            </p>
           </div>
         </section>
 
