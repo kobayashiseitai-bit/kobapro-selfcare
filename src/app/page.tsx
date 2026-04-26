@@ -5232,7 +5232,7 @@ function MealScreen({
       {mode === "home" && (
         <div className="w-full max-w-md space-y-4">
           <div className="card-accent-emerald p-5">
-            <p className="text-sm text-emerald-100 leading-relaxed">
+            <p className="text-sm text-gray-900 font-medium leading-relaxed">
               📸 食事の写真を撮るだけで、ガイコツ先生がメニュー・カロリー・栄養バランスを分析し、あなたの姿勢や痛みに合わせたアドバイスをお伝えします。
             </p>
           </div>
