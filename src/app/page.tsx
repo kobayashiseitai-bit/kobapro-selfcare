@@ -2052,7 +2052,7 @@ function AiCounselScreen({
             onClick={() => onSelectSymptom(recommendedId!)}
             className="w-full px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 rounded-xl font-semibold text-sm flex items-center gap-3"
           >
-            <span className="text-2xl">{recommendedSymptom.icon}</span>
+            <span className="text-2xl">{recommendedSymptom.emoji}</span>
             <div className="text-left">
               <p className="font-bold">おすすめ: {recommendedSymptom.videoTitle}</p>
               <p className="text-xs opacity-80">タップしてセルフケア動画を見る</p>
