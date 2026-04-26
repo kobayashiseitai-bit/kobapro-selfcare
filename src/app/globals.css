@@ -320,6 +320,8 @@ html.theme-mint body {
 .theme-mint .text-gray-700 { color: #1e293b !important; }
 
 /* エメラルド系: より深みのある緑で高級感UP */
+.theme-mint .text-emerald-100 { color: #0f172a !important; } /* 薄緑→ほぼ黒(可読性確保) */
+.theme-mint .text-emerald-200 { color: #1f2937 !important; } /* 薄緑→濃グレー(可読性確保) */
 .theme-mint .text-emerald-300 { color: #047857 !important; }
 .theme-mint .text-emerald-400 { color: #059669 !important; }
 .theme-mint .text-emerald-500 { color: #047857 !important; }
@@ -613,6 +615,13 @@ html.theme-mint body {
 .theme-mint .from-pink-500 { --tw-gradient-from: #ec4899 !important; }
 .theme-mint .via-purple-500 { --tw-gradient-via: #a855f7 !important; }
 .theme-mint .to-indigo-500 { --tw-gradient-to: #6366f1 !important; }
+
+/* その他の薄い色を追加でオーバーライド(ライトテーマでの可読性確保) */
+.theme-mint .text-yellow-300 { color: #a16207 !important; }
+.theme-mint .text-yellow-400 { color: #ca8a04 !important; }
+.theme-mint .text-orange-400 { color: #ea580c !important; }
+.theme-mint .text-purple-300 { color: #6d28d9 !important; }
+.theme-mint .text-rose-400 { color: #e11d48 !important; }
 
 /* 黒背景（モーダル等）はそのまま（使い勝手優先） */
 .theme-mint .bg-black\/50 { background: rgba(0, 0, 0, 0.5) !important; }
