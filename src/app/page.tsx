@@ -2304,12 +2304,14 @@ function AiCounselScreen({
       });
 
       if (result.recommendedSymptomId) setRecommendedId(result.recommendedSymptomId);
-    } catch {
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.error("[chat compare] error:", errMsg, err);
       setMessages([
         ...newMessages,
         {
           role: "assistant",
-          content: "すみません、比較分析中にエラーが発生しました。もう一度お試しください。",
+          content: `すみません、比較分析中にエラーが発生しました。\n（詳細: ${errMsg}）`,
         },
       ]);
     }
@@ -2353,10 +2355,12 @@ function AiCounselScreen({
       if (photoForThisSend) {
         setPhotoViewingBadge(null);
       }
-    } catch {
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.error("[chat] error:", errMsg, err);
       setMessages([
         ...newMessages,
-        { role: "assistant", content: "すみません、通信エラーが発生しました。もう一度お試しください。" },
+        { role: "assistant", content: `すみません、エラーが発生しました。\n（詳細: ${errMsg}）\nもう一度お試しください。` },
       ]);
     }
     setLoading(false);
