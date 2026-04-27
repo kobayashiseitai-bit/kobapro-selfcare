@@ -243,12 +243,47 @@ export const CHAT_IMAGES: ChatImage[] = [
     ready: true,
   },
 
-  // kyphosis-1〜5
-  { id: "kyphosis-1", path: "/stretches/kyphosis-1.png", desc: "(準備中)", symptoms: ["kyphosis"], category: "stretch", ready: false },
-  { id: "kyphosis-2", path: "/stretches/kyphosis-2.png", desc: "(準備中)", symptoms: ["kyphosis"], category: "stretch", ready: false },
-  { id: "kyphosis-3", path: "/stretches/kyphosis-3.png", desc: "(準備中)", symptoms: ["kyphosis"], category: "stretch", ready: false },
-  { id: "kyphosis-4", path: "/stretches/kyphosis-4.png", desc: "(準備中)", symptoms: ["kyphosis"], category: "stretch", ready: false },
-  { id: "kyphosis-5", path: "/stretches/kyphosis-5.png", desc: "(準備中)", symptoms: ["kyphosis"], category: "stretch", ready: false },
+  // ========== 猫背改善 (kyphosis) - 完成済み ==========
+  {
+    id: "kyphosis-1",
+    path: "/stretches/kyphosis-1.png",
+    desc: "胸開きストレッチ。両手を背中の後ろで組んで肩甲骨を中心に寄せ、あごを引いたまま目線を天井へ。30秒キープ×3セット。巻き肩・猫背改善の基本。",
+    symptoms: ["kyphosis", "shoulder_stiff"],
+    category: "stretch",
+    ready: true,
+  },
+  {
+    id: "kyphosis-2",
+    path: "/stretches/kyphosis-2.png",
+    desc: "壁立ち姿勢チェック(壁立ちエクササイズ)。後頭部・両肩・お尻・かかとの4点を壁につけ1分キープ。理想の立ち姿勢を体に覚えさせる。3セット。",
+    symptoms: ["kyphosis"],
+    category: "stretch",
+    ready: true,
+  },
+  {
+    id: "kyphosis-3",
+    path: "/stretches/kyphosis-3.png",
+    desc: "肩甲骨よせエクササイズ。両腕を肩の高さで横に伸ばし肘を90度に曲げ、肩甲骨を背骨に向かってギュッと寄せて10秒キープ。15回繰り返し。",
+    symptoms: ["kyphosis", "shoulder_stiff"],
+    category: "stretch",
+    ready: true,
+  },
+  {
+    id: "kyphosis-4",
+    path: "/stretches/kyphosis-4.png",
+    desc: "タオル胸ひらきストレッチ(胸椎ストレッチ)。直径10cmに丸めたバスタオルを肩甲骨の間(胸椎)に置いて仰向け、両腕を「T」の字に開いて1分キープ。2セット。",
+    symptoms: ["kyphosis"],
+    category: "stretch",
+    ready: true,
+  },
+  {
+    id: "kyphosis-5",
+    path: "/stretches/kyphosis-5.png",
+    desc: "あご引きエクササイズ。頭頂を糸で引っ張られるイメージで首を長く保ち、あごを後ろに水平移動させて二重あご状態で5秒キープ。20回繰り返し。ストレートネック対策にも。",
+    symptoms: ["kyphosis", "neck"],
+    category: "stretch",
+    ready: true,
+  },
 ];
 
 /**
