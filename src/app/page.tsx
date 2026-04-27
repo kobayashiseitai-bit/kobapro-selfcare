@@ -19,6 +19,13 @@ import {
   MessageCircle as IconMessage,
   ChevronRight as IconChevronRight,
   ArrowLeft as IconArrowLeft,
+  ArrowRight as IconArrowRight,
+  Bone as IconBone,
+  Dumbbell as IconDumbbell,
+  Brain as IconBrain,
+  Eye as IconEye,
+  PersonStanding as IconPerson,
+  Waves as IconWaves,
 } from "lucide-react";
 import { CHARACTERS } from "./lib/sensei-characters";
 import { addRecord, getRecords, deleteRecord, Landmark, PostureRecord } from "./lib/storage";
@@ -98,6 +105,7 @@ const SYMPTOMS = [
     id: "neck",
     label: "首こり",
     emoji: "🦴",
+    Icon: IconBone as LucideIcon,
     icon: "/menyu2.jpg",
     colorTheme: "emerald" as const,
     gradientFrom: "from-emerald-400/30",
@@ -114,6 +122,7 @@ const SYMPTOMS = [
     id: "shoulder_stiff",
     label: "肩こり",
     emoji: "💪",
+    Icon: IconDumbbell as LucideIcon,
     icon: "/menyu6.jpg",
     colorTheme: "teal" as const,
     gradientFrom: "from-teal-400/30",
@@ -130,6 +139,7 @@ const SYMPTOMS = [
     id: "back",
     label: "腰痛",
     emoji: "🔥",
+    Icon: IconWaves as LucideIcon,
     icon: "/menyu5.jpg",
     colorTheme: "sky" as const,
     gradientFrom: "from-sky-400/30",
@@ -146,6 +156,7 @@ const SYMPTOMS = [
     id: "headache",
     label: "頭痛",
     emoji: "🧠",
+    Icon: IconBrain as LucideIcon,
     icon: "/menyu3.jpg",
     colorTheme: "indigo" as const,
     gradientFrom: "from-indigo-400/30",
@@ -162,6 +173,7 @@ const SYMPTOMS = [
     id: "eye_fatigue",
     label: "眼精疲労",
     emoji: "👁️",
+    Icon: IconEye as LucideIcon,
     icon: "/menyu4.jpg",
     colorTheme: "rose" as const,
     gradientFrom: "from-rose-400/30",
@@ -178,6 +190,7 @@ const SYMPTOMS = [
     id: "kyphosis",
     label: "猫背改善",
     emoji: "🧍",
+    Icon: IconPerson as LucideIcon,
     icon: "/menyu1.jpg",
     colorTheme: "amber" as const,
     gradientFrom: "from-amber-400/30",
@@ -1724,30 +1737,37 @@ function HomeScreen({
         <div>
           <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Step 4 · セルフケアメニュー</h2>
           <div className="grid grid-cols-2 gap-3">
-            {SYMPTOMS.map((symptom) => (
-              <button
-                key={symptom.id}
-                onClick={() => onSelectSymptom(symptom.id)}
-                className={`relative rounded-2xl p-4 text-left transition-all active:scale-95 overflow-hidden bg-gradient-to-br ${symptom.gradientFrom} ${symptom.gradientTo} border-2 ${symptom.borderColor} shadow-md hover:shadow-xl`}
-              >
-                {/* 絵文字アイコン（円形グラデ背景） */}
-                <div
-                  className={`w-12 h-12 rounded-xl bg-gradient-to-br ${symptom.iconBg} flex items-center justify-center text-2xl shadow-lg mb-2`}
+            {SYMPTOMS.map((symptom) => {
+              const SymptomIcon = symptom.Icon;
+              return (
+                <button
+                  key={symptom.id}
+                  onClick={() => onSelectSymptom(symptom.id)}
+                  className={`relative rounded-2xl p-4 text-left transition-all active:scale-95 overflow-hidden bg-gradient-to-br ${symptom.gradientFrom} ${symptom.gradientTo} border-2 ${symptom.borderColor} shadow-md hover:shadow-xl`}
                 >
-                  {symptom.emoji}
-                </div>
-                {/* タイトル */}
-                <p className={`text-sm font-extrabold ${symptom.accentText} leading-tight`}>
-                  {symptom.label}
-                </p>
-                {/* サブタイトル */}
-                <p className="text-[10px] text-gray-600 mt-0.5 leading-snug line-clamp-2">
-                  {symptom.subtitle}
-                </p>
-                {/* 右下矢印 */}
-                <span className={`absolute bottom-2 right-3 text-sm ${symptom.accentText}`}>→</span>
-              </button>
-            ))}
+                  {/* SVGアイコン(角丸グラデ背景) */}
+                  <div
+                    className={`w-12 h-12 rounded-xl bg-gradient-to-br ${symptom.iconBg} flex items-center justify-center shadow-lg mb-2`}
+                  >
+                    {SymptomIcon ? (
+                      <SymptomIcon size={24} strokeWidth={2.2} className="text-white" />
+                    ) : (
+                      <span className="text-2xl">{symptom.emoji}</span>
+                    )}
+                  </div>
+                  {/* タイトル */}
+                  <p className={`text-sm font-extrabold ${symptom.accentText} leading-tight`}>
+                    {symptom.label}
+                  </p>
+                  {/* サブタイトル */}
+                  <p className="text-[10px] text-gray-600 mt-0.5 leading-snug line-clamp-2">
+                    {symptom.subtitle}
+                  </p>
+                  {/* 右下矢印 */}
+                  <IconArrowRight size={14} className={`absolute bottom-2 right-3 ${symptom.accentText}`} strokeWidth={2.5} />
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -2677,7 +2697,11 @@ function BodyMapView({
                 }}
                 aria-label={symptom.label}
               >
-                <span className="text-base">{symptom.emoji}</span>
+                {symptom.Icon ? (
+                  <symptom.Icon size={16} strokeWidth={2.4} className="text-white" />
+                ) : (
+                  <span className="text-base">{symptom.emoji}</span>
+                )}
 
                 {/* パルスアニメーション（選択時） */}
                 {isSelected && (
@@ -2759,11 +2783,15 @@ function ModernCardGrid({
               isSelected ? symptom.borderColor : "border-transparent"
             } shadow-lg hover:shadow-xl`}
           >
-            {/* 絵文字アイコン（大きめ・円形グラデ背景） */}
+            {/* SVGアイコン(角丸グラデ背景) */}
             <div
-              className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${symptom.iconBg} flex items-center justify-center text-3xl shadow-lg mb-3`}
+              className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${symptom.iconBg} flex items-center justify-center shadow-lg mb-3`}
             >
-              {symptom.emoji}
+              {symptom.Icon ? (
+                <symptom.Icon size={28} strokeWidth={2.2} className="text-white" />
+              ) : (
+                <span className="text-3xl">{symptom.emoji}</span>
+              )}
             </div>
 
             {/* タイトル */}
