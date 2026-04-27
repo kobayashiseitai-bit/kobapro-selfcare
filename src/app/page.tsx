@@ -1940,8 +1940,10 @@ function AiCounselScreen({
       dirty = true;
       if (pending) return;
       pending = true;
-      // rAFはタブが背面の時は呼ばれないので、フォールバックでsetTimeoutも併用
-      if (typeof requestAnimationFrame !== "undefined") {
+      // iOS Safari は背面/画面ロック時に rAF を呼ばないため、
+      // hidden 状態では setTimeout を使い、再表示後に flush が確実に走るようにする
+      const hidden = typeof document !== "undefined" && document.hidden;
+      if (!hidden && typeof requestAnimationFrame !== "undefined") {
         requestAnimationFrame(flush);
       } else {
         setTimeout(flush, 50);
@@ -1959,52 +1961,134 @@ function AiCounselScreen({
       compareMode?: boolean;
     }
   ): Promise<{ cleanText: string; recommendedSymptomId: string | null }> => {
-    const res = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        messages: apiMessages.map((m) => ({ role: m.role, content: m.content })),
-        deviceId: getDeviceId(),
-        consultMeal: extra?.consultMeal === true,
-        attachedPhotoUrl: extra?.attachedPhotoUrl || null,
-        compareMode: extra?.compareMode === true,
-        dialect: getDialectPreference(),
-        characterId: getCharacterPreference(),
-      }),
-    });
-    if (!res.body) throw new Error("No response body");
+    // 全体タイムアウト (60秒) + ストール検知 (25秒データ無し)
+    // iPhone Safari でストリームが止まる現象への対策
+    const controller = new AbortController();
+    const OVERALL_TIMEOUT = 60_000;
+    const STALL_TIMEOUT = 25_000;
+    const overallTimer = setTimeout(() => controller.abort(), OVERALL_TIMEOUT);
+    let stallTimer: ReturnType<typeof setTimeout> | null = null;
+    const clearStallTimer = () => {
+      if (stallTimer) {
+        clearTimeout(stallTimer);
+        stallTimer = null;
+      }
+    };
+    const resetStallTimer = () => {
+      clearStallTimer();
+      // 画面ロック/バックグラウンド中は iOS が fetch を一時停止するため、
+      // ストールタイマーを動かさない（誤発火を防ぐ）
+      if (typeof document !== "undefined" && document.hidden) return;
+      stallTimer = setTimeout(() => controller.abort(), STALL_TIMEOUT);
+    };
+    // タブの可視性変化に追随：hidden ではタイマー停止、visible で再開
+    const onVisibilityChange = () => {
+      if (typeof document === "undefined") return;
+      if (document.hidden) {
+        clearStallTimer();
+      } else {
+        resetStallTimer();
+      }
+    };
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", onVisibilityChange);
+    }
 
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
     let cleanText = "";
     let recommendedSymptomId: string | null = null;
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({
+          messages: apiMessages.map((m) => ({ role: m.role, content: m.content })),
+          deviceId: getDeviceId(),
+          consultMeal: extra?.consultMeal === true,
+          attachedPhotoUrl: extra?.attachedPhotoUrl || null,
+          compareMode: extra?.compareMode === true,
+          dialect: getDialectPreference(),
+          characterId: getCharacterPreference(),
+        }),
+      });
 
-      // SSEはdata: {...}\n\nの形式
-      const lines = buffer.split("\n\n");
-      buffer = lines.pop() || "";
-
-      for (const line of lines) {
-        if (!line.startsWith("data: ")) continue;
-        const jsonStr = line.slice(6);
+      // HTTP エラー(402 = クレジット不足、500等)を明示的に処理
+      if (!res.ok) {
+        let errMsg = `通信エラー (${res.status})`;
         try {
-          const data = JSON.parse(jsonStr);
-          if (data.text) {
+          const errBody = await res.json();
+          errMsg = errBody.error || errMsg;
+        } catch { /* ignore */ }
+        throw new Error(errMsg);
+      }
+      if (!res.body) throw new Error("レスポンスがありません");
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let receivedAnyText = false;
+      let receivedDone = false;
+      resetStallTimer();
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        resetStallTimer(); // データ到着でストールタイマーリセット
+        buffer += decoder.decode(value, { stream: true });
+
+        // SSEはdata: {...}\n\nの形式
+        const lines = buffer.split("\n\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          // コメント行（: ping / : open など）はスキップ
+          if (line.startsWith(":")) continue;
+          if (!line.startsWith("data: ")) continue;
+          const jsonStr = line.slice(6);
+          let data: { text?: string; done?: boolean; cleanText?: string; recommendedSymptomId?: string; error?: string } | null = null;
+          try {
+            data = JSON.parse(jsonStr);
+          } catch {
+            // JSONパースエラーはスキップ(部分的なデータの可能性)
+            continue;
+          }
+          // ⚠️ 重要: API側からのエラーは silent に握り潰さず必ず throw する
+          if (data?.error) {
+            throw new Error(data.error);
+          }
+          if (data?.text) {
+            receivedAnyText = true;
             onText(data.text);
           }
-          if (data.done) {
+          if (data?.done) {
+            receivedDone = true;
             cleanText = data.cleanText || "";
             recommendedSymptomId = data.recommendedSymptomId || null;
           }
-          if (data.error) {
-            throw new Error(data.error);
-          }
-        } catch { /* parse error skip */ }
+        }
+      }
+
+      // ストリームが done イベントなしに切断された場合は通信エラー扱い
+      // （Vercel タイムアウト・iOS の fetch 切断・モバイル回線断など）
+      if (!receivedDone) {
+        if (!receivedAnyText) {
+          throw new Error("通信が途切れました。電波状況をご確認の上、もう一度お試しください。");
+        }
+        // 一部テキストが届いた場合はそれを最終結果として採用
+        cleanText = "";
+      }
+    } catch (err) {
+      // AbortError はタイムアウト/ストール
+      if (err instanceof DOMException && err.name === "AbortError") {
+        throw new Error("応答が遅延しています。電波状況をご確認の上、もう一度お試しください。");
+      }
+      throw err;
+    } finally {
+      clearTimeout(overallTimer);
+      clearStallTimer();
+      if (typeof document !== "undefined") {
+        document.removeEventListener("visibilitychange", onVisibilityChange);
       }
     }
     return { cleanText, recommendedSymptomId };

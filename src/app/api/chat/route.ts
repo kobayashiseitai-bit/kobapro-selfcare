@@ -33,6 +33,9 @@ function getSupabase() {
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+// Vercel 関数タイムアウト（既定の 10秒では LLM 応答が途中で切れる。
+// Hobby/Pro どちらでも 60 秒まで許容される）
+export const maxDuration = 60;
 
 const SYMPTOM_LABELS: Record<string, string> = {
   neck: "首こり",
@@ -806,6 +809,23 @@ export async function POST(req: NextRequest) {
     const readable = new ReadableStream({
       async start(controller) {
         let fullText = "";
+        // ====== iOS Safari 対策: 冒頭パディング ======
+        // iOS は text/event-stream の最初の数KBをバッファに溜める性質があり、
+        // 最初のトークンが届くまで「無応答」に見える。コメント行で 2KB 強を
+        // 即送信してバッファを強制フラッシュ。
+        const padding = `:${" ".repeat(2048)}\n\n`;
+        controller.enqueue(encoder.encode(padding));
+        controller.enqueue(encoder.encode(`: open\n\n`));
+
+        // ====== 5秒ごとにハートビートを送る（接続維持） ======
+        const heartbeat = setInterval(() => {
+          try {
+            controller.enqueue(encoder.encode(`: ping\n\n`));
+          } catch {
+            /* controller closed */
+          }
+        }, 5000);
+
         try {
           const stream = client.messages.stream({
             model: "claude-sonnet-4-20250514",
@@ -842,6 +862,7 @@ export async function POST(req: NextRequest) {
           }
 
           // 完了通知
+          clearInterval(heartbeat);
           controller.enqueue(
             encoder.encode(
               `data: ${JSON.stringify({
@@ -853,6 +874,7 @@ export async function POST(req: NextRequest) {
           );
           controller.close();
         } catch (e) {
+          clearInterval(heartbeat);
           const msg = e instanceof Error ? e.message : String(e);
           controller.enqueue(
             encoder.encode(`data: ${JSON.stringify({ error: msg })}\n\n`)
