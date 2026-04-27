@@ -128,9 +128,17 @@ export const CHAT_IMAGES: ChatImage[] = [
     ready: true,
   },
 
+  // back-3 (完成済み)
+  {
+    id: "back-3",
+    path: "/stretches/back-3.png",
+    desc: "キャット&カウ。四つん這いから背中を反らす(カウ)→丸める(キャット)を呼吸とセットで繰り返し、背骨1つ1つを動かす。",
+    symptoms: ["back"],
+    category: "stretch",
+    ready: true,
+  },
+
   // ========== 未完成・準備中(完成したら ready: true に変更) ==========
-  // back-3〜5
-  { id: "back-3", path: "/stretches/back-3.png", desc: "キャット&カウ。", symptoms: ["back"], category: "stretch", ready: false },
   { id: "back-4", path: "/stretches/back-4.png", desc: "ヒップリフト。", symptoms: ["back"], category: "stretch", ready: false },
   { id: "back-5", path: "/stretches/back-5.png", desc: "ハムストリングス伸ばし。", symptoms: ["back"], category: "stretch", ready: false },
 
