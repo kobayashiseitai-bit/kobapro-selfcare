@@ -2,6 +2,21 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import {
+  Theater as IconTheater,
+  MessagesSquare as IconMessages,
+  Palette as IconPalette,
+  MessageCircle as IconMessageCircle,
+  FileText as IconFileText,
+  Database as IconDatabase,
+  Sun as IconSun,
+  Moon as IconMoon,
+  Settings as IconSettingsCog,
+  Languages as IconLanguages,
+  Skull as IconSkull,
+  Trash2 as IconTrash,
+  ChevronRight as IconChevronRight,
+} from "lucide-react";
 import { CHARACTERS, type SenseiCharacterId } from "../lib/sensei-characters";
 
 function getDeviceId(): string {
@@ -173,7 +188,10 @@ export default function SettingsPage() {
         >
           ← 戻る
         </Link>
-        <h1 className="text-base font-bold">⚙️ 設定</h1>
+        <h1 className="text-base font-bold flex items-center gap-1.5">
+          <IconSettingsCog size={18} className="text-emerald-400" />
+          設定
+        </h1>
       </header>
 
       <div className="max-w-md mx-auto px-4 py-5 space-y-5">
@@ -190,10 +208,11 @@ export default function SettingsPage() {
           </p>
         </section>
 
-        {/* 🎨 テーマ設定 */}
+        {/* テーマ設定 */}
         <section>
-          <p className="text-[11px] text-gray-400 font-bold tracking-wide mb-2 px-1">
-            🎨 表示テーマ
+          <p className="text-[11px] text-gray-400 font-bold tracking-wide mb-2 px-1 flex items-center gap-1.5">
+            <IconPalette size={14} className="text-emerald-400" />
+            表示テーマ
           </p>
           <div className="card-base p-4 space-y-3">
             <p className="text-xs text-gray-400 leading-relaxed">
@@ -201,34 +220,39 @@ export default function SettingsPage() {
             </p>
             <div className="grid grid-cols-3 gap-2">
               {([
-                { id: "light", emoji: "☀️", label: "ライト", desc: "ミント" },
-                { id: "dark", emoji: "🌙", label: "ダーク", desc: "ブラック" },
-                { id: "system", emoji: "⚙️", label: "自動", desc: "OS連動" },
-              ] as const).map((opt) => (
-                <button
-                  key={opt.id}
-                  onClick={() => applyTheme(opt.id)}
-                  className={`p-3 rounded-xl border-2 flex flex-col items-center gap-1 transition active:scale-95 ${
-                    theme === opt.id
-                      ? "bg-emerald-500/20 border-emerald-500"
-                      : "bg-gray-800 border-gray-700"
-                  }`}
-                >
-                  <span className="text-2xl">{opt.emoji}</span>
-                  <p className={`text-xs font-bold ${theme === opt.id ? "text-emerald-300" : "text-gray-200"}`}>
-                    {opt.label}
-                  </p>
-                  <p className="text-[10px] text-gray-500">{opt.desc}</p>
-                </button>
-              ))}
+                { id: "light", Icon: IconSun, label: "ライト", desc: "ミント", color: "text-amber-400" },
+                { id: "dark", Icon: IconMoon, label: "ダーク", desc: "ブラック", color: "text-indigo-300" },
+                { id: "system", Icon: IconSettingsCog, label: "自動", desc: "OS連動", color: "text-gray-300" },
+              ] as const).map((opt) => {
+                const Icon = opt.Icon;
+                const isActive = theme === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    onClick={() => applyTheme(opt.id)}
+                    className={`p-3 rounded-xl border-2 flex flex-col items-center gap-1.5 transition active:scale-95 ${
+                      isActive
+                        ? "bg-emerald-500/20 border-emerald-500"
+                        : "bg-gray-800 border-gray-700"
+                    }`}
+                  >
+                    <Icon size={26} strokeWidth={2} className={isActive ? "text-emerald-300" : opt.color} />
+                    <p className={`text-xs font-bold ${isActive ? "text-emerald-300" : "text-gray-200"}`}>
+                      {opt.label}
+                    </p>
+                    <p className="text-[10px] text-gray-500">{opt.desc}</p>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </section>
 
-        {/* 🎭 ガイコツ先生のキャラクター選択 */}
+        {/* ガイコツ先生のキャラクター選択 */}
         <section>
-          <p className="text-[11px] text-gray-400 font-bold tracking-wide mb-2 px-1">
-            🎭 ガイコツ先生のキャラ
+          <p className="text-[11px] text-gray-400 font-bold tracking-wide mb-2 px-1 flex items-center gap-1.5">
+            <IconTheater size={14} className="text-emerald-400" />
+            ガイコツ先生のキャラ
           </p>
           <div className="card-base p-4 space-y-3">
             <p className="text-xs text-gray-400 leading-relaxed">
@@ -259,10 +283,11 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        {/* 💀 ガイコツ先生の口調設定 */}
+        {/* ガイコツ先生の口調設定 */}
         <section>
-          <p className="text-[11px] text-gray-400 font-bold tracking-wide mb-2 px-1">
-            💀 ガイコツ先生の口調
+          <p className="text-[11px] text-gray-400 font-bold tracking-wide mb-2 px-1 flex items-center gap-1.5">
+            <IconMessages size={14} className="text-emerald-400" />
+            ガイコツ先生の口調
           </p>
           <div className="card-base p-4 space-y-3">
             <p className="text-xs text-gray-400 leading-relaxed">
@@ -298,55 +323,73 @@ export default function SettingsPage() {
 
         {/* サポート */}
         <section>
-          <p className="text-[11px] text-gray-400 font-bold tracking-wide mb-2 px-1">
-            💬 サポート
+          <p className="text-[11px] text-gray-400 font-bold tracking-wide mb-2 px-1 flex items-center gap-1.5">
+            <IconMessageCircle size={14} className="text-emerald-400" />
+            サポート
           </p>
           <Link
             href="/support"
             className="card-accent-emerald flex items-center justify-between p-4 active:scale-[0.99] transition"
           >
-            <div>
-              <p className="text-sm font-bold text-white">FAQ・お問い合わせ</p>
-              <p className="text-[11px] text-emerald-200 mt-0.5">ご質問・ご意見はこちらから</p>
+            <div className="flex items-center gap-3">
+              <span className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center">
+                <IconMessageCircle size={18} className="text-emerald-300" />
+              </span>
+              <div>
+                <p className="text-sm font-bold text-white">FAQ・お問い合わせ</p>
+                <p className="text-[11px] text-emerald-200 mt-0.5">ご質問・ご意見はこちらから</p>
+              </div>
             </div>
-            <span className="text-emerald-300 text-xl">›</span>
+            <IconChevronRight size={18} className="text-emerald-300 flex-shrink-0" />
           </Link>
         </section>
 
         {/* 法務情報リンク */}
         <section>
-          <p className="text-[11px] text-gray-400 font-bold tracking-wide mb-2 px-1">
-            📄 規約・ポリシー
+          <p className="text-[11px] text-gray-400 font-bold tracking-wide mb-2 px-1 flex items-center gap-1.5">
+            <IconFileText size={14} className="text-emerald-400" />
+            規約・ポリシー
           </p>
           <div className="space-y-2">
             <Link
               href="/privacy"
               className="card-base flex items-center justify-between p-4 active:scale-[0.99] transition"
             >
-              <div>
-                <p className="text-sm font-bold text-white">プライバシーポリシー</p>
-                <p className="text-[11px] text-gray-400 mt-0.5">データ取扱いについて</p>
+              <div className="flex items-center gap-3">
+                <span className="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center">
+                  <IconFileText size={18} className="text-gray-300" />
+                </span>
+                <div>
+                  <p className="text-sm font-bold text-white">プライバシーポリシー</p>
+                  <p className="text-[11px] text-gray-400 mt-0.5">データ取扱いについて</p>
+                </div>
               </div>
-              <span className="text-gray-500 text-xl">›</span>
+              <IconChevronRight size={18} className="text-gray-500 flex-shrink-0" />
             </Link>
 
             <Link
               href="/terms"
               className="card-base flex items-center justify-between p-4 active:scale-[0.99] transition"
             >
-              <div>
-                <p className="text-sm font-bold text-white">利用規約</p>
-                <p className="text-[11px] text-gray-400 mt-0.5">本アプリの利用条件</p>
+              <div className="flex items-center gap-3">
+                <span className="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center">
+                  <IconFileText size={18} className="text-gray-300" />
+                </span>
+                <div>
+                  <p className="text-sm font-bold text-white">利用規約</p>
+                  <p className="text-[11px] text-gray-400 mt-0.5">本アプリの利用条件</p>
+                </div>
               </div>
-              <span className="text-gray-500 text-xl">›</span>
+              <IconChevronRight size={18} className="text-gray-500 flex-shrink-0" />
             </Link>
           </div>
         </section>
 
         {/* データ管理 */}
         <section>
-          <p className="text-[11px] text-gray-400 font-bold tracking-wide mb-2 px-1">
-            💾 データ管理
+          <p className="text-[11px] text-gray-400 font-bold tracking-wide mb-2 px-1 flex items-center gap-1.5">
+            <IconDatabase size={14} className="text-emerald-400" />
+            データ管理
           </p>
           <div className="space-y-2">
             <button
@@ -354,30 +397,38 @@ export default function SettingsPage() {
               disabled={exporting}
               className="card-base w-full flex items-center justify-between p-4 disabled:opacity-50 active:scale-[0.99] transition text-left"
             >
-              <div>
-                <p className="text-sm font-bold text-white">📥 データをエクスポート</p>
-                <p className="text-[11px] text-gray-400 mt-0.5">
-                  {exporting
-                    ? "準備中..."
-                    : "自分の全データをJSONでダウンロード"}
-                </p>
+              <div className="flex items-center gap-3">
+                <span className="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center">
+                  <IconDatabase size={18} className="text-emerald-400" />
+                </span>
+                <div>
+                  <p className="text-sm font-bold text-white">データをエクスポート</p>
+                  <p className="text-[11px] text-gray-400 mt-0.5">
+                    {exporting ? "準備中..." : "自分の全データをJSONでダウンロード"}
+                  </p>
+                </div>
               </div>
-              <span className="text-gray-500 text-xl">›</span>
+              <IconChevronRight size={18} className="text-gray-500 flex-shrink-0" />
             </button>
 
             <button
               onClick={() => setShowDeleteModal(true)}
               className="card-base w-full flex items-center justify-between p-4 active:scale-[0.99] transition text-left border !border-red-500/30 hover:!border-red-500/50"
             >
-              <div>
-                <p className="text-sm font-bold text-red-400">
-                  🗑 アカウントを削除
-                </p>
-                <p className="text-[11px] text-gray-400 mt-0.5">
-                  すべてのデータが完全に削除されます
-                </p>
+              <div className="flex items-center gap-3">
+                <span className="w-9 h-9 rounded-lg bg-red-500/10 flex items-center justify-center">
+                  <IconTrash size={18} className="text-red-400" />
+                </span>
+                <div>
+                  <p className="text-sm font-bold text-red-400">
+                    アカウントを削除
+                  </p>
+                  <p className="text-[11px] text-gray-400 mt-0.5">
+                    すべてのデータが完全に削除されます
+                  </p>
+                </div>
               </div>
-              <span className="text-red-400 text-xl">›</span>
+              <IconChevronRight size={18} className="text-red-400 flex-shrink-0" />
             </button>
           </div>
         </section>

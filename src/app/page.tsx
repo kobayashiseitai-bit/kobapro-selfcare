@@ -1,6 +1,25 @@
 "use client";
 
 import { useRef, useState, useEffect, useCallback, useMemo, memo } from "react";
+import type { LucideIcon } from "lucide-react";
+import {
+  Home as IconHome,
+  Camera as IconCamera,
+  UtensilsCrossed as IconUtensils,
+  Menu as IconMenu,
+  Target as IconTarget,
+  Users as IconUsers,
+  Gift as IconGift,
+  BarChart3 as IconBarChart,
+  Images as IconImages,
+  Activity as IconActivity,
+  Calendar as IconCalendar,
+  Crown as IconCrown,
+  Settings as IconSettings,
+  MessageCircle as IconMessage,
+  ChevronRight as IconChevronRight,
+  ArrowLeft as IconArrowLeft,
+} from "lucide-react";
 import { CHARACTERS } from "./lib/sensei-characters";
 import { addRecord, getRecords, deleteRecord, Landmark, PostureRecord } from "./lib/storage";
 import { analyzeFrontPosture, analyzeSidePosture, drawDiagnosisOverlay, drawSideDiagnosisOverlay, addLandmarkFrame, clearLandmarkBuffer } from "./lib/postureAnalysis";
@@ -308,14 +327,15 @@ function TabBar({
   const tabs: Array<{
     id: "home" | "check" | "ai-counsel" | "meal" | "menu";
     label: string;
-    emoji: string;
-    target: Screen | null; // null の場合は onOpenMenu を呼ぶ
+    Icon: LucideIcon | null;
+    isCharacterEmoji?: boolean; // 💀キャラ用(残す)
+    target: Screen | null;
   }> = [
-    { id: "home", label: "ホーム", emoji: "🏠", target: "home" },
-    { id: "check", label: "チェック", emoji: "📷", target: "check" },
-    { id: "ai-counsel", label: "先生", emoji: "💀", target: "ai-counsel" },
-    { id: "meal", label: "食事", emoji: "🍽", target: "meal" },
-    { id: "menu", label: "メニュー", emoji: "☰", target: null },
+    { id: "home", label: "ホーム", Icon: IconHome, target: "home" },
+    { id: "check", label: "チェック", Icon: IconCamera, target: "check" },
+    { id: "ai-counsel", label: "先生", Icon: null, isCharacterEmoji: true, target: "ai-counsel" },
+    { id: "meal", label: "食事", Icon: IconUtensils, target: "meal" },
+    { id: "menu", label: "メニュー", Icon: IconMenu, target: null },
   ];
 
   return (
@@ -337,20 +357,23 @@ function TabBar({
               onOpenMenu();
             }
           };
+          const Icon = tab.Icon;
           return (
             <button
               key={tab.id}
               onClick={onTap}
-              className={`flex flex-col items-center justify-center py-2 gap-0.5 active:scale-95 transition ${
+              className={`flex flex-col items-center justify-center py-2 gap-1 active:scale-95 transition ${
                 isActive ? "text-emerald-400" : "text-gray-400"
               }`}
               aria-label={tab.label}
               aria-current={isActive ? "page" : undefined}
             >
-              <span className={`text-2xl leading-none ${isActive ? "" : "opacity-80"}`}>
-                {tab.emoji}
-              </span>
-              <span className={`text-[10px] font-bold ${isActive ? "" : "opacity-80"}`}>
+              {tab.isCharacterEmoji ? (
+                <span className="text-[22px] leading-none" aria-hidden>💀</span>
+              ) : Icon ? (
+                <Icon size={22} strokeWidth={isActive ? 2.4 : 2} />
+              ) : null}
+              <span className={`text-[10px] font-semibold leading-none ${isActive ? "" : "opacity-80"}`}>
                 {tab.label}
               </span>
             </button>
@@ -372,22 +395,24 @@ function AppMenuSheet({
   const items: Array<{
     label: string;
     desc: string;
-    emoji: string;
+    Icon: LucideIcon | null;
+    isCharacter?: boolean; // 💀をそのまま残すフラグ
+    iconColor?: string;
     target?: Screen;
     href?: string;
     accent?: "emerald" | "amber" | "indigo" | "neutral";
   }> = [
-    { label: "30日コーチング", desc: "AIがあなた専用プランを生成", emoji: "🎯", target: "coaching", accent: "emerald" },
-    { label: "家族プラン", desc: "1契約で家族4人まで使える", emoji: "👨‍👩‍👧", target: "family", accent: "emerald" },
-    { label: "友達を招待", desc: "招待成立で1ヶ月無料!", emoji: "🎁", target: "invite", accent: "amber" },
-    { label: "ガイコツ先生のレポート", desc: "週次・月次の振り返り", emoji: "📊", target: "report", accent: "indigo" },
-    { label: "Before / After", desc: "姿勢の変化を比較", emoji: "📷", target: "before-after", accent: "indigo" },
-    { label: "ガイコツ先生プロフィール", desc: "キャラクターの詳細", emoji: "💀", target: "sensei-profile", accent: "neutral" },
-    { label: "セルフケア", desc: "30種類のストレッチ", emoji: "🧘", target: "selfcare", accent: "neutral" },
-    { label: "履歴", desc: "過去の記録を見る", emoji: "📅", target: "history", accent: "neutral" },
-    { label: "プラン管理", desc: "サブスク状態・利用回数", emoji: "👑", target: "subscription", accent: "neutral" },
-    { label: "設定", desc: "アカウント・データ管理", emoji: "⚙️", href: "/settings", accent: "neutral" },
-    { label: "サポート", desc: "FAQ・お問い合わせ", emoji: "💬", href: "/support", accent: "neutral" },
+    { label: "30日コーチング", desc: "AIがあなた専用プランを生成", Icon: IconTarget, iconColor: "text-emerald-400", target: "coaching", accent: "emerald" },
+    { label: "家族プラン", desc: "1契約で家族4人まで使える", Icon: IconUsers, iconColor: "text-emerald-400", target: "family", accent: "emerald" },
+    { label: "友達を招待", desc: "招待成立で1ヶ月無料!", Icon: IconGift, iconColor: "text-amber-400", target: "invite", accent: "amber" },
+    { label: "ガイコツ先生のレポート", desc: "週次・月次の振り返り", Icon: IconBarChart, iconColor: "text-indigo-400", target: "report", accent: "indigo" },
+    { label: "Before / After", desc: "姿勢の変化を比較", Icon: IconImages, iconColor: "text-indigo-400", target: "before-after", accent: "indigo" },
+    { label: "ガイコツ先生プロフィール", desc: "キャラクターの詳細", Icon: null, isCharacter: true, target: "sensei-profile", accent: "neutral" },
+    { label: "セルフケア", desc: "30種類のストレッチ", Icon: IconActivity, iconColor: "text-emerald-300", target: "selfcare", accent: "neutral" },
+    { label: "履歴", desc: "過去の記録を見る", Icon: IconCalendar, iconColor: "text-gray-300", target: "history", accent: "neutral" },
+    { label: "プラン管理", desc: "サブスク状態・利用回数", Icon: IconCrown, iconColor: "text-amber-400", target: "subscription", accent: "neutral" },
+    { label: "設定", desc: "アカウント・データ管理", Icon: IconSettings, iconColor: "text-gray-300", href: "/settings", accent: "neutral" },
+    { label: "サポート", desc: "FAQ・お問い合わせ", Icon: IconMessage, iconColor: "text-gray-300", href: "/support", accent: "neutral" },
   ];
 
   const accentClass = (a?: "emerald" | "amber" | "indigo" | "neutral") => {
@@ -413,12 +438,16 @@ function AppMenuSheet({
         <div className="sticky top-0 z-10 bg-gray-950 border-b border-white/10 px-4 py-3 flex items-center gap-3">
           <button
             onClick={onClose}
-            className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm font-bold text-white active:scale-95 transition flex items-center gap-1"
+            className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm font-bold text-white active:scale-95 transition flex items-center gap-1.5"
             aria-label="戻る"
           >
-            ← 戻る
+            <IconArrowLeft size={16} strokeWidth={2.5} />
+            戻る
           </button>
-          <p className="text-base font-bold text-white">☰ メニュー</p>
+          <div className="flex items-center gap-2">
+            <IconMenu size={18} className="text-gray-300" />
+            <p className="text-base font-bold text-white">メニュー</p>
+          </div>
         </div>
         {/* スワイプダウンの視覚ヒント */}
         <div className="flex justify-center pt-2 pb-1">
@@ -427,14 +456,21 @@ function AppMenuSheet({
         <div className="p-4 space-y-2">
           {items.map((it) => {
             const cls = `${accentClass(it.accent)} w-full text-left p-3 flex items-center gap-3 active:scale-[0.98] transition rounded-xl`;
+            const Icon = it.Icon;
             const inner = (
               <>
-                <span className="text-2xl">{it.emoji}</span>
+                <span className="w-10 h-10 flex-shrink-0 rounded-xl bg-white/5 flex items-center justify-center">
+                  {it.isCharacter ? (
+                    <span className="text-2xl leading-none" aria-hidden>💀</span>
+                  ) : Icon ? (
+                    <Icon size={20} strokeWidth={2} className={it.iconColor || "text-gray-300"} />
+                  ) : null}
+                </span>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold text-white truncate">{it.label}</p>
                   <p className="text-[11px] text-gray-400 truncate">{it.desc}</p>
                 </div>
-                <span className="text-gray-400">›</span>
+                <IconChevronRight size={18} className="text-gray-500 flex-shrink-0" />
               </>
             );
             if (it.href) {
