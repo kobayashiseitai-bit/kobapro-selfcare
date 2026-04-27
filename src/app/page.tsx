@@ -26,6 +26,11 @@ import {
   Eye as IconEye,
   PersonStanding as IconPerson,
   Waves as IconWaves,
+  Scan as IconScan,
+  Bell as IconBell,
+  Sparkles as IconSparkles,
+  Sun as IconSun,
+  Flame as IconFlame,
 } from "lucide-react";
 import { CHARACTERS } from "./lib/sensei-characters";
 import { addRecord, getRecords, deleteRecord, Landmark, PostureRecord } from "./lib/storage";
@@ -1267,30 +1272,9 @@ function HomeScreen({
 
   return (
     <main className="fixed inset-0 bg-gray-950 text-white flex flex-col overflow-y-auto has-tabbar">
-      {/* ヘッダー */}
-      <header className="sticky top-0 z-10 bg-gray-950/90 backdrop-blur-xl border-b border-white/5 px-4 py-3 flex items-center justify-between">
-        <div className="w-12" />
+      {/* ヘッダー(タブバー導入によりハンバーガーは廃止・ロゴ中央配置に統一) */}
+      <header className="sticky top-0 z-10 bg-gray-950/90 backdrop-blur-xl border-b border-white/5 px-4 py-3 flex items-center justify-center">
         <h1 className="text-lg font-extrabold brand-logo tracking-[0.2em]">ZERO-PAIN</h1>
-        <button
-          onClick={() => setShowMenu(true)}
-          aria-label="メニュー"
-          className="w-12 h-10 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 active:scale-95 transition"
-        >
-          {/* 3本線のハンバーガーアイコン */}
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            className="w-5 h-5 text-gray-200"
-          >
-            <line x1="4" y1="7" x2="20" y2="7" />
-            <line x1="4" y1="12" x2="20" y2="12" />
-            <line x1="4" y1="17" x2="20" y2="17" />
-          </svg>
-        </button>
       </header>
 
       {/* ハンバーガーメニュー展開シート */}
@@ -1530,24 +1514,32 @@ function HomeScreen({
         <div>
           <button
             onClick={() => setShowReminderSetting(!showReminderSetting)}
-            className="text-xs text-gray-500 flex items-center gap-1"
+            className="text-xs text-gray-500 flex items-center gap-1.5"
           >
-            🔔 通知設定: {morningNotifEnabled
-              ? `朝 ${morningNotifHour}:${String(morningNotifMinute).padStart(2, "0")}`
-              : reminderHours
-              ? `${reminderHours}時間ごと`
-              : "未設定"}
+            <IconBell size={12} strokeWidth={2} />
+            <span>
+              通知設定: {morningNotifEnabled
+                ? `朝 ${morningNotifHour}:${String(morningNotifMinute).padStart(2, "0")}`
+                : reminderHours
+                ? `${reminderHours}時間ごと`
+                : "未設定"}
+            </span>
           </button>
         </div>
 
         {showReminderSetting && (
           <div className="bg-gray-900 rounded-xl p-4 border border-gray-800 space-y-4">
-            {/* ☀️ 朝のコンディションチェック通知 */}
+            {/* 朝のコンディションチェック通知 */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-white font-bold">☀️ 朝のコンディションチェック通知</p>
-                  <p className="text-[11px] text-gray-400">毎朝、指定時刻にガイコツ先生がお知らせ</p>
+                <div className="flex items-center gap-2">
+                  <span className="w-8 h-8 rounded-lg bg-amber-500/15 flex items-center justify-center flex-shrink-0">
+                    <IconSun size={16} className="text-amber-400" />
+                  </span>
+                  <div>
+                    <p className="text-sm text-white font-bold">朝のコンディションチェック</p>
+                    <p className="text-[11px] text-gray-400">毎朝、指定時刻にお知らせ</p>
+                  </div>
                 </div>
                 <button
                   onClick={() => saveMorningNotifSettings(!morningNotifEnabled, morningNotifHour, morningNotifMinute)}
@@ -1593,7 +1585,10 @@ function HomeScreen({
             </div>
 
             <div className="border-t border-gray-800 pt-3">
-              <p className="text-sm text-gray-300 mb-2 font-bold">💪 ストレッチリマインダー間隔</p>
+              <p className="text-sm text-gray-300 mb-2 font-bold flex items-center gap-1.5">
+                <IconDumbbell size={14} className="text-emerald-400" />
+                ストレッチリマインダー間隔
+              </p>
               <div className="flex gap-2">
                 {[1, 2, 3].map((h) => (
                   <button
@@ -1626,8 +1621,10 @@ function HomeScreen({
             onClick={() => onNavigate("check")}
             className="btn-primary w-full px-5 py-5 flex items-center gap-4"
           >
-            <span className="text-4xl">🧍</span>
-            <div className="text-left">
+            <span className="w-12 h-12 rounded-2xl bg-white/15 flex items-center justify-center flex-shrink-0">
+              <IconScan size={28} strokeWidth={2.2} className="text-white" />
+            </span>
+            <div className="text-left flex-1 min-w-0">
               <p className="text-base font-bold">ZERO-PAIN AIで姿勢スキャン</p>
               <p className="text-sm text-emerald-50/90 mt-0.5">スマホを置いて全身撮影 → 歪みを自動チェック</p>
             </div>
@@ -1638,7 +1635,7 @@ function HomeScreen({
               disabled={records.length === 0}
               className="btn-neutral px-3 py-3.5 flex flex-col items-center gap-1 disabled:opacity-40"
             >
-              <span className="text-xl">📊</span>
+              <IconBarChart size={20} strokeWidth={2} className="text-gray-200" />
               <p className="text-xs font-bold">履歴</p>
               <p className="text-[10px] text-gray-400 text-center leading-tight">
                 {records.length > 0 ? `${records.length}件` : "記録なし"}
@@ -1651,7 +1648,7 @@ function HomeScreen({
               <span className="absolute top-1 right-1.5 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-[0_2px_6px_rgba(239,68,68,0.4)]">
                 NEW
               </span>
-              <span className="text-xl">📸</span>
+              <IconImages size={20} strokeWidth={2} className="text-gray-200" />
               <p className="text-xs font-bold">Before/After</p>
               <p className="text-[10px] text-gray-400 text-center leading-tight">
                 変化を確認
@@ -1671,7 +1668,7 @@ function HomeScreen({
           >
             {/* 上段: パーソナルトレーナー訴求バー（独立・重ならない） */}
             <div className="bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 px-4 py-2 flex items-center gap-1.5">
-              <span className="text-sm">✨</span>
+              <IconSparkles size={14} strokeWidth={2.5} className="text-amber-950" />
               <p className="text-xs font-extrabold text-amber-950 tracking-wide">
                 あなた専用のパーソナルトレーナー
               </p>
@@ -1692,7 +1689,7 @@ function HomeScreen({
                   お悩みを聞き取り最適なケアを提案
                 </p>
               </div>
-              <span className="text-xl text-indigo-300">›</span>
+              <IconChevronRight size={20} className="text-indigo-300 flex-shrink-0" />
             </div>
           </button>
 
@@ -1701,9 +1698,9 @@ function HomeScreen({
             onClick={() => onNavigate("sensei-profile")}
             className="w-full flex items-center justify-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 py-1.5"
           >
-            <span>💀</span>
+            <span aria-hidden>💀</span>
             <span>ガイコツ先生について詳しく</span>
-            <span>›</span>
+            <IconChevronRight size={12} strokeWidth={2.5} />
           </button>
         </div>
 
