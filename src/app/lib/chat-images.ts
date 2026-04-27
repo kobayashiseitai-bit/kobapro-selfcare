@@ -159,12 +159,47 @@ export const CHAT_IMAGES: ChatImage[] = [
 
   // ========== 未完成・準備中(完成したら ready: true に変更) ==========
 
-  // eye-1〜5
-  { id: "eye-1", path: "/stretches/eye-1.png", desc: "(準備中)", symptoms: ["eye_fatigue"], category: "stretch", ready: false },
-  { id: "eye-2", path: "/stretches/eye-2.png", desc: "(準備中)", symptoms: ["eye_fatigue"], category: "stretch", ready: false },
-  { id: "eye-3", path: "/stretches/eye-3.png", desc: "(準備中)", symptoms: ["eye_fatigue"], category: "stretch", ready: false },
-  { id: "eye-4", path: "/stretches/eye-4.png", desc: "(準備中)", symptoms: ["eye_fatigue"], category: "stretch", ready: false },
-  { id: "eye-5", path: "/stretches/eye-5.png", desc: "(準備中)", symptoms: ["eye_fatigue"], category: "stretch", ready: false },
+  // ========== 眼精疲労 (eye_fatigue) - 完成済み ==========
+  {
+    id: "eye-1",
+    path: "/stretches/eye-1.png",
+    desc: "目パッチリ体操。両目を3秒ぎゅっと閉じてからパッと大きく見開く動作を10回繰り返し、3セット。目周りの筋肉を動かしリフレッシュ。",
+    symptoms: ["eye_fatigue"],
+    category: "stretch",
+    ready: true,
+  },
+  {
+    id: "eye-2",
+    path: "/stretches/eye-2.png",
+    desc: "ピント切り替え体操(遠近ストレッチ)。20cm先の親指と3m以上先の景色を交互に各3秒見る。1分×5セット。デスクワーク後におすすめ。",
+    symptoms: ["eye_fatigue"],
+    category: "stretch",
+    ready: true,
+  },
+  {
+    id: "eye-3",
+    path: "/stretches/eye-3.png",
+    desc: "眼球エクササイズ(眼球回し)。顔は正面に固定したまま眼球だけで上下左右を各3秒見て、その後時計回り・反時計回りに30秒ずつ。2セット。",
+    symptoms: ["eye_fatigue"],
+    category: "stretch",
+    ready: true,
+  },
+  {
+    id: "eye-4",
+    path: "/stretches/eye-4.png",
+    desc: "ホットアイタオル(温タオル)。濡らしたフェイスタオルを電子レンジ500W30〜40秒温め、40〜45℃くらいで目に5分のせる。やけど注意。",
+    symptoms: ["eye_fatigue"],
+    category: "stretch",
+    ready: true,
+  },
+  {
+    id: "eye-5",
+    path: "/stretches/eye-5.png",
+    desc: "晴明ツボ押し。目頭の少し上・鼻の横の小さなくぼみ「晴明」を人差し指で目頭方向に10秒押し込む。5回繰り返し。眼精疲労の代表ツボ。",
+    symptoms: ["eye_fatigue"],
+    category: "stretch",
+    ready: true,
+  },
 
   // ========== 頭痛 (headache) - 完成済み ==========
   {
