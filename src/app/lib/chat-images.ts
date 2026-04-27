@@ -138,9 +138,26 @@ export const CHAT_IMAGES: ChatImage[] = [
     ready: true,
   },
 
+  // back-4 (完成済み)
+  {
+    id: "back-4",
+    path: "/stretches/back-4.png",
+    desc: "ヒップリフト。仰向けで両膝を立て、お尻を締めながら腰を天井方向へ持ち上げ5秒キープ。15回×3セットでお尻と体幹を鍛え腰痛予防に効果絶大。",
+    symptoms: ["back"],
+    category: "stretch",
+    ready: true,
+  },
+  // back-5 (完成済み)
+  {
+    id: "back-5",
+    path: "/stretches/back-5.png",
+    desc: "もも裏ストレッチ(ハムストリングス伸ばし)。仰向けで片足を天井方向へ持ち上げ、太もも裏を体に引き寄せて30秒キープ。骨盤の歪みと腰の負担を軽減。",
+    symptoms: ["back"],
+    category: "stretch",
+    ready: true,
+  },
+
   // ========== 未完成・準備中(完成したら ready: true に変更) ==========
-  { id: "back-4", path: "/stretches/back-4.png", desc: "ヒップリフト。", symptoms: ["back"], category: "stretch", ready: false },
-  { id: "back-5", path: "/stretches/back-5.png", desc: "ハムストリングス伸ばし。", symptoms: ["back"], category: "stretch", ready: false },
 
   // eye-1〜5
   { id: "eye-1", path: "/stretches/eye-1.png", desc: "(準備中)", symptoms: ["eye_fatigue"], category: "stretch", ready: false },
