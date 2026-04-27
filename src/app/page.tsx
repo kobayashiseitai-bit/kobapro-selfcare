@@ -409,16 +409,20 @@ function AppMenuSheet({
         className="w-full sm:max-w-md bg-gray-950 border-t border-white/10 sm:border sm:rounded-2xl rounded-t-2xl max-h-[85vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* ハンドル */}
-        <div className="sticky top-0 bg-gray-950 border-b border-white/10 px-4 py-3 flex items-center justify-between">
-          <p className="text-base font-bold text-white">☰ メニュー</p>
+        {/* ヘッダー(戻るボタンを左に明示) */}
+        <div className="sticky top-0 z-10 bg-gray-950 border-b border-white/10 px-4 py-3 flex items-center gap-3">
           <button
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 text-gray-300 active:scale-95 transition"
-            aria-label="閉じる"
+            className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm font-bold text-white active:scale-95 transition flex items-center gap-1"
+            aria-label="戻る"
           >
-            ✕
+            ← 戻る
           </button>
+          <p className="text-base font-bold text-white">☰ メニュー</p>
+        </div>
+        {/* スワイプダウンの視覚ヒント */}
+        <div className="flex justify-center pt-2 pb-1">
+          <div className="w-10 h-1 rounded-full bg-white/15" />
         </div>
         <div className="p-4 space-y-2">
           {items.map((it) => {
