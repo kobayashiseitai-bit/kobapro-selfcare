@@ -166,12 +166,47 @@ export const CHAT_IMAGES: ChatImage[] = [
   { id: "eye-4", path: "/stretches/eye-4.png", desc: "(準備中)", symptoms: ["eye_fatigue"], category: "stretch", ready: false },
   { id: "eye-5", path: "/stretches/eye-5.png", desc: "(準備中)", symptoms: ["eye_fatigue"], category: "stretch", ready: false },
 
-  // headache-1〜5
-  { id: "headache-1", path: "/stretches/headache-1.png", desc: "(準備中)", symptoms: ["headache"], category: "stretch", ready: false },
-  { id: "headache-2", path: "/stretches/headache-2.png", desc: "(準備中)", symptoms: ["headache"], category: "stretch", ready: false },
-  { id: "headache-3", path: "/stretches/headache-3.png", desc: "(準備中)", symptoms: ["headache"], category: "stretch", ready: false },
-  { id: "headache-4", path: "/stretches/headache-4.png", desc: "(準備中)", symptoms: ["headache"], category: "stretch", ready: false },
-  { id: "headache-5", path: "/stretches/headache-5.png", desc: "(準備中)", symptoms: ["headache"], category: "stretch", ready: false },
+  // ========== 頭痛 (headache) - 完成済み ==========
+  {
+    id: "headache-1",
+    path: "/stretches/headache-1.png",
+    desc: "こめかみマッサージ。両手の3本指でこめかみに当て、時計回り→反時計回りに各30秒円を描くようにマッサージ。緊張型頭痛のセルフケア。",
+    symptoms: ["headache"],
+    category: "stretch",
+    ready: true,
+  },
+  {
+    id: "headache-2",
+    path: "/stretches/headache-2.png",
+    desc: "後頭部ツボ押し(首の付け根マッサージ)。両手の親指を後頭部の下のくぼみに当てて30秒押す。首・頭の緊張を緩める。",
+    symptoms: ["headache", "neck"],
+    category: "stretch",
+    ready: true,
+  },
+  {
+    id: "headache-3",
+    path: "/stretches/headache-3.png",
+    desc: "目まわりツボ押し。攢竹・魚腰・絲竹空・瞳子膠・晴明の5つのツボを各5秒順番に押す。眼精疲労からくる頭痛に効果的。",
+    symptoms: ["headache", "eye_fatigue"],
+    category: "stretch",
+    ready: true,
+  },
+  {
+    id: "headache-4",
+    path: "/stretches/headache-4.png",
+    desc: "首前面ストレッチ。両手を鎖骨の下に置いて皮膚を押さえ、頭をゆっくり後ろに倒す。首前面〜鎖骨周りを伸ばす。",
+    symptoms: ["headache", "neck"],
+    category: "stretch",
+    ready: true,
+  },
+  {
+    id: "headache-5",
+    path: "/stretches/headache-5.png",
+    desc: "肩回しエクササイズ(肩甲骨ストレッチ)。両手を肩にのせて肘で大きな円を描き、前後30秒ずつ回す。肩甲骨の動きを引き出し肩こり由来の頭痛をケア。",
+    symptoms: ["headache", "shoulder_stiff"],
+    category: "stretch",
+    ready: true,
+  },
 
   // kyphosis-1〜5
   { id: "kyphosis-1", path: "/stretches/kyphosis-1.png", desc: "(準備中)", symptoms: ["kyphosis"], category: "stretch", ready: false },
