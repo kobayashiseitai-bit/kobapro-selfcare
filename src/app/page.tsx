@@ -113,6 +113,7 @@ const SYMPTOMS = [
     label: "首こり",
     emoji: "🦴",
     Icon: NeckPainIcon as LucideIcon,
+    imageUrl: "/symptoms/neck.png",
     icon: "/menyu2.jpg",
     colorTheme: "emerald" as const,
     gradientFrom: "from-emerald-400/30",
@@ -130,6 +131,7 @@ const SYMPTOMS = [
     label: "肩こり",
     emoji: "💪",
     Icon: ShoulderPainIcon as LucideIcon,
+    imageUrl: "/symptoms/shoulder.png",
     icon: "/menyu6.jpg",
     colorTheme: "teal" as const,
     gradientFrom: "from-teal-400/30",
@@ -147,6 +149,7 @@ const SYMPTOMS = [
     label: "腰痛",
     emoji: "🔥",
     Icon: BackPainIcon as LucideIcon,
+    imageUrl: "/symptoms/back.png",
     icon: "/menyu5.jpg",
     colorTheme: "sky" as const,
     gradientFrom: "from-sky-400/30",
@@ -164,6 +167,7 @@ const SYMPTOMS = [
     label: "頭痛",
     emoji: "🧠",
     Icon: HeadachePainIcon as LucideIcon,
+    imageUrl: "/symptoms/headache.png",
     icon: "/menyu3.jpg",
     colorTheme: "indigo" as const,
     gradientFrom: "from-indigo-400/30",
@@ -181,6 +185,7 @@ const SYMPTOMS = [
     label: "眼精疲労",
     emoji: "👁️",
     Icon: EyeFatigueIcon as LucideIcon,
+    imageUrl: "/symptoms/eye.png",
     icon: "/menyu4.jpg",
     colorTheme: "rose" as const,
     gradientFrom: "from-rose-400/30",
@@ -198,6 +203,7 @@ const SYMPTOMS = [
     label: "猫背改善",
     emoji: "🧍",
     Icon: PostureIcon as LucideIcon,
+    imageUrl: "/symptoms/kyphosis.png",
     icon: "/menyu1.jpg",
     colorTheme: "amber" as const,
     gradientFrom: "from-amber-400/30",
@@ -1736,37 +1742,33 @@ function HomeScreen({
         <div>
           <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Step 4 · セルフケアメニュー</h2>
           <div className="grid grid-cols-2 gap-3">
-            {SYMPTOMS.map((symptom) => {
-              const SymptomIcon = symptom.Icon;
-              return (
-                <button
-                  key={symptom.id}
-                  onClick={() => onSelectSymptom(symptom.id)}
-                  className={`relative rounded-2xl p-4 text-left transition-all active:scale-95 overflow-hidden bg-gradient-to-br ${symptom.gradientFrom} ${symptom.gradientTo} border-2 ${symptom.borderColor} shadow-md hover:shadow-xl`}
-                >
-                  {/* SVGアイコン(角丸グラデ背景) */}
-                  <div
-                    className={`w-12 h-12 rounded-xl bg-gradient-to-br ${symptom.iconBg} flex items-center justify-center shadow-lg mb-2`}
-                  >
-                    {SymptomIcon ? (
-                      <SymptomIcon size={24} strokeWidth={2.2} className="text-white" />
-                    ) : (
-                      <span className="text-2xl">{symptom.emoji}</span>
-                    )}
-                  </div>
-                  {/* タイトル */}
-                  <p className={`text-sm font-extrabold ${symptom.accentText} leading-tight`}>
-                    {symptom.label}
-                  </p>
-                  {/* サブタイトル */}
-                  <p className="text-[10px] text-gray-600 mt-0.5 leading-snug line-clamp-2">
-                    {symptom.subtitle}
-                  </p>
-                  {/* 右下矢印 */}
-                  <IconArrowRight size={14} className={`absolute bottom-2 right-3 ${symptom.accentText}`} strokeWidth={2.5} />
-                </button>
-              );
-            })}
+            {SYMPTOMS.map((symptom) => (
+              <button
+                key={symptom.id}
+                onClick={() => onSelectSymptom(symptom.id)}
+                className={`relative rounded-2xl p-4 text-left transition-all active:scale-95 overflow-hidden bg-gradient-to-br ${symptom.gradientFrom} ${symptom.gradientTo} border-2 ${symptom.borderColor} shadow-md hover:shadow-xl`}
+              >
+                {/* 3D症状アイコン画像 */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={symptom.imageUrl}
+                  alt={symptom.label}
+                  loading="lazy"
+                  decoding="async"
+                  className="w-16 h-16 object-contain mb-2 drop-shadow-md"
+                />
+                {/* タイトル */}
+                <p className={`text-sm font-extrabold ${symptom.accentText} leading-tight`}>
+                  {symptom.label}
+                </p>
+                {/* サブタイトル */}
+                <p className="text-[10px] text-gray-600 mt-0.5 leading-snug line-clamp-2">
+                  {symptom.subtitle}
+                </p>
+                {/* 右下矢印 */}
+                <IconArrowRight size={14} className={`absolute bottom-2 right-3 ${symptom.accentText}`} strokeWidth={2.5} />
+              </button>
+            ))}
           </div>
         </div>
 
@@ -2782,16 +2784,15 @@ function ModernCardGrid({
               isSelected ? symptom.borderColor : "border-transparent"
             } shadow-lg hover:shadow-xl`}
           >
-            {/* SVGアイコン(角丸グラデ背景) */}
-            <div
-              className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${symptom.iconBg} flex items-center justify-center shadow-lg mb-3`}
-            >
-              {symptom.Icon ? (
-                <symptom.Icon size={28} strokeWidth={2.2} className="text-white" />
-              ) : (
-                <span className="text-3xl">{symptom.emoji}</span>
-              )}
-            </div>
+            {/* 3D症状アイコン画像 */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={symptom.imageUrl}
+              alt={symptom.label}
+              loading="lazy"
+              decoding="async"
+              className="w-20 h-20 object-contain mb-3 drop-shadow-md"
+            />
 
             {/* タイトル */}
             <p className={`text-base font-extrabold ${symptom.accentText} leading-tight`}>
