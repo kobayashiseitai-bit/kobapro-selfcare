@@ -98,6 +98,16 @@ img, video, canvas {
   border-radius: 1rem;
 }
 
+/* タブバーのセーフエリア対応(iPhoneのホームバー領域確保) */
+.tabbar-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* タブバーが表示される画面のコンテンツ底部に余白を確保 */
+.has-tabbar {
+  padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+}
+
 /* プライマリボタン（主要CTA：エメラルド） */
 .btn-primary {
   background: linear-gradient(to bottom, rgb(16, 185, 129), rgb(5, 150, 105));

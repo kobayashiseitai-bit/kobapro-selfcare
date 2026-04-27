@@ -178,6 +178,7 @@ export default function Home() {
   const [selectedSymptomId, setSelectedSymptomId] = useState<string | null>(null);
   const [mealInitialMode, setMealInitialMode] = useState<"home" | "goal" | "calendar" | null>(null);
   const [chatConsultMeal, setChatConsultMeal] = useState(false);
+  const [showAppMenu, setShowAppMenu] = useState(false);
 
   const goToMealWithMode = (mode: "home" | "goal" | "calendar") => {
     setMealInitialMode(mode);
@@ -187,6 +188,15 @@ export default function Home() {
   const goToChatWithMeal = () => {
     setChatConsultMeal(true);
     setScreen("ai-counsel");
+  };
+
+  // タブから他画面へ遷移する時にメニューを閉じる + state を初期化
+  const navigateFromTab = (target: Screen) => {
+    setShowAppMenu(false);
+    setSelectedSymptomId(null);
+    setMealInitialMode(null);
+    setChatConsultMeal(false);
+    setScreen(target);
   };
 
   // 初回チェック: ユーザー登録済みかどうか
@@ -261,7 +271,188 @@ export default function Home() {
       {screen === "sensei-profile" && <SenseiProfileScreen onNavigate={setScreen} />}
       {screen === "family" && <FamilyScreen onNavigate={setScreen} />}
       {screen === "coaching" && <CoachingScreen onNavigate={setScreen} onSelectSymptom={goToSelfcare} />}
+
+      {/* グローバル Tab Bar (主要4画面のみ表示) */}
+      {(["home", "check", "ai-counsel", "meal"].includes(screen)) && (
+        <TabBar
+          currentScreen={screen}
+          onNavigate={navigateFromTab}
+          onOpenMenu={() => setShowAppMenu(true)}
+        />
+      )}
+
+      {/* グローバル メニューシート (Tab Bar の「メニュー」から開く) */}
+      {showAppMenu && (
+        <AppMenuSheet
+          onClose={() => setShowAppMenu(false)}
+          onNavigate={(s) => {
+            setShowAppMenu(false);
+            setScreen(s);
+          }}
+        />
+      )}
     </>
+  );
+}
+
+// ==================== 共通 Tab Bar ====================
+function TabBar({
+  currentScreen,
+  onNavigate,
+  onOpenMenu,
+}: {
+  currentScreen: Screen;
+  onNavigate: (s: Screen) => void;
+  onOpenMenu: () => void;
+}) {
+  const tabs: Array<{
+    id: "home" | "check" | "ai-counsel" | "meal" | "menu";
+    label: string;
+    emoji: string;
+    target: Screen | null; // null の場合は onOpenMenu を呼ぶ
+  }> = [
+    { id: "home", label: "ホーム", emoji: "🏠", target: "home" },
+    { id: "check", label: "チェック", emoji: "📷", target: "check" },
+    { id: "ai-counsel", label: "先生", emoji: "💀", target: "ai-counsel" },
+    { id: "meal", label: "食事", emoji: "🍽", target: "meal" },
+    { id: "menu", label: "メニュー", emoji: "☰", target: null },
+  ];
+
+  return (
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-30 bg-gray-950/95 border-t border-white/10 tabbar-safe"
+      style={{
+        backdropFilter: "blur(8px)",
+        WebkitBackdropFilter: "blur(8px)",
+      }}
+      aria-label="メインナビゲーション"
+    >
+      <div className="max-w-md mx-auto grid grid-cols-5">
+        {tabs.map((tab) => {
+          const isActive = tab.target === currentScreen;
+          const onTap = () => {
+            if (tab.target) {
+              onNavigate(tab.target);
+            } else {
+              onOpenMenu();
+            }
+          };
+          return (
+            <button
+              key={tab.id}
+              onClick={onTap}
+              className={`flex flex-col items-center justify-center py-2 gap-0.5 active:scale-95 transition ${
+                isActive ? "text-emerald-400" : "text-gray-400"
+              }`}
+              aria-label={tab.label}
+              aria-current={isActive ? "page" : undefined}
+            >
+              <span className={`text-2xl leading-none ${isActive ? "" : "opacity-80"}`}>
+                {tab.emoji}
+              </span>
+              <span className={`text-[10px] font-bold ${isActive ? "" : "opacity-80"}`}>
+                {tab.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
+
+// ==================== 共通 メニューシート ====================
+function AppMenuSheet({
+  onClose,
+  onNavigate,
+}: {
+  onClose: () => void;
+  onNavigate: (s: Screen) => void;
+}) {
+  const items: Array<{
+    label: string;
+    desc: string;
+    emoji: string;
+    target?: Screen;
+    href?: string;
+    accent?: "emerald" | "amber" | "indigo" | "neutral";
+  }> = [
+    { label: "30日コーチング", desc: "AIがあなた専用プランを生成", emoji: "🎯", target: "coaching", accent: "emerald" },
+    { label: "家族プラン", desc: "1契約で家族4人まで使える", emoji: "👨‍👩‍👧", target: "family", accent: "emerald" },
+    { label: "友達を招待", desc: "招待成立で1ヶ月無料!", emoji: "🎁", target: "invite", accent: "amber" },
+    { label: "ガイコツ先生のレポート", desc: "週次・月次の振り返り", emoji: "📊", target: "report", accent: "indigo" },
+    { label: "Before / After", desc: "姿勢の変化を比較", emoji: "📷", target: "before-after", accent: "indigo" },
+    { label: "ガイコツ先生プロフィール", desc: "キャラクターの詳細", emoji: "💀", target: "sensei-profile", accent: "neutral" },
+    { label: "セルフケア", desc: "30種類のストレッチ", emoji: "🧘", target: "selfcare", accent: "neutral" },
+    { label: "履歴", desc: "過去の記録を見る", emoji: "📅", target: "history", accent: "neutral" },
+    { label: "プラン管理", desc: "サブスク状態・利用回数", emoji: "👑", target: "subscription", accent: "neutral" },
+    { label: "設定", desc: "アカウント・データ管理", emoji: "⚙️", href: "/settings", accent: "neutral" },
+    { label: "サポート", desc: "FAQ・お問い合わせ", emoji: "💬", href: "/support", accent: "neutral" },
+  ];
+
+  const accentClass = (a?: "emerald" | "amber" | "indigo" | "neutral") => {
+    if (a === "emerald") return "card-accent-emerald";
+    if (a === "amber") return "card-accent-amber";
+    if (a === "indigo") return "card-accent-indigo";
+    return "card-base";
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[55] bg-black/70 flex items-end sm:items-center justify-center"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="メニュー"
+    >
+      <div
+        className="w-full sm:max-w-md bg-gray-950 border-t border-white/10 sm:border sm:rounded-2xl rounded-t-2xl max-h-[85vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* ハンドル */}
+        <div className="sticky top-0 bg-gray-950 border-b border-white/10 px-4 py-3 flex items-center justify-between">
+          <p className="text-base font-bold text-white">☰ メニュー</p>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 text-gray-300 active:scale-95 transition"
+            aria-label="閉じる"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="p-4 space-y-2">
+          {items.map((it) => {
+            const cls = `${accentClass(it.accent)} w-full text-left p-3 flex items-center gap-3 active:scale-[0.98] transition rounded-xl`;
+            const inner = (
+              <>
+                <span className="text-2xl">{it.emoji}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-white truncate">{it.label}</p>
+                  <p className="text-[11px] text-gray-400 truncate">{it.desc}</p>
+                </div>
+                <span className="text-gray-400">›</span>
+              </>
+            );
+            if (it.href) {
+              return (
+                <a key={it.label} href={it.href} className={cls}>
+                  {inner}
+                </a>
+              );
+            }
+            return (
+              <button
+                key={it.label}
+                onClick={() => it.target && onNavigate(it.target)}
+                className={cls}
+              >
+                {inner}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -1022,7 +1213,7 @@ function HomeScreen({
   const riskIcons: Record<string, string> = { high: "🔴", medium: "⚠️", low: "✅" };
 
   return (
-    <main className="fixed inset-0 bg-gray-950 text-white flex flex-col overflow-y-auto">
+    <main className="fixed inset-0 bg-gray-950 text-white flex flex-col overflow-y-auto has-tabbar">
       {/* ヘッダー */}
       <header className="sticky top-0 z-10 bg-gray-950/90 backdrop-blur-xl border-b border-white/5 px-4 py-3 flex items-center justify-between">
         <div className="w-12" />
@@ -2091,7 +2282,7 @@ function AiCounselScreen({
       )}
 
       {/* 入力エリア（機能強化: カメラ撮影 + Before/After比較） */}
-      <div className="border-t border-gray-800 max-w-md w-full mx-auto">
+      <div className="border-t border-gray-800 max-w-md w-full mx-auto has-tabbar">
         {/* 隠しファイル入力（カメラ起動用） */}
         <input
           ref={cameraInputRef}
