@@ -25,10 +25,10 @@ export const metadata: Metadata = {
   description: "あなた専用のAIパーソナルトレーナー。姿勢チェック・セルフケア・痛み予測で体の悩みをゼロに。",
   icons: {
     apple: [
-      { url: "/app-icon-180.png?v=6", sizes: "180x180", type: "image/png" },
+      { url: "/app-icon-180.png?v=7", sizes: "180x180", type: "image/png" },
     ],
     icon: [
-      { url: "/app-icon-192.png?v=6", sizes: "192x192", type: "image/png" },
+      { url: "/app-icon-192.png?v=7", sizes: "192x192", type: "image/png" },
     ],
   },
   openGraph: {
