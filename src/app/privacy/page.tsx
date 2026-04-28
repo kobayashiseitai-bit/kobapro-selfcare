@@ -78,10 +78,30 @@ export default function PrivacyPage() {
             <li>
               <strong className="text-white">Vercel Inc.</strong>: アプリの配信インフラとして利用。
             </li>
+            <li>
+              <strong className="text-white">RevenueCat, Inc.</strong>: サブスクリプション課金状態の管理・購入履歴の検証に利用。
+              端末識別子（device_id）と購入レシート情報を RevenueCat のサーバーに送信し、Apple App Store のサブスクリプション情報を取得・検証します。
+              （詳細: <a href="https://www.revenuecat.com/privacy/" target="_blank" rel="noopener noreferrer" className="text-blue-400 underline">RevenueCat プライバシーポリシー</a>）
+            </li>
+            <li>
+              <strong className="text-white">Apple Inc.（App Store / StoreKit）</strong>: 有料プランの決済処理。
+              支払い情報（カード番号等）はApple社が直接管理し、当社には一切送信されません。
+              当社が受け取るのは「購入が成功したか」「サブスクリプションが有効か」という情報のみです。
+            </li>
           </ul>
           <p className="mt-2 text-gray-300">
             上記以外の第三者への個人情報の提供・販売は一切行いません。
           </p>
+        </section>
+
+        <section>
+          <h2 className="text-base font-bold text-white mb-2">4-1. サブスクリプション・決済情報の取り扱い</h2>
+          <ul className="space-y-1.5 pl-4 list-disc text-gray-300">
+            <li>有料プランの決済はすべて Apple App Store 経由で行われます。当社はクレジットカード番号・銀行口座等の決済情報を一切取得・保存しません。</li>
+            <li>当社が保管するのは「サブスクリプションの状態（無料/トライアル/月額/年額/解約予定）」「契約期間」「RevenueCat の取引ID」のみです。</li>
+            <li>サブスクリプションの解約・返金リクエストは Apple ID のアカウント設定または Apple サポートからお手続きください。当社では決済関連のお問い合わせには対応できません。</li>
+            <li>家族プラン機能では、家族グループ内のメンバー間でサブスクリプション状態（無料/プレミアム）の共有を行います。決済情報自体は共有しません。</li>
+          </ul>
         </section>
 
         <section>

@@ -38,6 +38,8 @@ import { CHARACTERS } from "./lib/sensei-characters";
 import { addRecord, getRecords, deleteRecord, Landmark, PostureRecord } from "./lib/storage";
 import { analyzeFrontPosture, analyzeSidePosture, drawDiagnosisOverlay, drawSideDiagnosisOverlay, addLandmarkFrame, clearLandmarkBuffer } from "./lib/postureAnalysis";
 import { getStretchesBySymptom } from "./lib/stretches";
+import { initIAP, isNativeIOS, getAvailablePackages, purchasePackage, restorePurchases } from "./lib/iap";
+import type { PurchasesPackage } from "@revenuecat/purchases-capacitor";
 import type { DiagnosisItem } from "./lib/storage";
 // Supabase保存はAPI経由
 function getDeviceId(): string {
@@ -7272,6 +7274,22 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // ===== IAP (iOS native のみ) =====
+  const [iapReady, setIapReady] = useState(false);
+  const [iapPackages, setIapPackages] = useState<PurchasesPackage[]>([]);
+  const isIOS = isNativeIOS();
+
+  useEffect(() => {
+    if (!isIOS) return;
+    (async () => {
+      const ok = await initIAP(getDeviceId());
+      if (!ok) return;
+      const pkgs = await getAvailablePackages();
+      setIapPackages(pkgs);
+      setIapReady(true);
+    })();
+  }, [isIOS]);
+
   const loadState = useCallback(async () => {
     setLoading(true);
     try {
@@ -7290,10 +7308,61 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
     loadState();
   }, [loadState]);
 
+  // iOS ネイティブ: RevenueCat 経由で購入
+  const buyViaIAP = async (planType: "monthly" | "yearly") => {
+    setActing(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const productKey = planType === "monthly" ? "monthly" : "yearly";
+      const pkg = iapPackages.find((p) =>
+        p.product.identifier.toLowerCase().includes(productKey)
+      );
+      if (!pkg) {
+        throw new Error("商品が見つかりません。しばらくしてからお試しください。");
+      }
+      const result = await purchasePackage(pkg);
+      if (result.success) {
+        setMessage(`✅ ${planType === "monthly" ? "月額" : "年額"}プランを開始しました！`);
+        await loadState();
+      } else if (result.error) {
+        setError(result.error);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setActing(false);
+    }
+  };
+
+  // iOS ネイティブ: 購入の復元 (App Store 必須)
+  const handleRestore = async () => {
+    setActing(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const result = await restorePurchases();
+      if (result.error) {
+        setError(result.error);
+      } else if (result.isPremium) {
+        setMessage("✅ プレミアムプランを復元しました");
+        await loadState();
+      } else {
+        setMessage("過去のご購入は見つかりませんでした");
+      }
+    } finally {
+      setActing(false);
+    }
+  };
+
   const callAction = async (
     action: "start_trial" | "subscribe" | "cancel",
     plan?: "monthly" | "yearly"
   ) => {
+    // iOS ネイティブ + サブスク購入の場合は IAP に委譲
+    if (isIOS && iapReady && action === "subscribe" && plan) {
+      return buyViaIAP(plan);
+    }
     setActing(true);
     setError(null);
     setMessage(null);
@@ -7474,10 +7543,41 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
               </button>
             )}
 
-            {/* 注意書き */}
-            <div className="card-base px-4 py-3 text-[11px] text-gray-500 leading-relaxed">
-              ℹ️ 現在は開発中のため、実際の決済は発生しません。App Storeリリース時にApple App Store経由の課金に切り替わります。解約・返金はApp Storeの規約に従います。
-            </div>
+            {/* iOS ネイティブのみ: 購入の復元ボタン (App Store 必須) */}
+            {isIOS && (
+              <button
+                onClick={handleRestore}
+                disabled={acting}
+                className="btn-neutral w-full px-4 py-3 text-sm text-gray-300 disabled:opacity-50"
+              >
+                🔄 購入の復元
+              </button>
+            )}
+
+            {/* 自動更新サブスクの開示 (App Store ガイドライン要件) */}
+            {!state.isPaid && (
+              <div className="card-base px-4 py-3 text-[11px] text-gray-400 leading-relaxed space-y-2">
+                <p className="font-bold text-gray-300">自動更新サブスクリプションについて</p>
+                <ul className="space-y-1 list-disc list-inside">
+                  <li>支払いは購入確定時にApple IDアカウントに請求されます</li>
+                  <li>サブスクリプションは現在の期間が終了する24時間前までに自動更新をオフにしない限り、自動的に更新されます（同額）</li>
+                  <li>更新の請求は現在の期間の終了前24時間以内に行われます</li>
+                  <li>サブスクリプションの管理・自動更新の停止は、購入後にApple IDのアカウント設定から行えます</li>
+                  <li>無料トライアル期間中の解約はトライアル終了の24時間前までに行ってください</li>
+                </ul>
+                <div className="pt-2 flex flex-wrap gap-x-3 gap-y-1">
+                  <a href="/terms" className="text-blue-400 underline">利用規約</a>
+                  <a href="/privacy" className="text-blue-400 underline">プライバシーポリシー</a>
+                </div>
+              </div>
+            )}
+
+            {/* 開発中の注意書き (Web/PWAのみ表示) */}
+            {!isIOS && (
+              <div className="card-base px-4 py-3 text-[11px] text-gray-500 leading-relaxed">
+                ℹ️ Web版ではテスト用のサブスク管理を行っています。iOSアプリ版ではApple App Store経由の正式な課金になります。
+              </div>
+            )}
           </>
         )}
       </div>

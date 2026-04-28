@@ -59,19 +59,43 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-base font-bold text-white mb-2">第4条（サブスクリプション・課金）</h2>
+          <h2 className="text-base font-bold text-white mb-2">第4条（サブスクリプション・自動更新課金）</h2>
           <ol className="space-y-1 pl-5 list-decimal text-gray-300">
-            <li>本アプリには無料プランと有料プラン（月額・年額）があります。</li>
-            <li>有料プランの料金・特典・解約条件は、アプリ内「プラン」画面にて確認できます。</li>
+            <li>本アプリには無料プランと有料プラン（プレミアムプラン）があります。</li>
             <li>
-              有料プランの決済は、ユーザーのApple IDに紐付くApple App Store経由で行われます。
-              解約・返金等の取り扱いは、Apple社の規約に従います。
+              <strong className="text-white">プラン内容と料金</strong>:
+              <ul className="pl-4 list-disc mt-1 space-y-0.5">
+                <li>月額プラン: 1ヶ月あたり 1,280円（税込）</li>
+                <li>年額プラン: 1年あたり 12,800円（税込、月換算1,067円）</li>
+                <li>初回登録時に7日間の無料トライアルが付与されます</li>
+              </ul>
             </li>
             <li>
-              サブスクリプションは、解約手続きを行わない限り自動更新されます。解約はApp Storeの購読管理画面から行ってください。
+              <strong className="text-white">支払いタイミング</strong>: 購入確定時にユーザーのApple IDアカウントに料金が請求されます。
             </li>
             <li>
-              無料トライアル期間中に解約された場合、以降の課金は発生しません。
+              <strong className="text-white">自動更新</strong>:
+              サブスクリプションは、現在の期間が終了する24時間前までに自動更新をオフにしない限り、自動的に同額で更新されます。
+              更新の請求は、現在の期間が終了する24時間以内に行われます。
+            </li>
+            <li>
+              <strong className="text-white">プランの管理・解約</strong>:
+              サブスクリプションの管理および自動更新の停止は、購入後にApple IDのアカウント設定からいつでも行うことができます。
+              （iOSの「設定」アプリ → 自分の名前 → 「サブスクリプション」）
+            </li>
+            <li>
+              <strong className="text-white">無料トライアルの解約</strong>:
+              無料トライアル中に解約する場合、トライアル終了の24時間前までに上記の方法で解約手続きを行ってください。
+              手続きを行わない場合、トライアル終了時に自動的に有料プランに移行し課金が発生します。
+            </li>
+            <li>
+              <strong className="text-white">返金</strong>:
+              返金等の取り扱いは、Apple社の規約に従います。当社では返金処理は行えません。
+              （詳細は <a href="https://support.apple.com/ja-jp/HT204084" target="_blank" rel="noopener noreferrer" className="text-blue-400 underline">Apple公式の返金リクエスト手順</a> をご参照ください）
+            </li>
+            <li>
+              <strong className="text-white">価格変更</strong>:
+              料金プランは予告なく変更される場合があります。価格変更は次回更新時から適用され、Apple のポリシーに従い事前通知されます。
             </li>
           </ol>
         </section>
