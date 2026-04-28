@@ -274,6 +274,30 @@ export default function Home() {
     return () => { unsubscribed = true; };
   }, []);
 
+  // 🚨 起動時に旧スパム通知 (every:'hour' のバグで連続発火していたもの) を一括クリア
+  useEffect(() => {
+    (async () => {
+      if (typeof window === "undefined") return;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const cap = (window as any).Capacitor;
+      if (cap?.isNativePlatform?.() !== true) return;
+      try {
+        const { LocalNotifications } = await import("@capacitor/local-notifications");
+        const pending = await LocalNotifications.getPending();
+        // id:1 (旧バグの繰り返し通知) を必ず削除
+        const buggyIds = pending.notifications
+          .filter((n) => n.id === 1)
+          .map((n) => ({ id: n.id }));
+        if (buggyIds.length > 0) {
+          await LocalNotifications.cancel({ notifications: buggyIds });
+          console.log(`[notif-cleanup] removed ${buggyIds.length} legacy notifications`);
+        }
+      } catch (e) {
+        console.error("[notif-cleanup] failed:", e);
+      }
+    })();
+  }, []);
+
   const goToSelfcare = (symptomId: string) => {
     setSelectedSymptomId(symptomId);
     setScreen("selfcare");
@@ -1066,44 +1090,63 @@ function HomeScreen({
     return cap?.isNativePlatform?.() === true;
   };
 
-  // ネイティブ通知をスケジュール
+  // ネイティブ通知をスケジュール (休憩リマインダー)
+  // ⚠️ Capacitor LocalNotifications の every は固定値 (hour/day/week) のため、
+  // 「N時間ごと」を表現するには複数件を予約する。
+  // 旧実装のバグ: every: 'hour' 固定で1時間ごとに発火 (ユーザーが3時間/6時間を選んでも無視)
   const scheduleNativeNotification = async (hours: number) => {
     if (!isNativePlatform()) return;
     try {
       const { LocalNotifications } = await import("@capacitor/local-notifications");
-      // 既存通知をキャンセル
-      await LocalNotifications.cancel({ notifications: [{ id: 1 }] });
+
+      // ===== 修正: 旧スパム通知を完全クリア =====
+      // 以前 every: 'hour' で延々予約された通知を一括削除
+      const pending = await LocalNotifications.getPending();
+      const oldIds = pending.notifications
+        .filter((n) => [1, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112].includes(n.id))
+        .map((n) => ({ id: n.id }));
+      if (oldIds.length > 0) {
+        await LocalNotifications.cancel({ notifications: oldIds });
+      }
+
       // 権限取得
       const perm = await LocalNotifications.requestPermissions();
       if (perm.display !== "granted") return;
-      // 新しい通知をスケジュール
+
+      // hours 時間ごとに、今後24時間分を予約 (繰り返しは使わず明示的に複数予約)
+      // 例: hours=3 なら 3h, 6h, 9h, 12h, 15h, 18h, 21h, 24h 後の8件
       const intervalMs = hours * 60 * 60 * 1000;
-      await LocalNotifications.schedule({
-        notifications: [
-          {
-            id: 1,
-            title: "ZERO-PAIN リマインダー",
-            body: `${hours}時間経ちました。体を動かしましょう！簡単なストレッチで体をリセット💪`,
-            schedule: {
-              at: new Date(Date.now() + intervalMs),
-              repeats: true,
-              every: "hour",
-            },
-            sound: "default",
-          },
-        ],
-      });
+      const occurrencesIn24h = Math.floor(24 / hours);
+      const notifications = [];
+      for (let i = 1; i <= occurrencesIn24h; i++) {
+        const at = new Date(Date.now() + intervalMs * i);
+        // 深夜帯 (23時〜7時) はスキップ
+        const h = at.getHours();
+        if (h >= 23 || h < 7) continue;
+        notifications.push({
+          id: 100 + i, // 100..107 の範囲で別IDで予約
+          title: "ZERO-PAIN リマインダー",
+          body: `${hours}時間経ちました。体を動かしましょう！簡単なストレッチで体をリセット💪`,
+          schedule: { at },
+          sound: "default",
+        });
+      }
+      if (notifications.length > 0) {
+        await LocalNotifications.schedule({ notifications });
+      }
     } catch (e) {
       console.error("Native notification schedule error:", e);
     }
   };
 
-  // ネイティブ通知をキャンセル
+  // ネイティブ通知をキャンセル (旧IDと新IDの両方を消す)
   const cancelNativeNotification = async () => {
     if (!isNativePlatform()) return;
     try {
       const { LocalNotifications } = await import("@capacitor/local-notifications");
-      await LocalNotifications.cancel({ notifications: [{ id: 1 }] });
+      // 旧バグ版で残った id:1 + 新版の 100..112 範囲を全部キャンセル
+      const ids = [1, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112].map((id) => ({ id }));
+      await LocalNotifications.cancel({ notifications: ids });
     } catch (e) {
       console.error("Native notification cancel error:", e);
     }
