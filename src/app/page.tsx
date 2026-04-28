@@ -1717,15 +1717,6 @@ function HomeScreen({
             </div>
           </button>
 
-          {/* ガイコツ先生のプロフィールへ */}
-          <button
-            onClick={() => onNavigate("sensei-profile")}
-            className="w-full flex items-center justify-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 py-1.5"
-          >
-            <span aria-hidden>💀</span>
-            <span>ガイコツ先生について詳しく</span>
-            <IconChevronRight size={12} strokeWidth={2.5} />
-          </button>
         </div>
 
         {/* Step 3: 食事記録 */}
@@ -9302,25 +9293,6 @@ function SenseiProfileScreen({ onNavigate }: { onNavigate: (s: Screen) => void }
             「骨の髄まで、あなたの体を見つめます。<br />
             体の軸が整えば、人生の軸も整う」
           </p>
-        </div>
-
-        {/* ストーリー */}
-        <div className="card-base p-5 space-y-3">
-          <p className="text-xs font-bold text-amber-300 tracking-widest">STORY</p>
-          <div className="space-y-3 text-sm text-gray-300 leading-relaxed">
-            <p>
-              生前、先生は30年にわたって整体院を営み、<span className="text-emerald-300 font-bold">1万人以上の体</span>を整えてきました。
-            </p>
-            <p>
-              「人は見た目ではなく、骨格で決まる」と信じ、骨と向き合い続けた人生。その熱意は、骨だけになった今も変わることはありません。
-            </p>
-            <p>
-              ZERO-PAINアプリに宿り、現代のスマホユーザーが抱える姿勢の悩み、慢性的な痛み、運動不足、食事の乱れ──すべてを<span className="text-emerald-300 font-bold">AIの力で見立て</span>、一人ひとりに寄り添うようになりました。
-            </p>
-            <p>
-              ガイコツの姿に恐れる人もいるかもしれません。でも安心してください。見た目は骨でも、中身は<span className="text-emerald-300 font-bold">永遠の35歳</span>、情熱と愛情にあふれるカイロプラクターです。
-            </p>
-          </div>
         </div>
 
         {/* 得意分野 */}
