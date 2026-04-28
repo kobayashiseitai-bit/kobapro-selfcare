@@ -16,6 +16,9 @@ import {
   Skull as IconSkull,
   Trash2 as IconTrash,
   ChevronRight as IconChevronRight,
+  Smartphone as IconSmartphone,
+  Copy as IconCopy,
+  KeyRound as IconKeyRound,
 } from "lucide-react";
 import { CHARACTERS, type SenseiCharacterId } from "../lib/sensei-characters";
 
@@ -42,6 +45,69 @@ export default function SettingsPage() {
   const [theme, setTheme] = useState<ThemeMode>("light");
   const [dialect, setDialect] = useState<DialectPref>("standard");
   const [character, setCharacter] = useState<SenseiCharacterId>("kentaro");
+
+  // ===== デバイス引継ぎ =====
+  const [transferMode, setTransferMode] = useState<null | "generate" | "restore">(null);
+  const [transferLoading, setTransferLoading] = useState(false);
+  const [generatedCode, setGeneratedCode] = useState<string | null>(null);
+  const [restoreInput, setRestoreInput] = useState("");
+
+  const handleGenerateCode = async () => {
+    setTransferLoading(true);
+    setGeneratedCode(null);
+    try {
+      const res = await fetch("/api/transfer/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deviceId: getDeviceId() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setMessage({ type: "error", text: data.error || "コード発行に失敗しました" });
+        return;
+      }
+      setGeneratedCode(data.displayCode);
+    } catch {
+      setMessage({ type: "error", text: "通信エラーが発生しました" });
+    } finally {
+      setTransferLoading(false);
+    }
+  };
+
+  const handleCopyCode = async () => {
+    if (!generatedCode) return;
+    try {
+      await navigator.clipboard.writeText(generatedCode);
+      setMessage({ type: "ok", text: "コードをコピーしました" });
+    } catch {
+      setMessage({ type: "error", text: "コピーに失敗しました" });
+    }
+  };
+
+  const handleRestore = async () => {
+    if (!restoreInput.trim()) return;
+    setTransferLoading(true);
+    try {
+      const res = await fetch("/api/transfer/restore", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: restoreInput.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setMessage({ type: "error", text: data.error || "復元に失敗しました" });
+        return;
+      }
+      // 引き継ぎ成功 → 旧 deviceId を上書き
+      localStorage.setItem("zero_pain_device_id", data.deviceId);
+      setMessage({ type: "ok", text: "引き継ぎが完了しました。アプリを再読み込みします..." });
+      setTimeout(() => window.location.href = "/", 1500);
+    } catch {
+      setMessage({ type: "error", text: "通信エラーが発生しました" });
+    } finally {
+      setTransferLoading(false);
+    }
+  };
 
   // 口調設定の初期化
   useEffect(() => {
@@ -385,6 +451,47 @@ export default function SettingsPage() {
           </div>
         </section>
 
+        {/* デバイス引継ぎ */}
+        <section>
+          <p className="text-[11px] text-gray-400 font-bold tracking-wide mb-2 px-1 flex items-center gap-1.5">
+            <IconSmartphone size={14} className="text-blue-400" />
+            デバイス引継ぎ（機種変更）
+          </p>
+          <div className="space-y-2">
+            <button
+              onClick={() => { setTransferMode("generate"); setGeneratedCode(null); }}
+              className="card-base w-full flex items-center justify-between p-4 active:scale-[0.99] transition text-left"
+            >
+              <div className="flex items-center gap-3">
+                <span className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                  <IconKeyRound size={18} className="text-blue-400" />
+                </span>
+                <div>
+                  <p className="text-sm font-bold text-white">引継ぎコードを発行</p>
+                  <p className="text-[11px] text-gray-400 mt-0.5">新しい端末で入力してデータを移行</p>
+                </div>
+              </div>
+              <IconChevronRight size={18} className="text-gray-500 flex-shrink-0" />
+            </button>
+
+            <button
+              onClick={() => { setTransferMode("restore"); setRestoreInput(""); }}
+              className="card-base w-full flex items-center justify-between p-4 active:scale-[0.99] transition text-left"
+            >
+              <div className="flex items-center gap-3">
+                <span className="w-9 h-9 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                  <IconCopy size={18} className="text-purple-400" />
+                </span>
+                <div>
+                  <p className="text-sm font-bold text-white">コードを入力して復元</p>
+                  <p className="text-[11px] text-gray-400 mt-0.5">前の端末で発行したコードでデータを復元</p>
+                </div>
+              </div>
+              <IconChevronRight size={18} className="text-gray-500 flex-shrink-0" />
+            </button>
+          </div>
+        </section>
+
         {/* データ管理 */}
         <section>
           <p className="text-[11px] text-gray-400 font-bold tracking-wide mb-2 px-1 flex items-center gap-1.5">
@@ -465,6 +572,127 @@ export default function SettingsPage() {
           </div>
         )}
       </div>
+
+      {/* デバイス引継ぎコード発行モーダル */}
+      {transferMode === "generate" && (
+        <div
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-6"
+          onClick={() => !transferLoading && setTransferMode(null)}
+        >
+          <div
+            className="w-full max-w-sm bg-gray-900 border border-blue-500/40 rounded-3xl p-5 shadow-2xl space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-extrabold text-blue-400 flex items-center gap-2">
+              <IconKeyRound size={20} />
+              引継ぎコードの発行
+            </h3>
+            {!generatedCode ? (
+              <>
+                <p className="text-sm text-gray-300 leading-relaxed">
+                  新しい端末で入力するための8桁のコードを発行します。
+                  <br />
+                  <span className="text-amber-300">⚠️ 1時間で失効、1回のみ使用可能</span>
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setTransferMode(null)}
+                    disabled={transferLoading}
+                    className="flex-1 py-3 px-4 rounded-xl bg-gray-800 text-gray-300 font-bold disabled:opacity-50"
+                  >
+                    キャンセル
+                  </button>
+                  <button
+                    onClick={handleGenerateCode}
+                    disabled={transferLoading}
+                    className="flex-1 py-3 px-4 rounded-xl bg-blue-600 text-white font-bold disabled:opacity-50"
+                  >
+                    {transferLoading ? "発行中..." : "コードを発行"}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-xs text-gray-300 mb-2">あなたの引継ぎコード:</p>
+                <div className="bg-gray-800 rounded-xl p-4 text-center">
+                  <p className="text-3xl font-mono font-extrabold text-blue-300 tracking-widest">
+                    {generatedCode}
+                  </p>
+                </div>
+                <p className="text-[11px] text-gray-400 leading-relaxed">
+                  このコードを新しい端末の「コードを入力して復元」画面で入力してください。
+                  <br />
+                  ⏰ 1時間で失効します。
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleCopyCode}
+                    className="flex-1 py-3 px-4 rounded-xl bg-gray-800 text-blue-300 font-bold flex items-center justify-center gap-2"
+                  >
+                    <IconCopy size={16} />
+                    コピー
+                  </button>
+                  <button
+                    onClick={() => { setTransferMode(null); setGeneratedCode(null); }}
+                    className="flex-1 py-3 px-4 rounded-xl bg-blue-600 text-white font-bold"
+                  >
+                    閉じる
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* デバイス引継ぎ復元モーダル */}
+      {transferMode === "restore" && (
+        <div
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-6"
+          onClick={() => !transferLoading && setTransferMode(null)}
+        >
+          <div
+            className="w-full max-w-sm bg-gray-900 border border-purple-500/40 rounded-3xl p-5 shadow-2xl space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-extrabold text-purple-400 flex items-center gap-2">
+              <IconCopy size={20} />
+              コードを入力して復元
+            </h3>
+            <p className="text-sm text-gray-300 leading-relaxed">
+              前の端末で発行した8桁のコードを入力してください。
+              <br />
+              <span className="text-amber-300">⚠️ 現在の端末のデータは上書きされます</span>
+            </p>
+            <input
+              type="text"
+              value={restoreInput}
+              onChange={(e) => setRestoreInput(e.target.value)}
+              placeholder="例: K7M2-X9P4"
+              className="w-full px-4 py-3 rounded-xl bg-gray-800 text-white text-center font-mono text-xl tracking-widest border border-gray-700 focus:border-purple-500 outline-none"
+              maxLength={9}
+              autoCapitalize="characters"
+              autoComplete="off"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => setTransferMode(null)}
+                disabled={transferLoading}
+                className="flex-1 py-3 px-4 rounded-xl bg-gray-800 text-gray-300 font-bold disabled:opacity-50"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={handleRestore}
+                disabled={transferLoading || restoreInput.length < 8}
+                className="flex-1 py-3 px-4 rounded-xl bg-purple-600 text-white font-bold disabled:opacity-50"
+              >
+                {transferLoading ? "復元中..." : "復元する"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* アカウント削除モーダル */}
       {showDeleteModal && (
