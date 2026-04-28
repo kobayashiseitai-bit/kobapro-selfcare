@@ -5082,6 +5082,13 @@ function DailyTipCard() {
             <span>{tip.title}</span>
           </p>
           <p className="text-sm text-gray-300 leading-relaxed">{tip.body}</p>
+          <a
+            href="/articles"
+            className="inline-flex items-center gap-1 mt-2 text-[11px] text-emerald-400 hover:text-emerald-300 font-bold"
+          >
+            📰 もっと読む（ニュース・コラム）
+            <span aria-hidden>›</span>
+          </a>
         </div>
       </div>
     </div>

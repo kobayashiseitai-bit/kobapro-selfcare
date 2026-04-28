@@ -39,7 +39,13 @@ import {
   getHealthSnapshot,
   type HealthSnapshot,
 } from "../lib/healthkit";
-import { Heart as IconHeart, Activity as IconActivity } from "lucide-react";
+import { shareApp } from "../lib/share";
+import {
+  Heart as IconHeart,
+  Activity as IconActivity,
+  Share2 as IconShare,
+  Newspaper as IconNewspaper,
+} from "lucide-react";
 
 function getDeviceId(): string {
   if (typeof window === "undefined") return "";
@@ -122,6 +128,16 @@ export default function SettingsPage() {
       setHkSnapshot(snap);
     } finally {
       setHkBusy(false);
+    }
+  };
+
+  // 友達にシェア
+  const handleShareApp = async () => {
+    const result = await shareApp();
+    if (result.ok && result.method === "clipboard") {
+      setMessage({ type: "ok", text: "シェアテキストをコピーしました！" });
+    } else if (!result.ok && result.reason === "unsupported") {
+      setMessage({ type: "error", text: "このブラウザはシェアに対応していません" });
     }
   };
 
@@ -560,6 +576,47 @@ export default function SettingsPage() {
               </div>
               <IconChevronRight size={18} className="text-gray-500 flex-shrink-0" />
             </Link>
+          </div>
+        </section>
+
+        {/* 情報・シェア */}
+        <section>
+          <p className="text-[11px] text-gray-400 font-bold tracking-wide mb-2 px-1 flex items-center gap-1.5">
+            <IconNewspaper size={14} className="text-emerald-400" />
+            情報・シェア
+          </p>
+          <div className="space-y-2">
+            <Link
+              href="/articles"
+              className="card-base w-full flex items-center justify-between p-4 active:scale-[0.99] transition text-left"
+            >
+              <div className="flex items-center gap-3">
+                <span className="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                  <IconNewspaper size={18} className="text-emerald-400" />
+                </span>
+                <div>
+                  <p className="text-sm font-bold text-white">ニュース・コラム</p>
+                  <p className="text-[11px] text-gray-400 mt-0.5">姿勢・食事・睡眠の専門記事を読む</p>
+                </div>
+              </div>
+              <IconChevronRight size={18} className="text-gray-500 flex-shrink-0" />
+            </Link>
+
+            <button
+              onClick={handleShareApp}
+              className="card-base w-full flex items-center justify-between p-4 active:scale-[0.99] transition text-left"
+            >
+              <div className="flex items-center gap-3">
+                <span className="w-9 h-9 rounded-lg bg-pink-500/10 flex items-center justify-center">
+                  <IconShare size={18} className="text-pink-400" />
+                </span>
+                <div>
+                  <p className="text-sm font-bold text-white">友達にアプリを紹介</p>
+                  <p className="text-[11px] text-gray-400 mt-0.5">SNS・LINE・メールで簡単共有</p>
+                </div>
+              </div>
+              <IconChevronRight size={18} className="text-gray-500 flex-shrink-0" />
+            </button>
           </div>
         </section>
 
