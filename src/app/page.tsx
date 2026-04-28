@@ -8861,13 +8861,13 @@ function CoachingScreen({
               </div>
               <p className="text-sm text-gray-300 leading-relaxed">
                 ガイコツ先生が<span className="font-bold text-emerald-300">あなたの体・お悩み・目標</span>から、
-                毎日の課題を組み立てます。1日5〜10分、続けるだけで体が変わる。
+                毎日の課題を組み立てます。1日5〜10分、続けることで体の変化をサポート。
               </p>
               <ul className="space-y-1.5 text-xs text-gray-300">
                 <li>✓ AIが個別の30タスクを自動生成</li>
                 <li>✓ 1日1タスク、5〜10分で完結</li>
                 <li>✓ 達成バッジで継続モチベ</li>
-                <li>✓ 1ヶ月後に効果が見える</li>
+                <li>✓ 1ヶ月続けると体の変化を実感する方が多い</li>
               </ul>
             </div>
 
