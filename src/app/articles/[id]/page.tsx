@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { use } from "react";
 import { ChevronLeft, Clock, Share2 } from "lucide-react";
 import { notFound } from "next/navigation";
 import {
@@ -14,9 +13,9 @@ import { shareArticle } from "../../lib/share";
 export default function ArticleDetailPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: { id: string };
 }) {
-  const { id } = use(params);
+  const { id } = params;
   const article = getArticleById(id);
 
   if (!article) {
