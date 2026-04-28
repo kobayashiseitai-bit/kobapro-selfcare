@@ -19,8 +19,27 @@ import {
   Smartphone as IconSmartphone,
   Copy as IconCopy,
   KeyRound as IconKeyRound,
+  Bell as IconBell,
+  Utensils as IconUtensils,
 } from "lucide-react";
 import { CHARACTERS, type SenseiCharacterId } from "../lib/sensei-characters";
+import {
+  loadConfig as loadMealReminders,
+  saveConfig as saveMealReminders,
+  applyMealReminders,
+  type MealSlot,
+  type MealReminderConfig,
+  SLOT_LABELS as MEAL_SLOT_LABELS,
+  SLOT_EMOJI as MEAL_SLOT_EMOJI,
+} from "../lib/meal-reminders";
+import {
+  isHealthKitAvailable,
+  requestHealthKitPermissions,
+  isHealthKitAuthorized,
+  getHealthSnapshot,
+  type HealthSnapshot,
+} from "../lib/healthkit";
+import { Heart as IconHeart, Activity as IconActivity } from "lucide-react";
 
 function getDeviceId(): string {
   if (typeof window === "undefined") return "";
@@ -51,6 +70,99 @@ export default function SettingsPage() {
   const [transferLoading, setTransferLoading] = useState(false);
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
   const [restoreInput, setRestoreInput] = useState("");
+
+  // ===== 食事リマインダー =====
+  const [mealRemind, setMealRemind] = useState<MealReminderConfig | null>(null);
+  const [mealRemindBusy, setMealRemindBusy] = useState(false);
+
+  useEffect(() => {
+    setMealRemind(loadMealReminders());
+  }, []);
+
+  // ===== HealthKit =====
+  const [hkAvailable, setHkAvailable] = useState(false);
+  const [hkAuthorized, setHkAuthorized] = useState(false);
+  const [hkSnapshot, setHkSnapshot] = useState<HealthSnapshot | null>(null);
+  const [hkBusy, setHkBusy] = useState(false);
+
+  useEffect(() => {
+    setHkAvailable(isHealthKitAvailable());
+    if (!isHealthKitAvailable()) return;
+    (async () => {
+      const ok = await isHealthKitAuthorized();
+      setHkAuthorized(ok);
+      if (ok) {
+        const snap = await getHealthSnapshot();
+        setHkSnapshot(snap);
+      }
+    })();
+  }, []);
+
+  const handleConnectHealthKit = async () => {
+    setHkBusy(true);
+    try {
+      const result = await requestHealthKitPermissions();
+      if (result.ok) {
+        setHkAuthorized(true);
+        const snap = await getHealthSnapshot();
+        setHkSnapshot(snap);
+        setMessage({ type: "ok", text: "ヘルスケアと連携しました" });
+      } else {
+        setMessage({ type: "error", text: result.error || "連携に失敗しました" });
+      }
+    } finally {
+      setHkBusy(false);
+    }
+  };
+
+  const handleRefreshHealthKit = async () => {
+    setHkBusy(true);
+    try {
+      const snap = await getHealthSnapshot();
+      setHkSnapshot(snap);
+    } finally {
+      setHkBusy(false);
+    }
+  };
+
+  const updateMealReminderField = (
+    slot: MealSlot,
+    field: "enabled" | "time",
+    value: boolean | string
+  ) => {
+    if (!mealRemind) return;
+    const next: MealReminderConfig = {
+      enabled: { ...mealRemind.enabled },
+      times: { ...mealRemind.times },
+    };
+    if (field === "enabled") next.enabled[slot] = value as boolean;
+    else next.times[slot] = value as string;
+    setMealRemind(next);
+    saveMealReminders(next);
+  };
+
+  const handleApplyMealReminders = async () => {
+    if (!mealRemind) return;
+    setMealRemindBusy(true);
+    try {
+      const result = await applyMealReminders(mealRemind);
+      if (result.ok && result.permitted) {
+        setMessage({
+          type: "ok",
+          text: `通知を設定しました (${result.scheduled.length}件)`,
+        });
+      } else if (result.ok) {
+        setMessage({ type: "ok", text: result.reason || "設定を保存しました" });
+      } else {
+        setMessage({
+          type: "error",
+          text: result.reason || "通知の登録に失敗しました",
+        });
+      }
+    } finally {
+      setMealRemindBusy(false);
+    }
+  };
 
   const handleGenerateCode = async () => {
     setTransferLoading(true);
@@ -450,6 +562,127 @@ export default function SettingsPage() {
             </Link>
           </div>
         </section>
+
+        {/* 食事リマインダー */}
+        <section>
+          <p className="text-[11px] text-gray-400 font-bold tracking-wide mb-2 px-1 flex items-center gap-1.5">
+            <IconBell size={14} className="text-orange-400" />
+            食事撮影リマインダー
+          </p>
+          {mealRemind && (
+            <div className="card-base p-4 space-y-3">
+              <p className="text-[11px] text-gray-400 leading-relaxed">
+                朝・昼・夕の食事時間に「写真を撮りましたか？」の通知を送ります。
+                <br />タップで食事画面が開きます。
+              </p>
+              {(["breakfast", "lunch", "dinner"] as MealSlot[]).map((slot) => (
+                <div key={slot} className="flex items-center gap-3 pt-1">
+                  <label className="flex items-center gap-2 flex-1 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={mealRemind.enabled[slot]}
+                      onChange={(e) =>
+                        updateMealReminderField(slot, "enabled", e.target.checked)
+                      }
+                      className="w-4 h-4 accent-orange-500"
+                    />
+                    <span className="text-sm text-white flex items-center gap-1.5">
+                      <span>{MEAL_SLOT_EMOJI[slot]}</span>
+                      <span>{MEAL_SLOT_LABELS[slot]}</span>
+                    </span>
+                  </label>
+                  <input
+                    type="time"
+                    value={mealRemind.times[slot]}
+                    onChange={(e) =>
+                      updateMealReminderField(slot, "time", e.target.value)
+                    }
+                    disabled={!mealRemind.enabled[slot]}
+                    className="bg-gray-800 text-white px-3 py-1.5 rounded-lg text-sm border border-gray-700 disabled:opacity-40"
+                  />
+                </div>
+              ))}
+              <button
+                onClick={handleApplyMealReminders}
+                disabled={mealRemindBusy}
+                className="w-full mt-2 py-3 px-4 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-50 active:scale-[0.99] transition"
+              >
+                <IconUtensils size={16} />
+                {mealRemindBusy ? "設定中..." : "通知を設定する"}
+              </button>
+              <p className="text-[10px] text-gray-500 leading-relaxed">
+                ※ 初回は端末の通知許可が求められます。許可しないと通知は届きません。
+              </p>
+            </div>
+          )}
+        </section>
+
+        {/* Apple ヘルスケア連携 (iOS ネイティブのみ表示) */}
+        {hkAvailable && (
+          <section>
+            <p className="text-[11px] text-gray-400 font-bold tracking-wide mb-2 px-1 flex items-center gap-1.5">
+              <IconHeart size={14} className="text-pink-400" />
+              Apple ヘルスケア連携
+            </p>
+            <div className="card-base p-4 space-y-3">
+              {!hkAuthorized ? (
+                <>
+                  <p className="text-[12px] text-gray-300 leading-relaxed">
+                    歩数・体重・心拍数などをヘルスケアから取得して、
+                    AIアドバイスの精度を向上させます。
+                    <br />
+                    <span className="text-pink-300 text-[11px]">
+                      ※ あなたが選択したデータのみ読み取ります（書き込みなし）
+                    </span>
+                  </p>
+                  <button
+                    onClick={handleConnectHealthKit}
+                    disabled={hkBusy}
+                    className="w-full py-3 px-4 rounded-xl bg-pink-600 hover:bg-pink-700 text-white font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-50 active:scale-[0.99] transition"
+                  >
+                    <IconHeart size={16} />
+                    {hkBusy ? "連携中..." : "ヘルスケアと連携する"}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-sm font-bold text-pink-300 flex items-center gap-1.5">
+                      <IconActivity size={14} />
+                      連携中
+                    </p>
+                    <button
+                      onClick={handleRefreshHealthKit}
+                      disabled={hkBusy}
+                      className="text-[11px] text-blue-400 underline disabled:opacity-50"
+                    >
+                      {hkBusy ? "更新中..." : "更新"}
+                    </button>
+                  </div>
+                  {hkSnapshot && (
+                    <ul className="text-[12px] text-gray-300 space-y-1">
+                      {hkSnapshot.stepsToday !== null && (
+                        <li>👣 今日の歩数: <strong className="text-white">{hkSnapshot.stepsToday.toLocaleString()}</strong> 歩</li>
+                      )}
+                      {hkSnapshot.stepsWeekAvg !== null && (
+                        <li>📊 過去7日平均: <strong className="text-white">{hkSnapshot.stepsWeekAvg.toLocaleString()}</strong> 歩/日</li>
+                      )}
+                      {hkSnapshot.weightKg !== null && (
+                        <li>⚖️ 最新体重: <strong className="text-white">{hkSnapshot.weightKg.toFixed(1)}</strong> kg</li>
+                      )}
+                      {hkSnapshot.restingHeartRate !== null && (
+                        <li>💓 安静時心拍数: <strong className="text-white">{hkSnapshot.restingHeartRate}</strong> bpm</li>
+                      )}
+                      {hkSnapshot.activeEnergyToday !== null && (
+                        <li>🔥 アクティブカロリー: <strong className="text-white">{hkSnapshot.activeEnergyToday}</strong> kcal</li>
+                      )}
+                    </ul>
+                  )}
+                </>
+              )}
+            </div>
+          </section>
+        )}
 
         {/* デバイス引継ぎ */}
         <section>

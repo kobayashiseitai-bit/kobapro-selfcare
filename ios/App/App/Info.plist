@@ -55,6 +55,10 @@
 	<string>姿勢チェックの結果画像を保存するために使用します。</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>過去の姿勢チェック画像にアクセスするために使用します。</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>歩数・体重・心拍数・アクティブカロリーなどのヘルスケア情報を読み取り、AIによるセルフケアアドバイスの精度向上に利用します。データは端末内で処理され、外部に送信される際もご本人特定はされません。</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>セルフケア記録（ストレッチ実施等）をヘルスケアに書き込むために使用します。書き込みはユーザーが許可した場合のみ実施します。</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>

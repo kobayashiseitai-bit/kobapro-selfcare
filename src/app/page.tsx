@@ -260,6 +260,20 @@ export default function Home() {
       .catch(() => setScreen("register"));
   }, []);
 
+  // 食事リマインダー通知タップ → 食事画面を開く
+  useEffect(() => {
+    let unsubscribed = false;
+    (async () => {
+      const { registerMealReminderTapHandler } = await import("./lib/meal-reminders");
+      if (unsubscribed) return;
+      await registerMealReminderTapHandler(() => {
+        setMealInitialMode("home");
+        setScreen("meal");
+      });
+    })();
+    return () => { unsubscribed = true; };
+  }, []);
+
   const goToSelfcare = (symptomId: string) => {
     setSelectedSymptomId(symptomId);
     setScreen("selfcare");
