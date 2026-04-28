@@ -1,0 +1,170 @@
+name: Uptime Monitor
+
+# 1時間ごとに本番サイトを監視。異常検知時は Issue 作成 → メール通知
+# 復旧したら Issue を自動クローズ
+on:
+  schedule:
+    - cron: "0 * * * *"  # 毎時0分に実行 (UTC) → 月720回 / 720分 (GitHub Actions無料枠2000分内)
+  workflow_dispatch:  # 手動実行も可能
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check production site
+        id: check
+        run: |
+          URL="https://posture-app-steel.vercel.app/"
+          echo "Checking $URL ..."
+
+          # 最大10秒でリクエスト、status と body の両方を取得
+          HTTP_STATUS=$(curl -s -o /tmp/body.txt -w "%{http_code}" --max-time 10 "$URL" || echo "000")
+          RESPONSE_TIME=$(curl -s -o /dev/null -w "%{time_total}" --max-time 10 "$URL" || echo "timeout")
+          BODY=$(head -c 500 /tmp/body.txt 2>/dev/null || echo "")
+
+          echo "HTTP Status: $HTTP_STATUS"
+          echo "Response Time: ${RESPONSE_TIME}s"
+
+          # Vercel特有のエラーを検知
+          REASON=""
+          if [ "$HTTP_STATUS" = "200" ]; then
+            STATUS="up"
+          elif [ "$HTTP_STATUS" = "503" ] && echo "$BODY" | grep -q "DEPLOYMENT_PAUSED"; then
+            STATUS="paused"
+            REASON="Vercelプロジェクトが Pause 状態 (Spend Management 上限到達の可能性)"
+          elif [ "$HTTP_STATUS" = "504" ]; then
+            STATUS="down"
+            REASON="Gateway Timeout (504) - サーバー応答なし"
+          elif [ "$HTTP_STATUS" = "500" ]; then
+            STATUS="down"
+            REASON="Internal Server Error (500)"
+          elif [ "$HTTP_STATUS" = "000" ]; then
+            STATUS="down"
+            REASON="サイトに接続できない (DNS/ネットワーク障害の可能性)"
+          else
+            STATUS="down"
+            REASON="HTTP $HTTP_STATUS"
+          fi
+
+          echo "status=$STATUS" >> $GITHUB_OUTPUT
+          echo "http_status=$HTTP_STATUS" >> $GITHUB_OUTPUT
+          echo "response_time=$RESPONSE_TIME" >> $GITHUB_OUTPUT
+          echo "reason=$REASON" >> $GITHUB_OUTPUT
+          {
+            echo "body<<EOF"
+            echo "$BODY"
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
+
+      - name: Find existing open uptime issue
+        id: find
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'uptime-alert',
+            });
+            const existing = issues.data[0];
+            core.setOutput('number', existing ? existing.number : '');
+            core.setOutput('exists', existing ? 'true' : 'false');
+
+      - name: Create alert issue (if down and no existing issue)
+        if: steps.check.outputs.status != 'up' && steps.find.outputs.exists != 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const status = '${{ steps.check.outputs.status }}';
+            const httpStatus = '${{ steps.check.outputs.http_status }}';
+            const responseTime = '${{ steps.check.outputs.response_time }}';
+            const reason = `${{ steps.check.outputs.reason }}`;
+            const now = new Date().toISOString();
+
+            const title = status === 'paused'
+              ? '🔴 [Uptime] Vercel プロジェクトが Pause されています'
+              : `🔴 [Uptime] サイトダウン検知 (HTTP ${httpStatus})`;
+
+            const body = `## 検知時刻
+            ${now}
+
+            ## 状態
+            **${status.toUpperCase()}**
+
+            ## 詳細
+            - URL: https://posture-app-steel.vercel.app/
+            - HTTP Status: \`${httpStatus}\`
+            - Response Time: ${responseTime}s
+            - 推定原因: ${reason}
+
+            ## 対応手順
+            ${status === 'paused' ? `
+            1. Vercel ダッシュボードを開く: https://vercel.com/makoto-kobayashis-projects/posture-app
+            2. 上部の「Resume Service」ボタンをクリック
+            3. Spend Management の使用量を確認 (Settings → Billing)
+            ` : `
+            1. Vercel ダッシュボードでデプロイ状態を確認
+            2. https://vercel.com/makoto-kobayashis-projects/posture-app/logs でエラーログ確認
+            3. 直近のコミットを確認: \`git log --oneline -5\`
+            `}
+
+            ## 自動復旧について
+            次回チェック (1時間後) で復旧が確認されたら、この Issue は自動でクローズされます。
+
+            ---
+            🤖 自動検知: GitHub Actions Uptime Monitor`;
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['uptime-alert'],
+            });
+
+      - name: Add comment to existing issue (if still down)
+        if: steps.check.outputs.status != 'up' && steps.find.outputs.exists == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const now = new Date().toISOString();
+            const httpStatus = '${{ steps.check.outputs.http_status }}';
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ${{ steps.find.outputs.number }},
+              body: `継続中のダウンを確認 (${now}) - HTTP \`${httpStatus}\``,
+            });
+
+      - name: Close issue (if recovered)
+        if: steps.check.outputs.status == 'up' && steps.find.outputs.exists == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const now = new Date().toISOString();
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ${{ steps.find.outputs.number }},
+              body: `✅ 復旧を確認しました (${now})`,
+            });
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ${{ steps.find.outputs.number }},
+              state: 'closed',
+            });
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "### Uptime Check Result" >> $GITHUB_STEP_SUMMARY
+          echo "- Status: **${{ steps.check.outputs.status }}**" >> $GITHUB_STEP_SUMMARY
+          echo "- HTTP: ${{ steps.check.outputs.http_status }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Response Time: ${{ steps.check.outputs.response_time }}s" >> $GITHUB_STEP_SUMMARY
