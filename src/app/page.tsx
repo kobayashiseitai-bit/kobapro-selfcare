@@ -5052,7 +5052,8 @@ function DailyTipCard() {
   const [tip, setTip] = useState<{ emoji: string; title: string; body: string } | null>(null);
 
   useEffect(() => {
-    fetch("/api/daily-tip")
+    const did = encodeURIComponent(getDeviceId() || "");
+    fetch(`/api/daily-tip?deviceId=${did}`)
       .then((r) => r.json())
       .then((d) => {
         if (d.tip) setTip(d.tip);
