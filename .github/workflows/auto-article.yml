@@ -1,0 +1,58 @@
+name: Auto Article Generator
+
+on:
+  schedule:
+    - cron: "0 0 1-31/2 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Generate article
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: node scripts/generate-article.mjs
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git diff --quiet src/app/lib/articles-data.json; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          TITLE=$(node -e "const a=require('./src/app/lib/articles-data.json');console.log(a[a.length-1].title)")
+
+          git add src/app/lib/articles-data.json
+          git commit -m "feat(article): 自動生成 - $TITLE
+
+          🤖 自動生成された記事です。
+          記事数: $(node -e "console.log(require('./src/app/lib/articles-data.json').length)") 本"
+          git push origin main
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "### 📝 Auto Article Generation" >> $GITHUB_STEP_SUMMARY
+          echo "Total articles: $(node -e "console.log(require('./src/app/lib/articles-data.json').length)")" >> $GITHUB_STEP_SUMMARY
+          echo "Latest: $(node -e "const a=require('./src/app/lib/articles-data.json');const l=a[a.length-1];console.log(l.emoji + ' ' + l.title + ' (' + l.category + ')')")" >> $GITHUB_STEP_SUMMARY
