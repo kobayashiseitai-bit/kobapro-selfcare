@@ -6107,7 +6107,7 @@ function MealScreen({
           {additionalDishes.length > 0 && (
             <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3 space-y-2">
               <p className="text-xs text-amber-300 font-bold">
-                🍽 全 {totalDishCount} 皿のコース料理として記録中
+                🍽 {totalDishCount} 品目まで同じ食事として記録中
               </p>
               <div className="grid grid-cols-4 gap-2">
                 {additionalDishes.map((d, i) => (
@@ -6229,7 +6229,7 @@ function MealScreen({
                 <span>この食事に追加で撮る</span>
               </p>
               <p className="text-[11px] text-amber-300/80 mt-1">
-                コース料理など、後から運ばれてきた皿も同じ記録に集約します（あと {MAX_TOTAL_DISHES - totalDishCount} 皿まで）
+                同じ食事として記録します。後から食べた料理や追加注文もまとめて1件に集約（あと {MAX_TOTAL_DISHES - totalDishCount} 品まで）
               </p>
             </button>
           ) : analysisRecordId ? (
@@ -6404,7 +6404,7 @@ function MealScreen({
                     />
                     {totalDishes > 1 && (
                       <span className="absolute top-2 right-2 bg-amber-500/90 text-amber-950 text-[11px] font-extrabold px-2 py-0.5 rounded-full shadow-md">
-                        🍽 全 {totalDishes} 皿
+                        🍽 全 {totalDishes} 品
                       </span>
                     )}
                   </div>
