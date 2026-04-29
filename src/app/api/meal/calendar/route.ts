@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
       supabase
         .from("meal_records")
         .select(
-          "id, image_url, menu_name, meal_type, calories, protein_g, carbs_g, fat_g, advice, score, created_at"
+          "id, image_url, menu_name, meal_type, calories, protein_g, carbs_g, fat_g, advice, score, created_at, additional_images"
         )
         .eq("user_id", userId)
         .gte("created_at", start)
@@ -87,6 +87,7 @@ export async function GET(req: NextRequest) {
         advice: string | null;
         score: number | null;
         created_at: string;
+        additional_images?: Array<{ image_url?: string | null }>;
       }>;
       totalCalories: number;
       totalProtein: number;

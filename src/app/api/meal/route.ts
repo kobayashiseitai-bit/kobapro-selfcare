@@ -352,6 +352,7 @@ export async function POST(req: NextRequest) {
       imageUrl: signedImageUrl || imageUrl,
       analysis,
       createdAt: savedRecord?.created_at,
+      additional_images: [],
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -384,20 +385,43 @@ export async function GET(req: NextRequest) {
     const { data: records } = await supabase
       .from("meal_records")
       .select(
-        "id, image_url, meal_type, menu_name, calories, protein_g, carbs_g, fat_g, advice, score, created_at"
+        "id, image_url, meal_type, menu_name, calories, protein_g, carbs_g, fat_g, advice, score, created_at, additional_images"
       )
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(30);
 
-    // Signed URL に変換してから返す
+    // メイン画像と additional_images の URL を Signed URL に変換
     const signedRecords = await signImageUrls(
       supabase,
       records || [],
       "meal-images"
     );
 
-    return NextResponse.json({ records: signedRecords });
+    // additional_images の中の image_url も signed URL に変換
+    const fullySignedRecords = await Promise.all(
+      signedRecords.map(async (r) => {
+        const additional = Array.isArray(
+          (r as { additional_images?: unknown }).additional_images
+        )
+          ? ((r as { additional_images: Array<{ image_url?: string | null }> })
+              .additional_images)
+          : [];
+        const signedAdditional = await Promise.all(
+          additional.map(async (a) => ({
+            ...a,
+            image_url: await getSignedImageUrl(
+              supabase,
+              a.image_url,
+              "meal-images"
+            ),
+          }))
+        );
+        return { ...r, additional_images: signedAdditional };
+      })
+    );
+
+    return NextResponse.json({ records: fullySignedRecords });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     return NextResponse.json(

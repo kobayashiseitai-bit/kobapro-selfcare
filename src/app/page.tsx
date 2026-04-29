@@ -5514,6 +5514,19 @@ type MealAnalysis = {
   score?: number;
 };
 
+// コース料理として追加された1皿の情報（meal_records.additional_images の各要素）
+type AdditionalDish = {
+  image_url: string | null;
+  menu_name: string | null;
+  calories: number | null;
+  protein_g: number | null;
+  carbs_g: number | null;
+  fat_g: number | null;
+  score: number | null;
+  advice: string | null;
+  added_at: string;
+};
+
 type MealRecord = {
   id: string;
   image_url: string;
@@ -5526,6 +5539,7 @@ type MealRecord = {
   advice: string | null;
   score: number | null;
   created_at: string;
+  additional_images?: AdditionalDish[];
 };
 
 // 画像を512pxに圧縮してbase64で返す（コスト削減のため）
@@ -5715,12 +5729,20 @@ function MealScreen({
   const [analysis, setAnalysis] = useState<MealAnalysis | null>(null);
   const [analysisImageUrl, setAnalysisImageUrl] = useState<string | null>(null);
   const [analysisRecordId, setAnalysisRecordId] = useState<string | null>(null);
+  // コース料理対応: 同じ meal_records に追加した皿
+  const [additionalDishes, setAdditionalDishes] = useState<AdditionalDish[]>([]);
+  const [appendingDish, setAppendingDish] = useState(false);
+  const appendInputRef = useRef<HTMLInputElement>(null);
   const [editDraft, setEditDraft] = useState<MealAnalysis | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [records, setRecords] = useState<MealRecord[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const MAX_TOTAL_DISHES = 6;
+  const totalDishCount = 1 + additionalDishes.length;
+  const canAddMoreDishes = !!analysisRecordId && totalDishCount < MAX_TOTAL_DISHES;
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -5763,6 +5785,65 @@ function MealScreen({
     }
   };
 
+  // コース料理対応: 結果表示中に「この食事に追加で撮る」を押した時のハンドラ
+  const handleAppendSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!analysisRecordId) {
+      setError("追加先の食事が見つかりません");
+      return;
+    }
+    setError(null);
+    setAppendingDish(true);
+    try {
+      const compressedDataUrl = await compressImageToBase64(file, 768);
+      const deviceId = getDeviceId();
+      const res = await fetch("/api/meal/append", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          imageData: compressedDataUrl,
+          deviceId,
+          recordId: analysisRecordId,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        const detail = data.detail ? `\n詳細: ${data.detail}` : "";
+        throw new Error(`${data.message || data.error || "追加分析に失敗しました"}${detail}`);
+      }
+      // サーバーから返された最新レコードでローカルを上書き
+      const rec = data.record as {
+        menu_name: string | null;
+        calories: number | null;
+        protein_g: number | null;
+        carbs_g: number | null;
+        fat_g: number | null;
+        score: number | null;
+      };
+      setAnalysis((prev) =>
+        prev
+          ? {
+              ...prev,
+              menu_name: rec.menu_name ?? prev.menu_name,
+              calories: rec.calories ?? prev.calories,
+              protein_g: rec.protein_g ?? prev.protein_g,
+              carbs_g: rec.carbs_g ?? prev.carbs_g,
+              fat_g: rec.fat_g ?? prev.fat_g,
+              score: rec.score ?? prev.score,
+            }
+          : prev
+      );
+      setAdditionalDishes((prev) => [...prev, data.added as AdditionalDish]);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(msg);
+    } finally {
+      setAppendingDish(false);
+      if (appendInputRef.current) appendInputRef.current.value = "";
+    }
+  };
+
   const openHistory = async () => {
     setMode("history");
     setLoadingHistory(true);
@@ -5784,6 +5865,7 @@ function MealScreen({
     setAnalysis(null);
     setAnalysisImageUrl(null);
     setAnalysisRecordId(null);
+    setAdditionalDishes([]);
     setEditDraft(null);
     setError(null);
   };
@@ -6021,6 +6103,37 @@ function MealScreen({
             />
           )}
 
+          {/* コース料理: 追加された皿のサムネ一覧 */}
+          {additionalDishes.length > 0 && (
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3 space-y-2">
+              <p className="text-xs text-amber-300 font-bold">
+                🍽 全 {totalDishCount} 皿のコース料理として記録中
+              </p>
+              <div className="grid grid-cols-4 gap-2">
+                {additionalDishes.map((d, i) => (
+                  <div key={i} className="space-y-1">
+                    {d.image_url && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={d.image_url}
+                        alt={d.menu_name || `追加${i + 1}皿目`}
+                        className="w-full aspect-square object-cover rounded-lg border border-amber-500/30"
+                      />
+                    )}
+                    <p className="text-[10px] text-gray-300 line-clamp-1 text-center">
+                      {d.menu_name || "—"}
+                    </p>
+                    {typeof d.calories === "number" && (
+                      <p className="text-[9px] text-amber-300 text-center">
+                        {d.calories}kcal
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs text-gray-500">ガイコツ先生の推定</span>
@@ -6089,12 +6202,48 @@ function MealScreen({
             </button>
           )}
 
+          {/* コース料理対応: この食事に追加 / 別の食事として記録 */}
+          <input
+            ref={appendInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={handleAppendSelect}
+            className="hidden"
+          />
+
+          {appendingDish && (
+            <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3 text-center text-sm text-emerald-300 animate-pulse">
+              🍽 追加の1皿を分析中...
+            </div>
+          )}
+
+          {canAddMoreDishes ? (
+            <button
+              onClick={() => appendInputRef.current?.click()}
+              disabled={appendingDish}
+              className="w-full px-4 py-4 rounded-2xl border-2 border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 disabled:opacity-50 transition active:scale-[0.99]"
+            >
+              <p className="text-base font-bold text-amber-200 flex items-center justify-center gap-2">
+                <span className="text-2xl">📸</span>
+                <span>この食事に追加で撮る</span>
+              </p>
+              <p className="text-[11px] text-amber-300/80 mt-1">
+                コース料理など、後から運ばれてきた皿も同じ記録に集約します（あと {MAX_TOTAL_DISHES - totalDishCount} 皿まで）
+              </p>
+            </button>
+          ) : analysisRecordId ? (
+            <div className="w-full px-4 py-3 rounded-xl bg-gray-800/60 border border-gray-700 text-center text-xs text-gray-400">
+              ⚠️ 1食につき最大 {MAX_TOTAL_DISHES} 皿まで追加できます
+            </div>
+          ) : null}
+
           <div className="flex gap-2">
             <button
               onClick={resetToHome}
               className="btn-neutral flex-1 px-4 py-3 text-sm"
             >
-              もう1枚撮る
+              🆕 別の食事として記録
             </button>
             <button
               onClick={() => onNavigate("home")}
@@ -6238,49 +6387,77 @@ function MealScreen({
               まだ記録がありません。食事を撮影してみましょう！
             </div>
           ) : (
-            records.map((r) => (
-              <div
-                key={r.id}
-                className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={r.image_url}
-                  alt={r.menu_name || "食事写真"}
-                  className="w-full aspect-video object-cover"
-                />
-                <div className="p-3 space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs text-gray-500">
-                      {new Date(r.created_at).toLocaleString("ja-JP", {
-                        month: "numeric",
-                        day: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </p>
-                    {r.meal_type && (
-                      <span className="text-[11px] px-2 py-0.5 bg-emerald-600/30 text-emerald-300 rounded-full">
-                        {r.meal_type}
+            records.map((r) => {
+              const extras = r.additional_images || [];
+              const totalDishes = 1 + extras.length;
+              return (
+                <div
+                  key={r.id}
+                  className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden"
+                >
+                  <div className="relative">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={r.image_url}
+                      alt={r.menu_name || "食事写真"}
+                      className="w-full aspect-video object-cover"
+                    />
+                    {totalDishes > 1 && (
+                      <span className="absolute top-2 right-2 bg-amber-500/90 text-amber-950 text-[11px] font-extrabold px-2 py-0.5 rounded-full shadow-md">
+                        🍽 全 {totalDishes} 皿
                       </span>
                     )}
                   </div>
-                  <p className="text-sm font-bold">{r.menu_name || "判定不能"}</p>
-                  <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-gray-400">
-                    {r.calories !== null && <span>🔥 {r.calories}kcal</span>}
-                    {r.protein_g !== null && <span>P {r.protein_g}g</span>}
-                    {r.carbs_g !== null && <span>C {r.carbs_g}g</span>}
-                    {r.fat_g !== null && <span>F {r.fat_g}g</span>}
-                    {r.score !== null && <span>⭐ {r.score}/100</span>}
-                  </div>
-                  {r.advice && (
-                    <p className="text-xs text-gray-300 whitespace-pre-wrap leading-relaxed mt-2">
-                      {r.advice}
-                    </p>
+                  {extras.length > 0 && (
+                    <div className="px-3 pt-2">
+                      <div className="grid grid-cols-5 gap-1.5">
+                        {extras.map((d, i) =>
+                          d.image_url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              key={i}
+                              src={d.image_url}
+                              alt={d.menu_name || `追加${i + 1}皿目`}
+                              className="aspect-square w-full object-cover rounded-md border border-amber-500/30"
+                            />
+                          ) : null
+                        )}
+                      </div>
+                    </div>
                   )}
+                  <div className="p-3 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs text-gray-500">
+                        {new Date(r.created_at).toLocaleString("ja-JP", {
+                          month: "numeric",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </p>
+                      {r.meal_type && (
+                        <span className="text-[11px] px-2 py-0.5 bg-emerald-600/30 text-emerald-300 rounded-full">
+                          {r.meal_type}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm font-bold">{r.menu_name || "判定不能"}</p>
+                    <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-gray-400">
+                      {r.calories !== null && <span>🔥 {r.calories}kcal</span>}
+                      {r.protein_g !== null && <span>P {r.protein_g}g</span>}
+                      {r.carbs_g !== null && <span>C {r.carbs_g}g</span>}
+                      {r.fat_g !== null && <span>F {r.fat_g}g</span>}
+                      {r.score !== null && <span>⭐ {r.score}/100</span>}
+                    </div>
+                    {r.advice && (
+                      <p className="text-xs text-gray-300 whitespace-pre-wrap leading-relaxed mt-2">
+                        {r.advice}
+                      </p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       )}

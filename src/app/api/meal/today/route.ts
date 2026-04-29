@@ -74,7 +74,7 @@ export async function GET(req: NextRequest) {
       supabase
         .from("meal_records")
         .select(
-          "id, image_url, menu_name, meal_type, calories, protein_g, carbs_g, fat_g, score, advice, created_at"
+          "id, image_url, menu_name, meal_type, calories, protein_g, carbs_g, fat_g, score, advice, created_at, additional_images"
         )
         .eq("user_id", userId)
         .gte("created_at", start.toISOString())
@@ -100,6 +100,7 @@ export async function GET(req: NextRequest) {
       score: number | null;
       advice: string | null;
       created_at: string;
+      additional_images?: Array<{ image_url?: string | null }>;
     }
 
     // 食事区分別にグループ化（朝食/昼食/夕食/間食/その他）
