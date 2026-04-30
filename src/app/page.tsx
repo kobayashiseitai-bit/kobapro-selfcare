@@ -1828,7 +1828,12 @@ function HomeScreen({
 }
 
 // ==================== AIカウンセリング画面 ====================
-type ChatMessage = { role: "user" | "assistant"; content: string };
+type ChatMessage = {
+  role: "user" | "assistant";
+  content: string;
+  /** ユーザーが添付した写真の URL (送信時に保持して履歴で表示・拡大可能にする) */
+  imageUrl?: string;
+};
 
 // <image id="xxx" /> タグをパースして文字とimage IDのセグメントに分解
 // ストリーミング中の不完全なタグは末尾から除去
@@ -1856,7 +1861,11 @@ function parseMessageSegments(raw: string): MessageSegment[] {
   return segments;
 }
 
-// チャット画像をフルスクリーンで表示するモーダル(タップで開く)
+// チャット画像をフルスクリーンで表示するモーダル
+// - タップで 1x ↔ 2.5x ズームをトグル
+// - ズーム中は overflow-auto で自由にスクロール (パン)
+// - iOS の native pinch-zoom (touch-action: pinch-zoom) も併用可能
+// - 閉じるは右上の ✕ ボタンのみ (誤タップで閉じないようにする)
 const ChatImageViewer = memo(function ChatImageViewer({
   src,
   onClose,
@@ -1864,24 +1873,85 @@ const ChatImageViewer = memo(function ChatImageViewer({
   src: string;
   onClose: () => void;
 }) {
+  const [zoomed, setZoomed] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // ESC で閉じる + body スクロール抑止
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [onClose]);
+
+  const toggleZoom = () => {
+    setZoomed((z) => {
+      const next = !z;
+      // ズームインしたらコンテナの中央にスクロール
+      if (next && containerRef.current) {
+        requestAnimationFrame(() => {
+          const el = containerRef.current!;
+          el.scrollTo({
+            left: (el.scrollWidth - el.clientWidth) / 2,
+            top: (el.scrollHeight - el.clientHeight) / 2,
+            behavior: "auto",
+          });
+        });
+      }
+      return next;
+    });
+  };
+
   return (
-    <div
-      className="fixed inset-0 z-[60] bg-black/90 flex items-center justify-center p-4"
-      onClick={onClose}
-    >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={src}
-        alt="拡大表示"
-        className="max-w-full max-h-full object-contain rounded-xl"
-      />
-      <button
-        onClick={onClose}
-        className="absolute top-4 right-4 w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white text-xl"
-        aria-label="閉じる"
+    <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col">
+      {/* ヘッダー (閉じる + ズームボタン) */}
+      <div className="flex items-center justify-between px-4 py-3 bg-black/60">
+        <button
+          onClick={onClose}
+          className="w-11 h-11 bg-white/15 hover:bg-white/25 rounded-full flex items-center justify-center text-white text-xl"
+          aria-label="閉じる"
+        >
+          ✕
+        </button>
+        <p className="text-xs text-gray-300">
+          {zoomed ? "🔎 タップで縮小・指でスクロール" : "🔍 タップで拡大"}
+        </p>
+        <button
+          onClick={toggleZoom}
+          className="px-3 h-11 bg-emerald-500/30 hover:bg-emerald-500/50 border border-emerald-400/50 rounded-full text-white text-sm font-bold"
+          aria-label="ズーム切替"
+        >
+          {zoomed ? "−" : "+"}
+        </button>
+      </div>
+
+      {/* 画像コンテナ: スクロール可能領域 */}
+      <div
+        ref={containerRef}
+        className="flex-1 overflow-auto flex items-center justify-center p-4"
+        style={{ touchAction: "pinch-zoom" }}
+        onClick={toggleZoom}
       >
-        ✕
-      </button>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={src}
+          alt="拡大表示"
+          className="rounded-xl select-none transition-transform duration-200 origin-center"
+          draggable={false}
+          style={{
+            maxWidth: zoomed ? "none" : "100%",
+            maxHeight: zoomed ? "none" : "100%",
+            width: zoomed ? "250%" : "auto",
+            height: "auto",
+          }}
+        />
+      </div>
     </div>
   );
 });
@@ -1913,6 +1983,28 @@ const MessageBubble = memo(function MessageBubble({ msg }: { msg: ChatMessage })
             : "bg-gray-800 rounded-bl-md"
         }`}>
           {msg.role === "assistant" && <p className="text-xs text-gray-400 mb-1">💀 ガイコツ先生</p>}
+
+          {/* ユーザー添付写真 (送信時に保存・タップで拡大可能) */}
+          {msg.role === "user" && msg.imageUrl && (
+            <button
+              onClick={() => setZoomedSrc(msg.imageUrl!)}
+              className="relative block my-2 w-full max-w-[220px] rounded-xl overflow-hidden border border-blue-300/40 bg-blue-700/40 active:scale-[0.99] transition"
+              aria-label="添付した写真を拡大表示"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={msg.imageUrl}
+                alt="添付写真"
+                loading="lazy"
+                decoding="async"
+                className="w-full h-auto object-contain"
+              />
+              <span className="absolute bottom-1.5 right-1.5 text-[10px] font-bold bg-black/60 text-white px-2 py-0.5 rounded-full flex items-center gap-1">
+                🔍 拡大
+              </span>
+            </button>
+          )}
+
           {segments.map((seg, i) => {
             if (seg.type === "text") {
               return seg.content ? (
@@ -1926,7 +2018,7 @@ const MessageBubble = memo(function MessageBubble({ msg }: { msg: ChatMessage })
               <button
                 key={i}
                 onClick={() => setZoomedSrc(path)}
-                className="block my-2 w-full rounded-xl overflow-hidden border border-emerald-500/30 bg-gray-900 active:scale-[0.99] transition"
+                className="relative block my-2 w-full rounded-xl overflow-hidden border border-emerald-500/30 bg-gray-900 active:scale-[0.99] transition"
                 aria-label="画像を拡大表示"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1937,6 +2029,10 @@ const MessageBubble = memo(function MessageBubble({ msg }: { msg: ChatMessage })
                   decoding="async"
                   className="w-full h-auto object-contain"
                 />
+                {/* 拡大可能であることを伝えるバッジ */}
+                <span className="absolute top-1.5 right-1.5 text-[10px] font-bold bg-black/60 text-white px-2 py-0.5 rounded-full flex items-center gap-1 shadow">
+                  🔍 タップで拡大
+                </span>
               </button>
             );
           })}
@@ -2371,7 +2467,12 @@ function AiCounselScreen({
   const sendMessage = async () => {
     if ((!input.trim() && !attachedPhotoUrl) || loading) return;
     const userContent = input.trim() || "今撮影した姿勢を見てください";
-    const userMsg: ChatMessage = { role: "user", content: userContent };
+    const userMsg: ChatMessage = {
+      role: "user",
+      content: userContent,
+      // 添付した写真は履歴にも残してタップで拡大できるようにする
+      imageUrl: attachedPhotoUrl || undefined,
+    };
     const newMessages = [...messages, userMsg];
     setMessages([...newMessages, { role: "assistant", content: "" }]);
     setInput("");
@@ -2576,6 +2677,8 @@ function AiCounselScreen({
 function SelfcareScreen({ onNavigate, initialSymptomId }: { onNavigate: (s: Screen) => void; initialSymptomId: string | null }) {
   const [selectedId, setSelectedId] = useState<string | null>(initialSymptomId);
   const [viewMode, setViewMode] = useState<"body" | "cards">("body");
+  // ストレッチ画像の拡大表示
+  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const activeSymptom = SYMPTOMS.find((s) => s.id === selectedId);
   const stretches = selectedId ? getStretchesBySymptom(selectedId) : [];
 
@@ -2670,8 +2773,13 @@ function SelfcareScreen({ onNavigate, initialSymptomId }: { onNavigate: (s: Scre
               key={stretch.id}
               className="rounded-2xl overflow-hidden border border-gray-200 bg-white shadow-lg"
             >
-              {/* メインビジュアル（プロ品質インストラクション画像） */}
-              <div className="relative w-full aspect-video overflow-hidden bg-gray-100">
+              {/* メインビジュアル（プロ品質インストラクション画像・タップで拡大） */}
+              <button
+                type="button"
+                onClick={() => setZoomedImage(stretch.image)}
+                className="relative w-full aspect-video overflow-hidden bg-gray-100 block active:scale-[0.99] transition"
+                aria-label="画像を拡大表示"
+              >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={stretch.image}
@@ -2685,7 +2793,11 @@ function SelfcareScreen({ onNavigate, initialSymptomId }: { onNavigate: (s: Scre
                 >
                   {i + 1} / {stretches.length}
                 </div>
-              </div>
+                {/* 拡大可能であることを示すバッジ */}
+                <span className="absolute bottom-3 right-3 bg-black/65 text-white text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-md">
+                  🔍 タップで拡大
+                </span>
+              </button>
 
               {/* 補足情報 */}
               <div className="p-4 space-y-4 bg-white">
@@ -2751,6 +2863,14 @@ function SelfcareScreen({ onNavigate, initialSymptomId }: { onNavigate: (s: Scre
             閉じる
           </button>
         </div>
+      )}
+
+      {/* ストレッチ画像の拡大表示 */}
+      {zoomedImage && (
+        <ChatImageViewer
+          src={zoomedImage}
+          onClose={() => setZoomedImage(null)}
+        />
       )}
     </main>
   );
