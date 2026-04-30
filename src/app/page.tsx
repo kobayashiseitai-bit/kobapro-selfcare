@@ -1861,11 +1861,11 @@ function parseMessageSegments(raw: string): MessageSegment[] {
   return segments;
 }
 
-// チャット画像をフルスクリーンで表示するモーダル
-// - タップで 1x ↔ 2.5x ズームをトグル
-// - ズーム中は overflow-auto で自由にスクロール (パン)
-// - iOS の native pinch-zoom (touch-action: pinch-zoom) も併用可能
-// - 閉じるは右上の ✕ ボタンのみ (誤タップで閉じないようにする)
+// 画像をフルスクリーンで表示するモーダル
+// - 2本指のピンチで自由ズーム (1x〜5x)
+// - ズーム中は1本指で移動 (パン)
+// - リセットボタンで等倍に戻す
+// - 閉じるは右上の ✕ ボタンのみ (誤タップで閉じない)
 const ChatImageViewer = memo(function ChatImageViewer({
   src,
   onClose,
@@ -1873,44 +1873,159 @@ const ChatImageViewer = memo(function ChatImageViewer({
   src: string;
   onClose: () => void;
 }) {
-  const [zoomed, setZoomed] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [transform, setTransform] = useState({ scale: 1, x: 0, y: 0 });
 
-  // ESC で閉じる + body スクロール抑止
+  // ジェスチャ状態を ref で保持 (touchmove 中の再レンダーを最小化)
+  const transformRef = useRef(transform);
+  transformRef.current = transform;
+
+  type GestureState =
+    | { mode: "none" }
+    | {
+        mode: "pinch";
+        initDist: number;
+        initScale: number;
+        initT: { x: number; y: number };
+        initMidRel: { x: number; y: number };
+        cx: number;
+        cy: number;
+      }
+    | {
+        mode: "pan";
+        startX: number;
+        startY: number;
+        initT: { x: number; y: number };
+      };
+  const gestureRef = useRef<GestureState>({ mode: "none" });
+
+  // ESC + body スクロール抑止
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", onKey);
-    const prevOverflow = document.body.style.overflow;
+    const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prevOverflow;
+      document.body.style.overflow = prev;
     };
   }, [onClose]);
 
-  const toggleZoom = () => {
-    setZoomed((z) => {
-      const next = !z;
-      // ズームインしたらコンテナの中央にスクロール
-      if (next && containerRef.current) {
-        requestAnimationFrame(() => {
-          const el = containerRef.current!;
-          el.scrollTo({
-            left: (el.scrollWidth - el.clientWidth) / 2,
-            top: (el.scrollHeight - el.clientHeight) / 2,
-            behavior: "auto",
-          });
+  // タッチイベントを native で attach (passive: false で preventDefault するため)
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const dist = (a: Touch, b: Touch) =>
+      Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+    const mid = (a: Touch, b: Touch) => ({
+      x: (a.clientX + b.clientX) / 2,
+      y: (a.clientY + b.clientY) / 2,
+    });
+
+    const onTouchStart = (e: TouchEvent) => {
+      const cur = transformRef.current;
+      if (e.touches.length >= 2) {
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        const cx = window.innerWidth / 2;
+        const cy = window.innerHeight / 2;
+        const m = mid(t1, t2);
+        gestureRef.current = {
+          mode: "pinch",
+          initDist: dist(t1, t2),
+          initScale: cur.scale,
+          initT: { x: cur.x, y: cur.y },
+          initMidRel: { x: m.x - cx, y: m.y - cy },
+          cx,
+          cy,
+        };
+        e.preventDefault();
+      } else if (e.touches.length === 1 && cur.scale > 1.001) {
+        const t = e.touches[0];
+        gestureRef.current = {
+          mode: "pan",
+          startX: t.clientX,
+          startY: t.clientY,
+          initT: { x: cur.x, y: cur.y },
+        };
+        e.preventDefault();
+      }
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      const g = gestureRef.current;
+      if (g.mode === "pinch" && e.touches.length >= 2) {
+        e.preventDefault();
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        const newDist = dist(t1, t2);
+        const newMid = mid(t1, t2);
+        const newMidRel = { x: newMid.x - g.cx, y: newMid.y - g.cy };
+        const ratio = newDist / g.initDist;
+        const newScale = Math.max(1, Math.min(5, g.initScale * ratio));
+
+        // 最初に midpoint の真下にあった画像内ローカル点 Q を、新しい midpoint の下にも保つ
+        // 画面位置 = viewportCenter + Q * scale + translate
+        // 初期: midRel = Q * initScale + initT  →  Q = (midRel0 - initT) / initScale
+        const Qx = (g.initMidRel.x - g.initT.x) / g.initScale;
+        const Qy = (g.initMidRel.y - g.initT.y) / g.initScale;
+        const newTx = newMidRel.x - Qx * newScale;
+        const newTy = newMidRel.y - Qy * newScale;
+        setTransform({ scale: newScale, x: newTx, y: newTy });
+      } else if (g.mode === "pan" && e.touches.length === 1) {
+        e.preventDefault();
+        const t = e.touches[0];
+        setTransform({
+          scale: transformRef.current.scale,
+          x: g.initT.x + (t.clientX - g.startX),
+          y: g.initT.y + (t.clientY - g.startY),
         });
       }
-      return next;
-    });
-  };
+    };
+
+    const onTouchEnd = (e: TouchEvent) => {
+      // ピンチ後に1本残った場合 → そのままパン継続
+      if (e.touches.length === 1 && gestureRef.current.mode === "pinch") {
+        const t = e.touches[0];
+        const cur = transformRef.current;
+        gestureRef.current = {
+          mode: "pan",
+          startX: t.clientX,
+          startY: t.clientY,
+          initT: { x: cur.x, y: cur.y },
+        };
+        return;
+      }
+      if (e.touches.length === 0) {
+        // 1.05x 以下まで縮小されたら自動で等倍リセット
+        if (transformRef.current.scale < 1.05) {
+          setTransform({ scale: 1, x: 0, y: 0 });
+        }
+        gestureRef.current = { mode: "none" };
+      }
+    };
+
+    el.addEventListener("touchstart", onTouchStart, { passive: false });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    el.addEventListener("touchend", onTouchEnd);
+    el.addEventListener("touchcancel", onTouchEnd);
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", onTouchEnd);
+      el.removeEventListener("touchcancel", onTouchEnd);
+    };
+  }, []);
+
+  const reset = () => setTransform({ scale: 1, x: 0, y: 0 });
+  const isZoomed = transform.scale > 1.01;
 
   return (
     <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col">
-      {/* ヘッダー (閉じる + ズームボタン) */}
+      {/* ヘッダー */}
       <div className="flex items-center justify-between px-4 py-3 bg-black/60">
         <button
           onClick={onClose}
@@ -1919,39 +2034,53 @@ const ChatImageViewer = memo(function ChatImageViewer({
         >
           ✕
         </button>
-        <p className="text-xs text-gray-300">
-          {zoomed ? "🔎 タップで縮小・指でスクロール" : "🔍 タップで拡大"}
+        <p className="text-[11px] text-gray-200 text-center leading-tight">
+          {isZoomed ? (
+            <>🔎 1本指で移動<br />2本指で拡大・縮小</>
+          ) : (
+            <>👆👆 2本指でピンチして拡大</>
+          )}
         </p>
         <button
-          onClick={toggleZoom}
-          className="px-3 h-11 bg-emerald-500/30 hover:bg-emerald-500/50 border border-emerald-400/50 rounded-full text-white text-sm font-bold"
-          aria-label="ズーム切替"
+          onClick={reset}
+          disabled={!isZoomed}
+          className="px-3 h-11 bg-emerald-500/30 hover:bg-emerald-500/50 disabled:opacity-30 border border-emerald-400/50 rounded-full text-white text-xs font-bold"
+          aria-label="拡大をリセット"
         >
-          {zoomed ? "−" : "+"}
+          リセット
         </button>
       </div>
 
-      {/* 画像コンテナ: スクロール可能領域 */}
+      {/* 画像コンテナ */}
       <div
         ref={containerRef}
-        className="flex-1 overflow-auto flex items-center justify-center p-4"
-        style={{ touchAction: "pinch-zoom" }}
-        onClick={toggleZoom}
+        className="flex-1 overflow-hidden flex items-center justify-center p-2"
+        style={{ touchAction: "none" }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={src}
           alt="拡大表示"
-          className="rounded-xl select-none transition-transform duration-200 origin-center"
           draggable={false}
+          className="max-w-full max-h-full object-contain rounded-xl select-none"
           style={{
-            maxWidth: zoomed ? "none" : "100%",
-            maxHeight: zoomed ? "none" : "100%",
-            width: zoomed ? "250%" : "auto",
-            height: "auto",
+            transform: `translate3d(${transform.x}px, ${transform.y}px, 0) scale(${transform.scale})`,
+            transformOrigin: "center center",
+            transition:
+              gestureRef.current.mode === "none"
+                ? "transform 0.18s ease-out"
+                : "none",
+            willChange: "transform",
           }}
         />
       </div>
+
+      {/* 倍率インジケーター */}
+      {isZoomed && (
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-black/70 text-white text-xs font-bold px-3 py-1.5 rounded-full">
+          {transform.scale.toFixed(1)}x
+        </div>
+      )}
     </div>
   );
 });
@@ -2031,7 +2160,7 @@ const MessageBubble = memo(function MessageBubble({ msg }: { msg: ChatMessage })
                 />
                 {/* 拡大可能であることを伝えるバッジ */}
                 <span className="absolute top-1.5 right-1.5 text-[10px] font-bold bg-black/60 text-white px-2 py-0.5 rounded-full flex items-center gap-1 shadow">
-                  🔍 タップで拡大
+                  🔍 2本指で拡大
                 </span>
               </button>
             );
@@ -2795,7 +2924,7 @@ function SelfcareScreen({ onNavigate, initialSymptomId }: { onNavigate: (s: Scre
                 </div>
                 {/* 拡大可能であることを示すバッジ */}
                 <span className="absolute bottom-3 right-3 bg-black/65 text-white text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-md">
-                  🔍 タップで拡大
+                  🔍 2本指で拡大
                 </span>
               </button>
 
