@@ -2704,7 +2704,7 @@ function AiCounselScreen({
             <span className="text-2xl">{recommendedSymptom.emoji}</span>
             <div className="text-left">
               <p className="font-bold">おすすめ: {recommendedSymptom.videoTitle}</p>
-              <p className="text-xs opacity-80">タップしてセルフケア動画を見る</p>
+              <p className="text-xs opacity-80">タップしてセルフケア画像を見る</p>
             </div>
           </button>
         </div>
@@ -2802,7 +2802,7 @@ function AiCounselScreen({
   );
 }
 
-// ==================== セルフケア画面（症状→動画） ====================
+// ==================== セルフケア画面（症状→画像ガイド） ====================
 function SelfcareScreen({ onNavigate, initialSymptomId }: { onNavigate: (s: Screen) => void; initialSymptomId: string | null }) {
   const [selectedId, setSelectedId] = useState<string | null>(initialSymptomId);
   const [viewMode, setViewMode] = useState<"body" | "cards">("body");
@@ -3222,7 +3222,7 @@ const VOICE_KEYWORDS: { keyword: string; file: string }[] = [
   { keyword: "側面の写真撮影", file: "/voice-side-guide.mp3" },
   { keyword: "横向きのままカメラの前", file: "/voice-side-stand.mp3" },
   { keyword: "横向きでストップ", file: "/voice-side-stop.mp3" },
-  { keyword: "横向きの撮影が完了", file: "/voice-side-done.mp3" },
+  { keyword: "横向きの撮影が完了", file: "/voice-side-done.m4a" },
   { keyword: "上半身が映るように位置", file: "/voice-adjust.mp3" },
   { keyword: "上半身全体が映るように", file: "/voice-adjust.mp3" },
   { keyword: "全身が映る", file: "/voice-stand.mp3" },
@@ -3243,7 +3243,7 @@ const ALL_VOICE_FILES = [
   "/voice-5.mp3", "/voice-4.mp3", "/voice-3.mp3",
   "/voice-2.mp3", "/voice-1.mp3", "/voice-done.mp3",
   "/voice-side-guide.mp3", "/voice-side-stand.mp3",
-  "/voice-side-stop.mp3", "/voice-side-done.mp3",
+  "/voice-side-stop.mp3", "/voice-side-done.m4a",
   "/voice-adjust.mp3", "/voice-captured.mp3",
 ];
 const audioCache: Record<string, HTMLAudioElement> = {};
@@ -5315,7 +5315,7 @@ function CoachingTodayCard({
               }}
               className="flex-1 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 rounded-lg text-xs font-bold text-emerald-300"
             >
-              🎬 動画を見る
+              🖼 画像を見る
             </button>
           )}
           <button
@@ -9596,14 +9596,14 @@ function CoachingScreen({
                     </div>
                   </div>
 
-                  {/* ストレッチタスクなら関連動画ボタン */}
+                  {/* ストレッチタスクなら関連画像ボタン */}
                   {data.todayTask.symptomId && !data.todayTask.completed && (
                     <button
                       onClick={() => onSelectSymptom(data.todayTask!.symptomId as SelectableSymptomId)}
                       className="w-full py-2 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 rounded-lg text-xs font-bold text-emerald-300 flex items-center justify-center gap-2 transition"
                     >
-                      <span>🎬</span>
-                      <span>関連ストレッチ動画を見る</span>
+                      <span>🖼</span>
+                      <span>関連ストレッチ画像を見る</span>
                     </button>
                   )}
 
