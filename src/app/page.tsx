@@ -6694,7 +6694,14 @@ function MealScreen({
                     <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent pointer-events-none" />
 
                     <div className="relative flex items-center justify-center gap-3">
-                      <span className="text-3xl">{reanalyzing ? "⏳" : "🤖"}</span>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src="/icon-skeleton-sensei-face.png"
+                        alt="ガイコツ先生"
+                        className={`w-12 h-12 object-contain drop-shadow-md flex-shrink-0 ${
+                          reanalyzing ? "animate-bounce" : ""
+                        }`}
+                      />
                       <div className="text-left">
                         <p
                           className={`text-base font-extrabold leading-tight ${
@@ -6702,8 +6709,8 @@ function MealScreen({
                           }`}
                         >
                           {reanalyzing
-                            ? "AIが再計算中..."
-                            : "AI で栄養素を再計算"}
+                            ? "ガイコツ先生が再計算中..."
+                            : "ガイコツ先生に再計算してもらう"}
                         </p>
                         <p
                           className={`text-[11px] mt-0.5 leading-tight ${
