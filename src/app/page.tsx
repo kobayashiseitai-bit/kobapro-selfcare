@@ -6658,29 +6658,68 @@ function MealScreen({
             />
 
             {/* AI 再計算ボタン: メニュー名から栄養素・アドバイスを自動推定 */}
-            <button
-              type="button"
-              onClick={reanalyzeFromMenuName}
-              disabled={
+            {(() => {
+              const nameChanged =
+                !!analysis &&
+                !!editDraft.menu_name &&
+                editDraft.menu_name.trim() !== "" &&
+                editDraft.menu_name.trim() !== (analysis.menu_name || "").trim();
+              const disabled =
                 reanalyzing ||
                 savingEdit ||
                 !editDraft.menu_name ||
-                editDraft.menu_name.trim() === ""
-              }
-              className="mt-2 w-full px-4 py-3 rounded-xl border-2 border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 disabled:opacity-40 transition active:scale-[0.99]"
-            >
-              <p className="text-sm font-bold text-emerald-200 flex items-center justify-center gap-2">
-                <span className="text-xl">🤖</span>
-                <span>
-                  {reanalyzing
-                    ? "AIが再計算中..."
-                    : "この名前で AI に栄養素・アドバイスを再計算させる"}
-                </span>
-              </p>
-              <p className="text-[11px] text-emerald-300/70 mt-1 text-center">
-                メニュー名を変えた時に押すと、カロリー・PFC・先生のコメントを自動で更新します
-              </p>
-            </button>
+                editDraft.menu_name.trim() === "";
+
+              return (
+                <div className="mt-3 relative">
+                  {/* メニュー名が変わった時の注意を引く矢印 */}
+                  {nameChanged && !reanalyzing && (
+                    <div className="absolute -top-2 left-1/2 -translate-x-1/2 z-10">
+                      <span className="inline-flex items-center gap-1 bg-red-500 text-white text-[10px] font-extrabold px-2.5 py-0.5 rounded-full shadow-lg animate-bounce">
+                        ⬇ 名前を変えたら必ず押してください ⬇
+                      </span>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={reanalyzeFromMenuName}
+                    disabled={disabled}
+                    className={`relative w-full px-4 py-4 rounded-2xl shadow-xl disabled:opacity-40 transition active:scale-[0.98] overflow-hidden ${
+                      nameChanged
+                        ? "bg-gradient-to-r from-yellow-400 via-amber-400 to-yellow-500 ring-4 ring-yellow-300/60 animate-pulse"
+                        : "bg-gradient-to-r from-emerald-500 via-emerald-500 to-teal-500 ring-2 ring-emerald-400/50"
+                    }`}
+                  >
+                    {/* 光沢エフェクト */}
+                    <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent pointer-events-none" />
+
+                    <div className="relative flex items-center justify-center gap-3">
+                      <span className="text-3xl">{reanalyzing ? "⏳" : "🤖"}</span>
+                      <div className="text-left">
+                        <p
+                          className={`text-base font-extrabold leading-tight ${
+                            nameChanged ? "text-amber-950" : "text-white"
+                          }`}
+                        >
+                          {reanalyzing
+                            ? "AIが再計算中..."
+                            : "AI で栄養素を再計算"}
+                        </p>
+                        <p
+                          className={`text-[11px] mt-0.5 leading-tight ${
+                            nameChanged ? "text-amber-900/80" : "text-emerald-50/90"
+                          }`}
+                        >
+                          {reanalyzing
+                            ? "数秒お待ちください..."
+                            : "カロリー・PFC・先生のコメントを自動更新"}
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              );
+            })()}
           </div>
 
           {/* 食事区分 */}
