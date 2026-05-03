@@ -5984,6 +5984,7 @@ function MealScreen({
   const appendInputRef = useRef<HTMLInputElement>(null);
   const [editDraft, setEditDraft] = useState<MealAnalysis | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
+  const [reanalyzing, setReanalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [records, setRecords] = useState<MealRecord[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
@@ -6127,6 +6128,67 @@ function MealScreen({
     setMode("edit");
   };
 
+  // メニュー名から AI に栄養素・アドバイスを再計算させる
+  const reanalyzeFromMenuName = async () => {
+    if (!editDraft || !editDraft.menu_name || editDraft.menu_name.trim() === "") {
+      setError("メニュー名を入力してから再計算してください");
+      return;
+    }
+    setReanalyzing(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/meal/reanalyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          menu_name: editDraft.menu_name,
+          meal_type: editDraft.meal_type,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        const detail = data.detail ? `\n${data.detail}` : "";
+        throw new Error(`${data.error || "再計算に失敗しました"}${detail}`);
+      }
+      const r = data.result as {
+        menu_name?: string;
+        ambiguous?: boolean;
+        calories?: number;
+        protein_g?: number;
+        carbs_g?: number;
+        fat_g?: number;
+        score?: number;
+        advice?: string;
+      };
+      // 曖昧な名前だった場合は警告だけ出して上書きしない
+      if (r.ambiguous) {
+        setError(
+          "メニュー名が曖昧です。もう少し具体的に入力してください (例: 「カフェラテ」「鶏の唐揚げ定食」)"
+        );
+        return;
+      }
+      // editDraft を AI 推定値で上書き (メニュー名はユーザー入力を優先)
+      setEditDraft((prev) =>
+        prev
+          ? {
+              ...prev,
+              calories: r.calories ?? prev.calories,
+              protein_g: r.protein_g ?? prev.protein_g,
+              carbs_g: r.carbs_g ?? prev.carbs_g,
+              fat_g: r.fat_g ?? prev.fat_g,
+              score: r.score ?? prev.score,
+              advice: r.advice ?? prev.advice,
+            }
+          : prev
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(msg);
+    } finally {
+      setReanalyzing(false);
+    }
+  };
+
   // 修正をキャンセル
   const cancelEdit = () => {
     setEditDraft(null);
@@ -6160,6 +6222,9 @@ function MealScreen({
           protein_g: editDraft.protein_g ?? null,
           carbs_g: editDraft.carbs_g ?? null,
           fat_g: editDraft.fat_g ?? null,
+          // 再計算でアドバイスも更新されている場合はそれも保存
+          ...(editDraft.advice !== undefined ? { advice: editDraft.advice } : {}),
+          ...(editDraft.score !== undefined ? { score: editDraft.score } : {}),
         }),
       });
       const data = await res.json();
@@ -6591,6 +6656,31 @@ function MealScreen({
               placeholder="例: 鶏の唐揚げ定食"
               className="w-full px-4 py-3 bg-gray-900 border border-gray-800 rounded-xl text-sm focus:outline-none focus:border-emerald-500"
             />
+
+            {/* AI 再計算ボタン: メニュー名から栄養素・アドバイスを自動推定 */}
+            <button
+              type="button"
+              onClick={reanalyzeFromMenuName}
+              disabled={
+                reanalyzing ||
+                savingEdit ||
+                !editDraft.menu_name ||
+                editDraft.menu_name.trim() === ""
+              }
+              className="mt-2 w-full px-4 py-3 rounded-xl border-2 border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 disabled:opacity-40 transition active:scale-[0.99]"
+            >
+              <p className="text-sm font-bold text-emerald-200 flex items-center justify-center gap-2">
+                <span className="text-xl">🤖</span>
+                <span>
+                  {reanalyzing
+                    ? "AIが再計算中..."
+                    : "この名前で AI に栄養素・アドバイスを再計算させる"}
+                </span>
+              </p>
+              <p className="text-[11px] text-emerald-300/70 mt-1 text-center">
+                メニュー名を変えた時に押すと、カロリー・PFC・先生のコメントを自動で更新します
+              </p>
+            </button>
           </div>
 
           {/* 食事区分 */}
@@ -6652,14 +6742,14 @@ function MealScreen({
           <div className="flex gap-2 pt-2">
             <button
               onClick={cancelEdit}
-              disabled={savingEdit}
+              disabled={savingEdit || reanalyzing}
               className="btn-neutral flex-1 px-4 py-3 text-sm disabled:opacity-50"
             >
               キャンセル
             </button>
             <button
               onClick={saveEdit}
-              disabled={savingEdit}
+              disabled={savingEdit || reanalyzing}
               className="btn-primary flex-1 px-4 py-3 text-sm disabled:opacity-50"
             >
               {savingEdit ? "保存中..." : "✅ 保存する"}

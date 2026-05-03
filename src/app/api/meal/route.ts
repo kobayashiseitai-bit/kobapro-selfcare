@@ -445,6 +445,7 @@ export async function PATCH(req: NextRequest) {
       carbs_g,
       fat_g,
       score,
+      advice,
     } = body as {
       deviceId?: string;
       recordId?: string;
@@ -455,6 +456,7 @@ export async function PATCH(req: NextRequest) {
       carbs_g?: number | null;
       fat_g?: number | null;
       score?: number | null;
+      advice?: string | null;
     };
 
     if (!deviceId || !recordId) {
@@ -507,6 +509,7 @@ export async function PATCH(req: NextRequest) {
     if (carbs_g !== undefined) updates.carbs_g = carbs_g;
     if (fat_g !== undefined) updates.fat_g = fat_g;
     if (score !== undefined) updates.score = score;
+    if (advice !== undefined) updates.advice = advice;
 
     if (Object.keys(updates).length === 0) {
       return NextResponse.json({ error: "no fields to update" }, { status: 400 });
