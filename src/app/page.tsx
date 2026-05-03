@@ -6135,14 +6135,22 @@ function MealScreen({
 
   // 修正を保存
   const saveEdit = async () => {
-    if (!editDraft || !analysisRecordId) return;
+    if (!editDraft || !analysisRecordId) {
+      setError("保存対象のレコードがありません。撮影し直してください。");
+      return;
+    }
     setSavingEdit(true);
     setError(null);
     try {
       const deviceId = getDeviceId();
       const res = await fetch("/api/meal", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+        },
         body: JSON.stringify({
           deviceId,
           recordId: analysisRecordId,
@@ -6155,19 +6163,60 @@ function MealScreen({
         }),
       });
       const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "保存に失敗しました");
+      if (!res.ok || !data.ok) {
+        const detail = data.detail ? `\n${data.detail}` : "";
+        throw new Error(`${data.error || "保存に失敗しました"}${detail}`);
       }
-      // ローカル状態を更新
-      setAnalysis({
-        ...analysis,
-        menu_name: editDraft.menu_name,
-        meal_type: editDraft.meal_type,
-        calories: editDraft.calories,
-        protein_g: editDraft.protein_g,
-        carbs_g: editDraft.carbs_g,
-        fat_g: editDraft.fat_g,
-      });
+      // サーバーから返された実際の保存値で上書き (信頼できる単一情報源)
+      // → DBの NUMERIC(5,1) 等で値が丸められた場合もこれで正しく表示される
+      const rec = data.record as {
+        menu_name: string | null;
+        meal_type: string | null;
+        calories: number | null;
+        protein_g: number | null;
+        carbs_g: number | null;
+        fat_g: number | null;
+        score: number | null;
+        advice: string | null;
+        additional_images?: AdditionalDish[];
+      };
+      setAnalysis((prev) =>
+        prev
+          ? {
+              ...prev,
+              menu_name: rec.menu_name ?? undefined,
+              meal_type: rec.meal_type ?? undefined,
+              calories: rec.calories ?? undefined,
+              protein_g: rec.protein_g ?? undefined,
+              carbs_g: rec.carbs_g ?? undefined,
+              fat_g: rec.fat_g ?? undefined,
+              score: rec.score ?? prev.score,
+              advice: rec.advice ?? prev.advice,
+            }
+          : prev
+      );
+      // additional_images も DB 値で同期 (PATCH は触らないが、念のため)
+      if (Array.isArray(rec.additional_images)) {
+        setAdditionalDishes(rec.additional_images);
+      }
+      // 既に取得済みの履歴一覧があれば、編集レコードを差し替え (履歴を再開いた時の表示ズレ防止)
+      setRecords((prev) =>
+        prev.map((r) =>
+          r.id === analysisRecordId
+            ? {
+                ...r,
+                menu_name: rec.menu_name,
+                meal_type: rec.meal_type,
+                calories: rec.calories,
+                protein_g: rec.protein_g,
+                carbs_g: rec.carbs_g,
+                fat_g: rec.fat_g,
+                score: rec.score,
+                additional_images: rec.additional_images || r.additional_images,
+              }
+            : r
+        )
+      );
       setEditDraft(null);
       setMode("result");
     } catch (err) {

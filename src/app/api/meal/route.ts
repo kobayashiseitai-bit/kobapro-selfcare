@@ -517,18 +517,20 @@ export async function PATCH(req: NextRequest) {
       .update(updates)
       .eq("id", recordId)
       .select(
-        "id, image_url, meal_type, menu_name, calories, protein_g, carbs_g, fat_g, advice, score, created_at"
+        "id, image_url, meal_type, menu_name, calories, protein_g, carbs_g, fat_g, advice, score, created_at, additional_images"
       )
       .single();
 
     if (updErr || !updated) {
+      console.error("PATCH /api/meal update error:", updErr);
       return NextResponse.json(
         { error: "update failed", detail: updErr?.message },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({ ok: true, record: updated });
+    // 念のため: 実際にDBへ保存された値をクライアントに返す (信頼できる単一情報源)
+    return NextResponse.json({ ok: true, record: updated, updates });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     return NextResponse.json(
