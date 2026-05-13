@@ -47,21 +47,26 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<!-- カメラ: 姿勢チェック機能で正面・側面の全身写真を撮影 -->
 	<key>NSCameraUsageDescription</key>
-	<string>姿勢チェック機能でカメラを使用します。あなたの姿勢を分析し、最適なセルフケアを提案します。</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>音声ガイダンスの再生のために使用します。</string>
+	<string>姿勢チェック機能で全身写真を撮影し、骨格バランスを分析してセルフケアアドバイスを提供するために使用します。録画は行いません。</string>
+	<!-- 食事記録は写真ライブラリから読み取るため、Add は撮影画像の保存先として使用 -->
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>姿勢チェックの結果画像を保存するために使用します。</string>
+	<string>姿勢チェック後のBefore/After比較画像をお客様の写真ライブラリに保存するために使用します。保存はお客様が「保存」をタップした時のみ行います。</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>過去の姿勢チェック画像にアクセスするために使用します。</string>
+	<string>食事の写真をライブラリから選んでAI栄養分析に使うため、および過去のセルフケア記録画像を表示するために使用します。</string>
+	<!-- HealthKit 連携 (任意・拒否可能) -->
 	<key>NSHealthShareUsageDescription</key>
-	<string>歩数・体重・心拍数・アクティブカロリーなどのヘルスケア情報を読み取り、AIによるセルフケアアドバイスの精度向上に利用します。データは端末内で処理され、外部に送信される際もご本人特定はされません。</string>
+	<string>歩数・体重・心拍数・アクティブカロリーを参照し、AIによるセルフケアアドバイスの精度を向上させるために使用します。データは外部に送信されません。お客様の許可なしには読み取りません。</string>
 	<key>NSHealthUpdateUsageDescription</key>
-	<string>セルフケア記録（ストレッチ実施等）をヘルスケアに書き込むために使用します。書き込みはユーザーが許可した場合のみ実施します。</string>
+	<string>セルフケア実施記録（ストレッチ完了等）をヘルスケアアプリに書き込むために使用します。お客様が「ヘルスケアに記録」を選択した場合のみ書き込みます。</string>
+	<!-- バックグラウンドモード: リマインダー通知のみ -->
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
 	</array>
+	<!-- 暗号化機能: 標準的なHTTPS通信のみで独自暗号化なし → 申請を高速化 -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>

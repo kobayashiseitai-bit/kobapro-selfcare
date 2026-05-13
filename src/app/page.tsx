@@ -8229,7 +8229,18 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
                   <li>支払いは購入確定時にApple IDアカウントに請求されます</li>
                   <li>サブスクリプションは現在の期間が終了する24時間前までに自動更新をオフにしない限り、自動的に更新されます（同額）</li>
                   <li>更新の請求は現在の期間の終了前24時間以内に行われます</li>
-                  <li>サブスクリプションの管理・自動更新の停止は、購入後にApple IDのアカウント設定から行えます</li>
+                  <li>
+                    サブスクリプションの管理・自動更新の停止は、購入後にApple IDのアカウント設定から行えます（
+                    <a
+                      href="https://apps.apple.com/account/subscriptions"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-emerald-400 underline"
+                    >
+                      サブスクリプション管理を開く
+                    </a>
+                    ）
+                  </li>
                   <li>無料トライアル期間中の解約はトライアル終了の24時間前までに行ってください</li>
                 </ul>
                 <div className="pt-2 flex flex-wrap gap-x-3 gap-y-1">
