@@ -1475,7 +1475,7 @@ function HomeScreen({
 
             <div className="pt-4 text-center">
               <p className="text-[11px] text-gray-500">ZERO-PAIN</p>
-              <p className="text-[11px] text-gray-600">© 2026 TopBank, Inc.</p>
+              <p className="text-[11px] text-gray-600">© 2026 TOPBANK.INC</p>
             </div>
           </div>
         </div>

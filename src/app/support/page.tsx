@@ -463,6 +463,30 @@ export default function SupportPage() {
             </p>
           </form>
         </section>
+
+        {/* 事業者情報 (App Store 審査要件: 運営会社の明示) */}
+        <section className="mt-8 pt-6 border-t border-gray-800">
+          <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
+            運営会社
+          </h2>
+          <div className="space-y-1.5 text-sm text-gray-300">
+            <p>
+              <span className="text-gray-500 mr-2">事業者名:</span>
+              TOPBANK.INC（有限会社トップバンク）
+            </p>
+            <p>
+              <span className="text-gray-500 mr-2">アプリ:</span>
+              ZERO-PAIN セルフケア支援アプリ
+            </p>
+            <p>
+              <span className="text-gray-500 mr-2">サポート:</span>
+              本ページ上部のフォームよりお問い合わせください
+            </p>
+          </div>
+          <p className="text-[11px] text-gray-500 mt-4">
+            © 2026 TOPBANK.INC All rights reserved.
+          </p>
+        </section>
       </div>
     </main>
   );
