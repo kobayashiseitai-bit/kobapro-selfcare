@@ -85,7 +85,30 @@ App Store Connect で:
 | Display Name (JP) | 年額プラン（2ヶ月分お得） |
 | Description (JP) | 全機能無制限。年額12,800円（月換算1,067円）。7日間無料トライアル付き。 |
 
-両方とも **Localizations** を Japanese で必ず入力。
+### 商品③: 家族月額プラン
+| 項目 | 値 |
+|---|---|
+| Reference Name | ZERO-PAIN Family Monthly Premium |
+| Product ID | `zero_pain_family_1980` |
+| Subscription Duration | 1 Month |
+| Price (Japan) | ¥1,980 |
+| Free Trial | 7 Days |
+| Display Name (JP) | 家族月額プラン |
+| Description (JP) | 1契約で家族4人まで使える。全機能無制限。月額1,980円。7日間無料トライアル付き。 |
+
+### 商品④: 家族年額プラン
+| 項目 | 値 |
+|---|---|
+| Reference Name | ZERO-PAIN Family Yearly Premium |
+| Product ID | `zero_pain_family_19800` |
+| Subscription Duration | 1 Year |
+| Price (Japan) | ¥19,800 |
+| Free Trial | 7 Days |
+| Display Name (JP) | 家族年額プラン（2ヶ月分お得） |
+| Description (JP) | 1契約で家族4人まで使える。全機能無制限。年額19,800円（月換算1,650円）。7日間無料トライアル付き。 |
+
+全 4 商品とも **Localizations** を Japanese で必ず入力。
+家族メンバーの管理は Apple Family Sharing ではなくアプリ内の招待コード機能（`families` / `family_members` テーブル）で行うため、App Store Connect 側の **Family Sharing は OFF のままで OK**。
 
 ---
 
@@ -117,8 +140,13 @@ App Store Connect:
 
 ### Offering 作成
 - **Offerings** → **+ New Offering**
-- Identifier: `default`
-- Packages として上記2商品を Add（`$rc_monthly` と `$rc_annual` のテンプレートを選ぶと楽）
+- Identifier: `zeropain`（Current/Default に設定）
+- Packages として下記 4 つを Add:
+  - `$rc_monthly` → `zero_pain_monthly_1280`
+  - `$rc_annual` → `zero_pain_yearly_12800`
+  - `$rc_family_monthly`（Custom Identifier）→ `zero_pain_family_1980`
+  - `$rc_family_annual`（Custom Identifier）→ `zero_pain_family_19800`
+- 家族プラン Package の Identifier は RevenueCat 標準テンプレに無いので Custom で作成
 
 ### Webhook 設定
 - **Project Settings** → **Integrations** → **Webhooks** → **Add**

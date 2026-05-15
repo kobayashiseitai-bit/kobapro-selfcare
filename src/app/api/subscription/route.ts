@@ -37,6 +37,7 @@ export async function GET(req: NextRequest) {
         status: "free",
         isPaid: false,
         isTrial: false,
+        isFamily: false,
         usage: { posture: 0, chat: 0, meal: 0 },
         limits: { posture: 3, chat: 5, meal: 3 },
       });

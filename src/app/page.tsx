@@ -7976,21 +7976,41 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
   }, [loadState]);
 
   // iOS ネイティブ: RevenueCat 経由で購入
-  const buyViaIAP = async (planType: "monthly" | "yearly") => {
+  // planType -> App Store の Product ID マッピング（exact match で誤マッチを防ぐ）
+  const IAP_PRODUCT_IDS: Record<
+    "monthly" | "yearly" | "family_monthly" | "family_yearly",
+    string
+  > = {
+    monthly: "zero_pain_monthly_1280",
+    yearly: "zero_pain_yearly_12800",
+    family_monthly: "zero_pain_family_1980",
+    family_yearly: "zero_pain_family_19800",
+  };
+  const PLAN_LABELS: Record<
+    "monthly" | "yearly" | "family_monthly" | "family_yearly",
+    string
+  > = {
+    monthly: "月額",
+    yearly: "年額",
+    family_monthly: "家族月額",
+    family_yearly: "家族年額",
+  };
+
+  const buyViaIAP = async (
+    planType: "monthly" | "yearly" | "family_monthly" | "family_yearly"
+  ) => {
     setActing(true);
     setError(null);
     setMessage(null);
     try {
-      const productKey = planType === "monthly" ? "monthly" : "yearly";
-      const pkg = iapPackages.find((p) =>
-        p.product.identifier.toLowerCase().includes(productKey)
-      );
+      const targetId = IAP_PRODUCT_IDS[planType];
+      const pkg = iapPackages.find((p) => p.product.identifier === targetId);
       if (!pkg) {
         throw new Error("商品が見つかりません。しばらくしてからお試しください。");
       }
       const result = await purchasePackage(pkg);
       if (result.success) {
-        setMessage(`✅ ${planType === "monthly" ? "月額" : "年額"}プランを開始しました！`);
+        setMessage(`✅ ${PLAN_LABELS[planType]}プランを開始しました！`);
         await loadState();
       } else if (result.error) {
         setError(result.error);
@@ -8024,7 +8044,7 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
 
   const callAction = async (
     action: "start_trial" | "subscribe" | "cancel",
-    plan?: "monthly" | "yearly"
+    plan?: "monthly" | "yearly" | "family_monthly" | "family_yearly"
   ) => {
     // iOS ネイティブ + サブスク購入の場合は IAP に委譲
     if (isIOS && iapReady && action === "subscribe" && plan) {
@@ -8042,7 +8062,7 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "操作に失敗しました");
       if (action === "start_trial") setMessage("✅ 7日間の無料トライアルを開始しました！");
-      else if (action === "subscribe") setMessage(`✅ ${plan === "monthly" ? "月額" : "年額"}プランを開始しました！`);
+      else if (action === "subscribe") setMessage(`✅ ${plan ? PLAN_LABELS[plan] : ""}プランを開始しました！`);
       else if (action === "cancel") setMessage("次回更新時に解約されます（期限までは引き続き利用可能です）");
       await loadState();
     } catch (e) {
@@ -8190,6 +8210,46 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
                   </div>
                   <p className="text-lg font-extrabold text-white">
                     ¥12,800<span className="text-xs font-normal text-gray-400">/年</span>
+                  </p>
+                </button>
+
+                {/* 家族プラン見出し */}
+                <div className="pt-2">
+                  <p className="text-xs font-bold text-emerald-300 mb-2 px-1">
+                    👨‍👩‍👧‍👦 家族プラン（1契約で家族4人まで使える）
+                  </p>
+                </div>
+
+                {/* 家族月額プラン */}
+                <button
+                  onClick={() => callAction("subscribe", "family_monthly")}
+                  disabled={acting}
+                  className="card-base w-full px-5 py-4 text-left flex items-center justify-between disabled:opacity-50 active:scale-[0.99] transition border-emerald-500/40"
+                >
+                  <div>
+                    <p className="text-sm font-bold text-white">家族月額プラン</p>
+                    <p className="text-xs text-emerald-200/80 mt-0.5">最大4人まで使える</p>
+                  </div>
+                  <p className="text-lg font-extrabold text-white">
+                    ¥1,980<span className="text-xs font-normal text-gray-400">/月</span>
+                  </p>
+                </button>
+
+                {/* 家族年額プラン */}
+                <button
+                  onClick={() => callAction("subscribe", "family_yearly")}
+                  disabled={acting}
+                  className="card-base w-full px-5 py-4 text-left flex items-center justify-between disabled:opacity-50 active:scale-[0.99] transition relative overflow-hidden border-emerald-500/40"
+                >
+                  <span className="absolute top-0 right-0 bg-emerald-600 text-white text-[11px] font-extrabold px-2 py-0.5 rounded-bl-xl">
+                    2ヶ月分お得
+                  </span>
+                  <div>
+                    <p className="text-sm font-bold text-white">家族年額プラン</p>
+                    <p className="text-xs text-emerald-200/80 mt-0.5">月額換算 ¥1,650・最大4人</p>
+                  </div>
+                  <p className="text-lg font-extrabold text-white">
+                    ¥19,800<span className="text-xs font-normal text-gray-400">/年</span>
                   </p>
                 </button>
               </>
@@ -9002,19 +9062,34 @@ function FamilyScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [copied, setCopied] = useState<"code" | "url" | null>(null);
   const [removing, setRemoving] = useState<string | null>(null);
+  // 家族プラン購入者かどうか（家族グループ作成可否の判定に使用）
+  const [isFamilyPlan, setIsFamilyPlan] = useState<boolean | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const deviceId = getDeviceId();
-      const res = await fetch(
-        `/api/family?deviceId=${encodeURIComponent(deviceId || "")}&t=${Date.now()}`,
-        { cache: "no-store" }
-      );
-      const json = await res.json();
+      const [familyRes, subRes] = await Promise.all([
+        fetch(
+          `/api/family?deviceId=${encodeURIComponent(deviceId || "")}&t=${Date.now()}`,
+          { cache: "no-store" }
+        ),
+        fetch(
+          `/api/subscription?deviceId=${encodeURIComponent(deviceId || "")}&t=${Date.now()}`,
+          { cache: "no-store" }
+        ),
+      ]);
+      const json = await familyRes.json();
       setData(json);
+      try {
+        const sub = await subRes.json();
+        setIsFamilyPlan(!!sub.isFamily);
+      } catch {
+        setIsFamilyPlan(false);
+      }
     } catch {
       setData({ hasFamily: false, reason: "error" });
+      setIsFamilyPlan(false);
     } finally {
       setLoading(false);
     }
@@ -9198,18 +9273,39 @@ function FamilyScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
               </ul>
             </div>
 
-            {/* 家族を作成 */}
-            <button
-              onClick={createFamily}
-              disabled={creating}
-              className="btn-primary w-full py-4 flex items-center justify-center gap-3"
-            >
-              <span className="text-2xl">✨</span>
-              <div className="text-left">
-                <p className="text-base font-extrabold">{creating ? "作成中..." : "家族グループを作成"}</p>
-                <p className="text-xs opacity-90">あなたがオーナーになります</p>
-              </div>
-            </button>
+            {/* 家族を作成（家族プラン購入者のみ） */}
+            {isFamilyPlan ? (
+              <button
+                onClick={createFamily}
+                disabled={creating}
+                className="btn-primary w-full py-4 flex items-center justify-center gap-3"
+              >
+                <span className="text-2xl">✨</span>
+                <div className="text-left">
+                  <p className="text-base font-extrabold">{creating ? "作成中..." : "家族グループを作成"}</p>
+                  <p className="text-xs opacity-90">あなたがオーナーになります</p>
+                </div>
+              </button>
+            ) : (
+              <>
+                <div className="card-base px-4 py-3 text-xs text-amber-300 leading-relaxed border-amber-500/40">
+                  💡 家族グループを<span className="font-bold">作成</span>するには
+                  <span className="font-bold text-white">家族プラン（月¥1,980 / 年¥19,800）</span>
+                  への加入が必要です。
+                  招待コードでの<span className="font-bold">参加</span>は購入不要です。
+                </div>
+                <button
+                  onClick={() => onNavigate("subscription")}
+                  className="btn-primary w-full py-4 flex items-center justify-center gap-3"
+                >
+                  <span className="text-2xl">👨‍👩‍👧‍👦</span>
+                  <div className="text-left">
+                    <p className="text-base font-extrabold">家族プランを購入</p>
+                    <p className="text-xs opacity-90">月¥1,980 から・最大4人まで</p>
+                  </div>
+                </button>
+              </>
+            )}
 
             {/* 招待コードで参加 */}
             <button

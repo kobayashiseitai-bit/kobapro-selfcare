@@ -12,7 +12,7 @@ const config: CapacitorConfig = {
   ios: {
     contentInset: 'always',
     backgroundColor: '#030712',
-    limitsNavigationsToAppBoundDomains: false,
+    limitsNavigationsToAppBoundDomains: true,
   },
   plugins: {
     SplashScreen: {

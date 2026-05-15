@@ -12,7 +12,8 @@ CREATE TABLE IF NOT EXISTS subscriptions (
     -- active_yearly: 年額課金中
     -- cancelled: 解約済み（期限まで有効）
     -- expired: 期限切れ（無料に戻る）
-  plan TEXT,                          -- monthly / yearly / null
+  plan TEXT,                          -- monthly / yearly / family_monthly / family_yearly / null
+  is_family BOOLEAN NOT NULL DEFAULT FALSE,  -- 家族プラン購入者かどうか（FamilyScreen で家族グループ作成可否の判定に使用）
   trial_started_at TIMESTAMPTZ,
   trial_ends_at TIMESTAMPTZ,
   current_period_start TIMESTAMPTZ,
@@ -71,3 +72,11 @@ EXECUTE FUNCTION ensure_subscription_for_user();
 INSERT INTO subscriptions (user_id, status)
 SELECT id, 'free' FROM users
 ON CONFLICT (user_id) DO NOTHING;
+
+-- ========================================
+-- 家族プラン対応（既存 DB への追加マイグレーション）
+-- ========================================
+-- 2026-05-15: subscriptions テーブルに is_family カラムを追加
+-- 既に CREATE TABLE で定義されているが、既存テーブルには反映されないため ALTER で追加
+ALTER TABLE subscriptions
+  ADD COLUMN IF NOT EXISTS is_family BOOLEAN NOT NULL DEFAULT FALSE;

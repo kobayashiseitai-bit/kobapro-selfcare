@@ -68,5 +68,10 @@
 	<!-- 暗号化機能: 標準的なHTTPS通信のみで独自暗号化なし → 申請を高速化 -->
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<!-- App-Bound Domains: server.url で外部 URL を読み込む際に Capacitor ブリッジを注入するため必要 -->
+	<key>WKAppBoundDomains</key>
+	<array>
+		<string>posture-app-steel.vercel.app</string>
+	</array>
 </dict>
 </plist>

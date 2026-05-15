@@ -27,6 +27,21 @@ export const PLAN_PRICES = {
     discountLabel: "2ヶ月分お得",
     discountPercent: 17,
   },
+  family_monthly: {
+    id: "zero_pain_family_1980",
+    price: 1980,
+    label: "家族月額プラン",
+    descLabel: "1契約で家族4人まで",
+  },
+  family_yearly: {
+    id: "zero_pain_family_19800",
+    price: 19800,
+    monthlyEquivalent: 1650, // 19800 ÷ 12
+    label: "家族年額プラン",
+    descLabel: "1契約で家族4人まで",
+    discountLabel: "2ヶ月分お得",
+    discountPercent: 17,
+  },
 } as const;
 
 export const TRIAL_DAYS = 7;
@@ -46,12 +61,14 @@ export interface SubscriptionRecord {
   plan: string | null;
   trial_ends_at: string | null;
   current_period_end: string | null;
+  is_family?: boolean;
 }
 
 export interface SubscriptionState {
   status: SubscriptionStatus;
   isPaid: boolean; // 有料(trial含む)プランが有効か
   isTrial: boolean;
+  isFamily: boolean; // 家族プラン購入者かどうか（家族グループ作成の可否判定に使用）
   trialEndsAt: string | null;
   currentPeriodEnd: string | null;
   usage: {
@@ -143,7 +160,7 @@ export async function getSubscriptionState(
   // 1. subscriptions テーブルから取得（なければ作る）
   let { data: sub } = await supabase
     .from("subscriptions")
-    .select("status, plan, trial_ends_at, current_period_end")
+    .select("status, plan, trial_ends_at, current_period_end, is_family")
     .eq("user_id", userId)
     .maybeSingle();
 
@@ -156,6 +173,7 @@ export async function getSubscriptionState(
       plan: null,
       trial_ends_at: null,
       current_period_end: null,
+      is_family: false,
     };
   }
 
@@ -210,6 +228,7 @@ export async function getSubscriptionState(
     status,
     isPaid,
     isTrial: status === "trial",
+    isFamily: !!sub.is_family,
     trialEndsAt: sub.trial_ends_at,
     currentPeriodEnd: sub.current_period_end,
     usage,

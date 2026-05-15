@@ -68,10 +68,26 @@ export async function POST(req: NextRequest) {
     const userId = users[0].id;
 
     // プラン判定
+    // Product ID:
+    //   zero_pain_monthly_1280 / zero_pain_yearly_12800     → 単身プラン
+    //   zero_pain_family_1980 / zero_pain_family_19800      → 家族プラン
+    // 家族プラン ID には monthly/yearly が含まれないので、価格部分で月額/年額を判別する
     const productId = event.product_id || "";
-    let plan: "monthly" | "yearly" | null = null;
-    if (productId.includes("monthly")) plan = "monthly";
-    else if (productId.includes("yearly")) plan = "yearly";
+    const isFamily = productId.includes("family");
+    let plan:
+      | "monthly"
+      | "yearly"
+      | "family_monthly"
+      | "family_yearly"
+      | null = null;
+    if (isFamily) {
+      if (productId.endsWith("19800")) plan = "family_yearly";
+      else if (productId.endsWith("1980")) plan = "family_monthly";
+    } else if (productId.includes("monthly")) {
+      plan = "monthly";
+    } else if (productId.includes("yearly")) {
+      plan = "yearly";
+    }
 
     // ステータス決定
     type Status =
@@ -87,7 +103,12 @@ export async function POST(req: NextRequest) {
       case "RENEWAL":
       case "PRODUCT_CHANGE":
       case "UNCANCELLATION":
-        status = plan === "yearly" ? "active_yearly" : "active_monthly";
+        // 家族プランも課金周期ベースで active_monthly / active_yearly に正規化
+        // 家族プラン購入かどうかは is_family カラムで別管理
+        status =
+          plan === "yearly" || plan === "family_yearly"
+            ? "active_yearly"
+            : "active_monthly";
         break;
       case "CANCELLATION":
         status = "cancelled";
@@ -110,19 +131,34 @@ export async function POST(req: NextRequest) {
       ? new Date(event.purchased_at_ms).toISOString()
       : null;
 
+    // 家族プラン購入時は is_family=true、解約/期限切れでも一度家族プランを買った人は維持
+    // （Apple サブスクの仕様上、PRODUCT_CHANGE で単身⇄家族の切替も起こりうる）
+    const isFamilyPlan = isFamily;
+
     // upsert
+    const upsertData: Record<string, unknown> = {
+      user_id: userId,
+      status,
+      plan,
+      current_period_start: periodStart,
+      current_period_end: periodEnd,
+      revenuecat_app_user_id: deviceId,
+      revenuecat_entitlement: event.entitlement_ids?.[0] || "premium",
+      updated_at: new Date().toISOString(),
+    };
+    // INITIAL_PURCHASE / PRODUCT_CHANGE 時のみ is_family を更新
+    // RENEWAL や CANCELLATION では plan の情報が薄いことがあるので変更しない
+    if (
+      event.type === "INITIAL_PURCHASE" ||
+      event.type === "PRODUCT_CHANGE" ||
+      event.type === "UNCANCELLATION"
+    ) {
+      upsertData.is_family = isFamilyPlan;
+    }
+
     const { error: upsertError } = await supabase
       .from("subscriptions")
-      .upsert({
-        user_id: userId,
-        status,
-        plan,
-        current_period_start: periodStart,
-        current_period_end: periodEnd,
-        revenuecat_app_user_id: deviceId,
-        revenuecat_entitlement: event.entitlement_ids?.[0] || "premium",
-        updated_at: new Date().toISOString(),
-      }, { onConflict: "user_id" });
+      .upsert(upsertData, { onConflict: "user_id" });
 
     if (upsertError) {
       console.error("[revenuecat/webhook] upsert failed:", upsertError);

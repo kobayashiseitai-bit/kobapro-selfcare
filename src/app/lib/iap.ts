@@ -38,17 +38,25 @@ export function isNativeIOS(): boolean {
 
 /** RevenueCat SDK の初期化 (アプリ起動時に1回呼ぶ) */
 export async function initIAP(deviceId: string): Promise<boolean> {
-  if (!isNativeIOS()) return false;
-  if (initialized) return true;
-
-  const apiKey = process.env.NEXT_PUBLIC_REVENUECAT_IOS_KEY;
-  if (!apiKey) {
-    console.warn("[IAP] NEXT_PUBLIC_REVENUECAT_IOS_KEY 未設定");
+  console.log("[IAP] initIAP called, deviceId:", deviceId);
+  if (!isNativeIOS()) {
+    console.log("[IAP] isNativeIOS=false, skipping");
     return false;
   }
+  if (initialized) {
+    console.log("[IAP] already initialized");
+    return true;
+  }
+
+  // env var が空の場合のフォールバック（iOS 公開キーなので埋め込み可）
+  const apiKey =
+    process.env.NEXT_PUBLIC_REVENUECAT_IOS_KEY ||
+    "appl_uxudppFzNcOpKAVWjwRhcqhgBfQ";
+  console.log("[IAP] apiKey present:", !!apiKey);
 
   try {
     if (!purchasesModule) {
+      console.log("[IAP] importing @revenuecat/purchases-capacitor");
       purchasesModule = await import("@revenuecat/purchases-capacitor");
     }
     const { Purchases, LOG_LEVEL } = purchasesModule;
@@ -58,6 +66,7 @@ export async function initIAP(deviceId: string): Promise<boolean> {
       appUserID: deviceId, // ZERO-PAIN の deviceId を RevenueCat User ID として使う
     });
     initialized = true;
+    console.log("[IAP] initialized OK");
     return true;
   } catch (e) {
     console.error("[IAP] init failed:", e);
