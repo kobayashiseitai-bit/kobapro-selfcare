@@ -66,11 +66,34 @@ export default function PrivacyPage() {
           <p className="mb-2">本アプリは以下の外部サービスを利用しています。各サービスのプライバシーポリシーは各社のウェブサイトをご確認ください。</p>
           <ul className="space-y-1.5 pl-4 list-disc text-gray-300">
             <li>
-              <strong className="text-white">Anthropic, PBC（Claude API）</strong>: AIカウンセリング・姿勢写真分析・食事写真分析に利用。
-              会話内容と画像がAnthropicに送信されます。Anthropicは学習目的でのデータ利用を行いません。
+              <strong className="text-white">Anthropic, PBC（Claude API）</strong>: AIカウンセリング・姿勢写真分析・食事写真分析・体調予測・週次レポート生成・30日コーチング作成に利用します。
+              <span className="block mt-1">
+                <strong className="text-amber-300">送信先:</strong> Anthropic, PBC （アメリカ合衆国）
+              </span>
+              <span className="block mt-1">
+                <strong className="text-amber-300">送信されるデータ:</strong>
+                <span className="block ml-3">
+                  ・ガイコツ先生（AIチャット）: ユーザーのメッセージ本文、姿勢チェック結果、食事記録（過去7日）、栄養目標、プロフィール（身長・体重・年齢・性別）、選択した症状、姿勢写真および食事写真の URL（Signed URL）<br />
+                  ・姿勢分析: 姿勢撮影写真（base64 形式）、骨格座標データ<br />
+                  ・食事分析: 食事撮影写真（base64 形式）、ユーザーの症状傾向、姿勢診断結果<br />
+                  ・体調予測・レポート・30日コーチング: 症状履歴・姿勢診断・食事記録・体重推移・プロフィールの組み合わせ
+                </span>
+              </span>
+              <span className="block mt-1">
+                <strong className="text-amber-300">利用目的:</strong> AI による分析・アドバイス生成のみ。Anthropic は学習目的でのデータ利用を行いません。
+              </span>
+              <span className="block mt-1">
+                <strong className="text-amber-300">同意取得:</strong> 初回登録時に、上記データ送信について同意取得を行います（拒否した場合、本アプリの主要機能はご利用いただけません）。
+              </span>
             </li>
             <li>
               <strong className="text-white">OpenAI, Inc.（OpenAI API）</strong>: 音声ガイド生成に利用。
+              <span className="block mt-1">
+                <strong className="text-amber-300">送信先:</strong> OpenAI, Inc. （アメリカ合衆国）
+              </span>
+              <span className="block mt-1">
+                <strong className="text-amber-300">送信されるデータ:</strong> 音声化対象のテキストのみ。個人プロフィールや写真は送信しません。
+              </span>
             </li>
             <li>
               <strong className="text-white">Supabase Inc.</strong>: データベース・画像ストレージとして利用。データは暗号化され米国のデータセンターに保存されます。

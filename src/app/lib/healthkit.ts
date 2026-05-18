@@ -37,12 +37,30 @@ export interface HealthSnapshot {
   activeEnergyToday: number | null;
 }
 
-/** ネイティブ iOS かつ HealthKit が利用可能か */
+/** iPad 判定（iPad では HealthKit が反応しないため除外） */
+function isIPad(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent || "";
+  // 1) 古い iPad: "iPad" を含む
+  if (/iPad/i.test(ua)) return true;
+  // 2) iPadOS 13+ は "Macintosh" を含むが、タッチデバイスは iPad の可能性が高い
+  // navigator.maxTouchPoints > 1 で iPad と判定
+  if (/Macintosh/i.test(ua) && typeof navigator !== "undefined" && (navigator.maxTouchPoints || 0) > 1) {
+    return true;
+  }
+  return false;
+}
+
+/** ネイティブ iOS かつ HealthKit が利用可能か（iPad は除外） */
 export function isHealthKitAvailable(): boolean {
   if (typeof window === "undefined") return false;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const cap = (window as any).Capacitor;
-  return cap?.isNativePlatform?.() === true && cap?.getPlatform?.() === "ios";
+  if (cap?.isNativePlatform?.() !== true) return false;
+  if (cap?.getPlatform?.() !== "ios") return false;
+  // App Review 2.1(a) 対応: iPad では HealthKit ボタンが unresponsive になるため非表示
+  if (isIPad()) return false;
+  return true;
 }
 
 /** 許可リクエスト (初回1回のみ呼ぶ) */

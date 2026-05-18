@@ -733,6 +733,7 @@ function RegisterScreen({ onComplete }: { onComplete: () => void }) {
   const [agreedPrivacy, setAgreedPrivacy] = useState(false);
   const [agreedTerms, setAgreedTerms] = useState(false);
   const [agreedHealth, setAgreedHealth] = useState(false);
+  const [agreedAI, setAgreedAI] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [showInviteInput, setShowInviteInput] = useState(false);
@@ -758,7 +759,7 @@ function RegisterScreen({ onComplete }: { onComplete: () => void }) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) { setError("お名前を入力してください"); return; }
-    if (!agreedPrivacy || !agreedTerms || !agreedHealth) {
+    if (!agreedPrivacy || !agreedTerms || !agreedHealth || !agreedAI) {
       setError("プライバシーポリシー・利用規約・ヘルスケア注意事項への同意が必要です");
       return;
     }
@@ -951,10 +952,21 @@ function RegisterScreen({ onComplete }: { onComplete: () => void }) {
               ⚠️ ご利用前に必ずお読みください
             </p>
             <p className="text-xs text-gray-200 leading-relaxed">
-              本アプリは、カイロプラクターの一般的な知見に基づくセルフケア情報を提供するものであり、
+              本アプリは、カイロプラクターの一般的な知見および公的機関・学会の公表情報に基づくセルフケア情報を提供するものであり、
               医療行為・診断・治療を目的とするものではありません。
               重篤な痛みやしびれ、急激な体調変化がある場合は必ず医療機関を受診してください。
               妊娠中の方、持病のある方はかかりつけ医にご相談のうえご利用ください。
+            </p>
+            <p className="text-[11px] text-amber-200 mt-2">
+              情報の参考元：
+              <a
+                href="/references"
+                target="_blank"
+                rel="noopener"
+                className="underline ml-1"
+              >
+                参考文献・情報源を見る
+              </a>
             </p>
           </div>
 
@@ -1012,13 +1024,40 @@ function RegisterScreen({ onComplete }: { onComplete: () => void }) {
                 重篤な症状がある場合は医療機関を受診することに同意します
               </span>
             </label>
+
+            {/* AI データ送信への同意（App Store Guideline 5.1.1(i) / 5.1.2(i) 対応） */}
+            <label className="flex items-start gap-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={agreedAI}
+                onChange={(e) => setAgreedAI(e.target.checked)}
+                className="mt-0.5 w-5 h-5 accent-emerald-500"
+              />
+              <span className="text-xs text-gray-200 leading-relaxed flex-1">
+                以下の<span className="font-bold text-white">第三者 AI サービス</span>へ、
+                姿勢分析・食事分析・チャット相談・体調予測のために、
+                <span className="font-bold text-white">撮影した写真・入力テキスト・プロフィール（身長・体重・年齢）・症状履歴</span>
+                を送信することに同意します。
+                <br />
+                <span className="text-emerald-300 font-bold">送信先:</span> Anthropic, PBC (Claude API) / OpenAI, Inc. (音声生成のみ)
+                <br />
+                送信データは AI 分析にのみ使用され、AI モデルの学習には利用されません。詳細は
+                <a
+                  href="/privacy"
+                  target="_blank"
+                  rel="noopener"
+                  className="text-emerald-400 underline"
+                >プライバシーポリシー</a>
+                をご確認ください。
+              </span>
+            </label>
           </div>
 
           {error && <p className="text-red-400 text-sm text-center">{error}</p>}
 
           <button
             type="submit"
-            disabled={saving || !agreedPrivacy || !agreedTerms || !agreedHealth}
+            disabled={saving || !agreedPrivacy || !agreedTerms || !agreedHealth || !agreedAI}
             className="btn-primary w-full py-4 text-lg disabled:opacity-50"
           >
             {saving ? "登録中..." : "はじめる"}
@@ -2673,6 +2712,19 @@ function AiCounselScreen({
             </span>
           </div>
         )}
+        {/* AI 利用の免責と参考文献（App Store Guideline 1.4.1 / 5.1.1(i) 対応） */}
+        <div className="mt-2 text-[10px] text-gray-400 leading-relaxed">
+          ℹ️ 本チャットは Anthropic 社の Claude AI を利用しています。
+          AI の回答は参考情報であり、医療診断・治療を目的としたものではありません。
+          <a
+            href="/references"
+            target="_blank"
+            rel="noopener"
+            className="text-emerald-400 underline ml-1"
+          >
+            参考文献を見る
+          </a>
+        </div>
       </header>
 
       {/* チャットエリア */}
@@ -2830,6 +2882,21 @@ function SelfcareScreen({ onNavigate, initialSymptomId }: { onNavigate: (s: Scre
       <div className="flex items-center gap-3 mb-4 w-full max-w-md">
         <button onClick={() => onNavigate("home")} className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm">← 戻る</button>
         <h1 className="text-lg font-bold">セルフケア</h1>
+      </div>
+
+      {/* セルフケア情報の出典リンク（App Store Guideline 1.4.1 対応） */}
+      <div className="w-full max-w-md mb-3 card-base px-3 py-2 text-[11px] text-gray-300 leading-relaxed">
+        ℹ️ 本ストレッチ・セルフケア情報は、日本整形外科学会・日本理学療法士協会・厚生労働省の公表情報を参考にしています。
+        <a
+          href="/references"
+          target="_blank"
+          rel="noopener"
+          className="text-emerald-400 underline ml-1"
+        >
+          参考文献を見る
+        </a>
+        <br />
+        本情報は参考であり、医療診断・治療を目的としたものではありません。
       </div>
 
       {/* モード切替トグル */}
@@ -8169,6 +8236,32 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
                   </ul>
                 </div>
 
+                {/* サブスクリプション法的リンク（App Store Guideline 3.1.2(c) 対応） */}
+                <div className="card-base px-4 py-3 text-[11px] text-gray-300 leading-relaxed space-y-2 border-emerald-500/30">
+                  <p className="font-bold text-emerald-300">📋 ご購入前にご確認ください</p>
+                  <p>
+                    プランの内容（タイトル・期間・価格）と自動更新の条件は下記の通りです。購入前に必ず利用規約とプライバシーポリシーをご確認ください。
+                  </p>
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 pt-1">
+                    <a
+                      href="/terms"
+                      target="_blank"
+                      rel="noopener"
+                      className="text-emerald-300 underline font-bold"
+                    >
+                      📄 利用規約 (EULA)
+                    </a>
+                    <a
+                      href="/privacy"
+                      target="_blank"
+                      rel="noopener"
+                      className="text-emerald-300 underline font-bold"
+                    >
+                      🔒 プライバシーポリシー
+                    </a>
+                  </div>
+                </div>
+
                 {/* 無料トライアルボタン */}
                 {state.status !== "expired" && (
                   <button
@@ -8281,10 +8374,9 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
               </button>
             )}
 
-            {/* 自動更新サブスクの開示 (App Store ガイドライン要件) */}
-            {!state.isPaid && (
-              <div className="card-base px-4 py-3 text-[11px] text-gray-400 leading-relaxed space-y-2">
-                <p className="font-bold text-gray-300">自動更新サブスクリプションについて</p>
+            {/* 自動更新サブスクの開示 (App Store ガイドライン要件、常に表示) */}
+            <div className="card-base px-4 py-3 text-[11px] text-gray-400 leading-relaxed space-y-2">
+              <p className="font-bold text-gray-300">自動更新サブスクリプションについて</p>
                 <ul className="space-y-1 list-disc list-inside">
                   <li>支払いは購入確定時にApple IDアカウントに請求されます</li>
                   <li>サブスクリプションは現在の期間が終了する24時間前までに自動更新をオフにしない限り、自動的に更新されます（同額）</li>
@@ -8303,12 +8395,11 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
                   </li>
                   <li>無料トライアル期間中の解約はトライアル終了の24時間前までに行ってください</li>
                 </ul>
-                <div className="pt-2 flex flex-wrap gap-x-3 gap-y-1">
-                  <a href="/terms" className="text-blue-400 underline">利用規約</a>
-                  <a href="/privacy" className="text-blue-400 underline">プライバシーポリシー</a>
-                </div>
+              <div className="pt-2 flex flex-wrap gap-x-3 gap-y-1">
+                <a href="/terms" target="_blank" rel="noopener" className="text-emerald-300 underline">利用規約 (EULA)</a>
+                <a href="/privacy" target="_blank" rel="noopener" className="text-emerald-300 underline">プライバシーポリシー</a>
               </div>
-            )}
+            </div>
 
             {/* 開発中の注意書き (Web/PWAのみ表示) */}
             {!isIOS && (
