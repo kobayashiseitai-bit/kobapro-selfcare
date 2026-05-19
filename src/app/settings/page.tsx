@@ -674,22 +674,33 @@ export default function SettingsPage() {
           )}
         </section>
 
-        {/* Apple ヘルスケア連携 (iOS ネイティブのみ表示) */}
+        {/* Apple HealthKit 連携 (iOS ネイティブのみ表示、App Store Guideline 2.5.1 対応：HealthKit 利用を明示) */}
         {hkAvailable && (
           <section>
             <p className="text-[11px] text-gray-400 font-bold tracking-wide mb-2 px-1 flex items-center gap-1.5">
               <IconHeart size={14} className="text-pink-400" />
-              Apple ヘルスケア連携
+              Apple HealthKit 連携（Apple ヘルスケア App との連携）
             </p>
             <div className="card-base p-4 space-y-3">
+              {/* HealthKit 利用の明示バナー（Apple Guideline 2.5.1 対応） */}
+              <div className="bg-pink-500/10 border border-pink-500/30 rounded-xl px-3 py-2 text-[11px] text-pink-200 leading-relaxed">
+                <p className="font-bold text-pink-300 flex items-center gap-1">
+                  <IconHeart size={12} />
+                  この機能は Apple HealthKit を使用します
+                </p>
+                <p className="mt-1 text-gray-300">
+                  本機能は Apple の <strong className="text-white">HealthKit API</strong> を介して、iPhone の「ヘルスケア」App に記録されたあなたの健康データ（歩数・体重・心拍数等）を読み取り、AI アドバイスの精度向上に利用します。
+                  データは端末内で処理され、あなたが明示的に許可した項目のみが読み取られます。書き込み（記録の上書き・追加）は一切行いません。
+                </p>
+              </div>
               {!hkAuthorized ? (
                 <>
                   <p className="text-[12px] text-gray-300 leading-relaxed">
-                    歩数・体重・心拍数などをヘルスケアから取得して、
-                    AIアドバイスの精度を向上させます。
+                    Apple ヘルスケア App に記録されている歩数・体重・心拍数などを取得して、
+                    AI アドバイスの精度を向上させます。
                     <br />
                     <span className="text-pink-300 text-[11px]">
-                      ※ あなたが選択したデータのみ読み取ります（書き込みなし）
+                      ※ あなたが選択したデータのみ読み取ります（書き込みなし）。許可後も Apple ヘルスケア App の設定からいつでも個別に取り消せます。
                     </span>
                   </p>
                   <button
@@ -698,7 +709,7 @@ export default function SettingsPage() {
                     className="w-full py-3 px-4 rounded-xl bg-pink-600 hover:bg-pink-700 text-white font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-50 active:scale-[0.99] transition"
                   >
                     <IconHeart size={16} />
-                    {hkBusy ? "連携中..." : "ヘルスケアと連携する"}
+                    {hkBusy ? "連携中..." : "Apple ヘルスケアと連携する"}
                   </button>
                 </>
               ) : (
@@ -706,7 +717,7 @@ export default function SettingsPage() {
                   <div className="flex items-center justify-between mb-1">
                     <p className="text-sm font-bold text-pink-300 flex items-center gap-1.5">
                       <IconActivity size={14} />
-                      連携中
+                      Apple HealthKit と連携中
                     </p>
                     <button
                       onClick={handleRefreshHealthKit}
@@ -717,23 +728,28 @@ export default function SettingsPage() {
                     </button>
                   </div>
                   {hkSnapshot && (
-                    <ul className="text-[12px] text-gray-300 space-y-1">
-                      {hkSnapshot.stepsToday !== null && (
-                        <li>👣 今日の歩数: <strong className="text-white">{hkSnapshot.stepsToday.toLocaleString()}</strong> 歩</li>
-                      )}
-                      {hkSnapshot.stepsWeekAvg !== null && (
-                        <li>📊 過去7日平均: <strong className="text-white">{hkSnapshot.stepsWeekAvg.toLocaleString()}</strong> 歩/日</li>
-                      )}
-                      {hkSnapshot.weightKg !== null && (
-                        <li>⚖️ 最新体重: <strong className="text-white">{hkSnapshot.weightKg.toFixed(1)}</strong> kg</li>
-                      )}
-                      {hkSnapshot.restingHeartRate !== null && (
-                        <li>💓 安静時心拍数: <strong className="text-white">{hkSnapshot.restingHeartRate}</strong> bpm</li>
-                      )}
-                      {hkSnapshot.activeEnergyToday !== null && (
-                        <li>🔥 アクティブカロリー: <strong className="text-white">{hkSnapshot.activeEnergyToday}</strong> kcal</li>
-                      )}
-                    </ul>
+                    <>
+                      <p className="text-[10px] text-gray-400 mb-1">
+                        ⓘ 下記は Apple ヘルスケア App から取得したデータです
+                      </p>
+                      <ul className="text-[12px] text-gray-300 space-y-1">
+                        {hkSnapshot.stepsToday !== null && (
+                          <li>👣 今日の歩数: <strong className="text-white">{hkSnapshot.stepsToday.toLocaleString()}</strong> 歩 <span className="text-[10px] text-gray-500">(Apple Health)</span></li>
+                        )}
+                        {hkSnapshot.stepsWeekAvg !== null && (
+                          <li>📊 過去7日平均: <strong className="text-white">{hkSnapshot.stepsWeekAvg.toLocaleString()}</strong> 歩/日 <span className="text-[10px] text-gray-500">(Apple Health)</span></li>
+                        )}
+                        {hkSnapshot.weightKg !== null && (
+                          <li>⚖️ 最新体重: <strong className="text-white">{hkSnapshot.weightKg.toFixed(1)}</strong> kg <span className="text-[10px] text-gray-500">(Apple Health)</span></li>
+                        )}
+                        {hkSnapshot.restingHeartRate !== null && (
+                          <li>💓 安静時心拍数: <strong className="text-white">{hkSnapshot.restingHeartRate}</strong> bpm <span className="text-[10px] text-gray-500">(Apple Health)</span></li>
+                        )}
+                        {hkSnapshot.activeEnergyToday !== null && (
+                          <li>🔥 アクティブカロリー: <strong className="text-white">{hkSnapshot.activeEnergyToday}</strong> kcal <span className="text-[10px] text-gray-500">(Apple Health)</span></li>
+                        )}
+                      </ul>
+                    </>
                   )}
                 </>
               )}
