@@ -37,8 +37,8 @@ export interface HealthSnapshot {
   activeEnergyToday: number | null;
 }
 
-/** iPad 判定（iPad では HealthKit が反応しないため除外） */
-function isIPad(): boolean {
+/** iPad 判定 */
+export function isIPad(): boolean {
   if (typeof navigator === "undefined") return false;
   const ua = navigator.userAgent || "";
   // 1) 古い iPad: "iPad" を含む
@@ -51,14 +51,27 @@ function isIPad(): boolean {
   return false;
 }
 
-/** ネイティブ iOS かつ HealthKit が利用可能か（iPad は除外） */
-export function isHealthKitAvailable(): boolean {
+/**
+ * HealthKit セクションを UI に表示するかどうか
+ * (App Review Guideline 2.5.1 対応: HealthKit を使うことを UI で明示する必要あり)
+ * iOS ネイティブなら iPhone・iPad 問わず表示。Web/PWA では非表示。
+ */
+export function isHealthKitVisible(): boolean {
   if (typeof window === "undefined") return false;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const cap = (window as any).Capacitor;
   if (cap?.isNativePlatform?.() !== true) return false;
   if (cap?.getPlatform?.() !== "ios") return false;
-  // App Review 2.1(a) 対応: iPad では HealthKit ボタンが unresponsive になるため非表示
+  return true;
+}
+
+/**
+ * HealthKit 機能が実際に利用可能か (連携ボタンを押せる状態か)
+ * iPhone のみ true、iPad では false (iPad は HealthKit を完全サポートしないため)
+ */
+export function isHealthKitAvailable(): boolean {
+  if (!isHealthKitVisible()) return false;
+  // App Review 2.1(a) 対応: iPad では HealthKit ボタンが unresponsive になるため利用不可
   if (isIPad()) return false;
   return true;
 }

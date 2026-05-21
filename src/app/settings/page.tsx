@@ -34,6 +34,8 @@ import {
 } from "../lib/meal-reminders";
 import {
   isHealthKitAvailable,
+  isHealthKitVisible,
+  isIPad,
   requestHealthKitPermissions,
   isHealthKitAuthorized,
   getHealthSnapshot,
@@ -86,13 +88,21 @@ export default function SettingsPage() {
   }, []);
 
   // ===== HealthKit =====
+  // hkVisible: HealthKit セクションを UI 表示するか (iOS 全体)
+  // hkAvailable: HealthKit を実際に利用可能か (iPhone のみ true、iPad は false)
+  // App Review 2.5.1 対応: iPad でも HealthKit を使うことを UI で明示する必要があるため、
+  // セクション自体は表示し、ボタンは iPad では disabled にする
+  const [hkVisible, setHkVisible] = useState(false);
   const [hkAvailable, setHkAvailable] = useState(false);
+  const [hkIsIPad, setHkIsIPad] = useState(false);
   const [hkAuthorized, setHkAuthorized] = useState(false);
   const [hkSnapshot, setHkSnapshot] = useState<HealthSnapshot | null>(null);
   const [hkBusy, setHkBusy] = useState(false);
 
   useEffect(() => {
+    setHkVisible(isHealthKitVisible());
     setHkAvailable(isHealthKitAvailable());
+    setHkIsIPad(isIPad());
     if (!isHealthKitAvailable()) return;
     (async () => {
       const ok = await isHealthKitAuthorized();
@@ -674,8 +684,8 @@ export default function SettingsPage() {
           )}
         </section>
 
-        {/* Apple HealthKit 連携 (iOS ネイティブのみ表示、App Store Guideline 2.5.1 対応：HealthKit 利用を明示) */}
-        {hkAvailable && (
+        {/* Apple HealthKit 連携 (iOS ネイティブ全般で表示、App Store Guideline 2.5.1 対応：HealthKit 利用を UI で明示) */}
+        {hkVisible && (
           <section>
             <p className="text-[11px] text-gray-400 font-bold tracking-wide mb-2 px-1 flex items-center gap-1.5">
               <IconHeart size={14} className="text-pink-400" />
@@ -693,6 +703,18 @@ export default function SettingsPage() {
                   データは端末内で処理され、あなたが明示的に許可した項目のみが読み取られます。書き込み（記録の上書き・追加）は一切行いません。
                 </p>
               </div>
+
+              {/* iPad 用の案内（App Store Guideline 2.5.1 + 2.1(a) 対応） */}
+              {hkIsIPad && (
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl px-3 py-2 text-[11px] text-amber-200 leading-relaxed">
+                  <p className="font-bold text-amber-300">⚠️ iPad では Apple HealthKit を利用できません</p>
+                  <p className="mt-1 text-gray-300">
+                    Apple HealthKit は iPhone 専用機能です。iPad ではご利用いただけませんので、
+                    iPhone から本アプリを起動して連携してください。
+                  </p>
+                </div>
+              )}
+
               {!hkAuthorized ? (
                 <>
                   <p className="text-[12px] text-gray-300 leading-relaxed">
@@ -705,11 +727,16 @@ export default function SettingsPage() {
                   </p>
                   <button
                     onClick={handleConnectHealthKit}
-                    disabled={hkBusy}
-                    className="w-full py-3 px-4 rounded-xl bg-pink-600 hover:bg-pink-700 text-white font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-50 active:scale-[0.99] transition"
+                    disabled={hkBusy || !hkAvailable}
+                    className="w-full py-3 px-4 rounded-xl bg-pink-600 hover:bg-pink-700 text-white font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.99] transition"
+                    aria-label="Apple ヘルスケアと連携する"
                   >
                     <IconHeart size={16} />
-                    {hkBusy ? "連携中..." : "Apple ヘルスケアと連携する"}
+                    {hkBusy
+                      ? "連携中..."
+                      : !hkAvailable
+                        ? "Apple ヘルスケアと連携する（iPhone でのみ利用可能）"
+                        : "Apple ヘルスケアと連携する"}
                   </button>
                 </>
               ) : (
