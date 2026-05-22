@@ -717,26 +717,27 @@ export default function SettingsPage() {
 
               {!hkAuthorized ? (
                 <>
+                  {/* App Store Guideline 5.1.1(iv) 対応: 中立的な機能説明（許可を促す誘導文言は使わない） */}
                   <p className="text-[12px] text-gray-300 leading-relaxed">
-                    Apple ヘルスケア App に記録されている歩数・体重・心拍数などを取得して、
-                    AI アドバイスの精度を向上させます。
+                    次に進むと、iPhone の標準ダイアログで Apple HealthKit へのアクセス権限選択画面が表示されます。
+                    歩数・体重・心拍数などの項目ごとに、許可するかしないかをあなた自身で選択できます。
                     <br />
                     <span className="text-pink-300 text-[11px]">
-                      ※ あなたが選択したデータのみ読み取ります（書き込みなし）。許可後も Apple ヘルスケア App の設定からいつでも個別に取り消せます。
+                      ※ どの項目も読み取りのみで、書き込みは一切行いません。許可後も Apple ヘルスケア App の設定からいつでも個別に取り消せます。
                     </span>
                   </p>
                   <button
                     onClick={handleConnectHealthKit}
                     disabled={hkBusy || !hkAvailable}
                     className="w-full py-3 px-4 rounded-xl bg-pink-600 hover:bg-pink-700 text-white font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.99] transition"
-                    aria-label="Apple ヘルスケアと連携する"
+                    aria-label="続ける"
                   >
                     <IconHeart size={16} />
                     {hkBusy
-                      ? "連携中..."
+                      ? "処理中..."
                       : !hkAvailable
-                        ? "Apple ヘルスケアと連携する（iPhone でのみ利用可能）"
-                        : "Apple ヘルスケアと連携する"}
+                        ? "続ける（iPhone でのみ利用可能）"
+                        : "続ける"}
                   </button>
                 </>
               ) : (
