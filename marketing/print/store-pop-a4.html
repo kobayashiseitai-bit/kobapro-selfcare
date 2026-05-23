@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<title>ZERO-PAIN 店舗 POP - A4 縦</title>
+<style>
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    background: #e2e8f0;
+    padding: 20px;
+  }
+  .print-guide {
+    max-width: 210mm;
+    margin: 0 auto 20px;
+    padding: 12px 16px;
+    background: #ecfdf5;
+    border-left: 4px solid #059669;
+    font-size: 13px;
+    color: #047857;
+  }
+  @media print {
+    body { background: white; padding: 0; }
+    .print-guide { display: none; }
+  }
+
+  .pop {
+    width: 210mm;
+    height: 297mm;
+    margin: 0 auto;
+    background: linear-gradient(180deg, #ecfdf5 0%, #ffffff 35%, #ffffff 75%, #d1fae5 100%);
+    position: relative;
+    overflow: hidden;
+    padding: 18mm 16mm;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+  }
+  @media print { .pop { box-shadow: none; } }
+
+  /* 装飾の円 */
+  .pop::before, .pop::after {
+    content: "";
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(40px);
+    z-index: 0;
+  }
+  .pop::before {
+    width: 80mm;
+    height: 80mm;
+    top: -20mm;
+    right: -25mm;
+    background: rgba(16, 185, 129, 0.18);
+  }
+  .pop::after {
+    width: 100mm;
+    height: 100mm;
+    bottom: -30mm;
+    left: -30mm;
+    background: rgba(20, 184, 166, 0.15);
+  }
+
+  .pop > * { position: relative; z-index: 1; }
+
+  /* ===== Top: Brand ===== */
+  .pop-header {
+    display: flex;
+    align-items: center;
+    gap: 5mm;
+    margin-bottom: 6mm;
+  }
+  .header-icon {
+    width: 18mm;
+    height: 18mm;
+    border-radius: 4mm;
+    background: linear-gradient(135deg, #d1fae5, #99f6e4);
+    padding: 1.5mm;
+    box-shadow: 0 3px 10px rgba(16,185,129,0.25);
+  }
+  .header-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+  .header-text { flex: 1; }
+  .brand-name {
+    font-size: 28pt;
+    font-weight: 900;
+    color: #0f172a;
+    letter-spacing: -0.5pt;
+    line-height: 1;
+  }
+  .brand-tagline {
+    font-size: 10pt;
+    color: #047857;
+    font-weight: 700;
+    margin-top: 1.5mm;
+    letter-spacing: 0.5pt;
+  }
+  .release-badge {
+    display: inline-block;
+    background: #0f172a;
+    color: white;
+    font-size: 8pt;
+    font-weight: 800;
+    padding: 1.5mm 3mm;
+    border-radius: 1.5mm;
+    margin-top: 2mm;
+    letter-spacing: 0.5pt;
+  }
+
+  /* ===== Catch Copy ===== */
+  .catch {
+    margin: 8mm 0 6mm;
+    text-align: center;
+  }
+  .catch-line1 {
+    font-size: 24pt;
+    font-weight: 900;
+    color: #0f172a;
+    line-height: 1.3;
+    letter-spacing: -0.5pt;
+  }
+  .catch-line2 {
+    font-size: 32pt;
+    font-weight: 900;
+    line-height: 1.25;
+    margin-top: 2mm;
+    letter-spacing: -1pt;
+  }
+  .catch-em {
+    background: linear-gradient(90deg, #059669, #14b8a6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .catch-sub {
+    font-size: 12pt;
+    color: #334155;
+    margin-top: 5mm;
+    line-height: 1.6;
+    font-weight: 500;
+  }
+
+  /* ===== Features ===== */
+  .features {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 3mm;
+    margin: 6mm 0;
+  }
+  .feature-card {
+    background: white;
+    border: 0.4mm solid #d1fae5;
+    border-radius: 3mm;
+    padding: 3.5mm 2mm;
+    text-align: center;
+    box-shadow: 0 1mm 3mm rgba(0,0,0,0.04);
+  }
+  .feature-icon {
+    width: 9mm;
+    height: 9mm;
+    margin: 0 auto 1.5mm;
+    background: linear-gradient(135deg, #10b981, #14b8a6);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10pt;
+    font-weight: 900;
+  }
+  .feature-title {
+    font-size: 9pt;
+    font-weight: 900;
+    color: #0f172a;
+    line-height: 1.2;
+  }
+  .feature-desc {
+    font-size: 6.5pt;
+    color: #475569;
+    margin-top: 1mm;
+    line-height: 1.4;
+  }
+
+  /* ===== Main Visual: Sensei + iPhone ===== */
+  .visual-area {
+    display: flex;
+    align-items: center;
+    gap: 4mm;
+    margin: 4mm 0;
+    padding: 4mm 5mm;
+    background: linear-gradient(135deg, rgba(255,255,255,0.7), rgba(255,255,255,0.4));
+    border-radius: 4mm;
+    border: 0.3mm solid #d1fae5;
+  }
+  .sensei-large {
+    width: 45mm;
+    height: 45mm;
+    flex-shrink: 0;
+  }
+  .sensei-large img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+  .visual-text {
+    flex: 1;
+  }
+  .visual-text h3 {
+    font-size: 14pt;
+    font-weight: 900;
+    color: #047857;
+    line-height: 1.3;
+    margin-bottom: 2mm;
+  }
+  .visual-text p {
+    font-size: 9pt;
+    color: #334155;
+    line-height: 1.55;
+  }
+
+  /* ===== QR + CTA ===== */
+  .cta-section {
+    background: white;
+    border: 0.5mm solid #0f172a;
+    border-radius: 4mm;
+    padding: 5mm 6mm;
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    gap: 6mm;
+    box-shadow: 0 4mm 8mm rgba(0,0,0,0.08);
+  }
+  .cta-qr {
+    width: 45mm;
+    height: 45mm;
+    flex-shrink: 0;
+    padding: 1.5mm;
+    background: white;
+    border: 0.3mm solid #e5e7eb;
+    border-radius: 2mm;
+  }
+  .cta-qr img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+  .cta-content {
+    flex: 1;
+  }
+  .cta-title {
+    font-size: 13pt;
+    font-weight: 900;
+    color: #0f172a;
+    line-height: 1.3;
+    margin-bottom: 2mm;
+  }
+  .cta-title .accent { color: #059669; }
+  .cta-desc {
+    font-size: 9pt;
+    color: #475569;
+    line-height: 1.5;
+    margin-bottom: 3mm;
+  }
+  .cta-price {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 2mm;
+    background: #ecfdf5;
+    padding: 1.5mm 3mm;
+    border-radius: 1.5mm;
+    border: 0.3mm solid #10b981;
+  }
+  .price-label {
+    font-size: 7pt;
+    color: #047857;
+    font-weight: 700;
+  }
+  .price-value {
+    font-size: 11pt;
+    color: #047857;
+    font-weight: 900;
+  }
+  .price-period {
+    font-size: 7pt;
+    color: #475569;
+  }
+
+  /* ===== Footer ===== */
+  .pop-footer {
+    text-align: center;
+    margin-top: 4mm;
+    font-size: 6.5pt;
+    color: #64748b;
+    letter-spacing: 0.3pt;
+  }
+  .pop-footer .url {
+    font-family: ui-monospace, "SF Mono", monospace;
+    color: #0f172a;
+    font-weight: 700;
+    font-size: 7pt;
+  }
+</style>
+</head>
+<body>
+
+<div class="print-guide">
+  📄 <strong>印刷方法</strong>:
+  ブラウザの「印刷」(Cmd/Ctrl+P) → 用紙: A4 縦 → 余白: <strong>なし</strong> →
+  「背景のグラフィック」を ON → 印刷。
+  整体院・接骨院・カフェ・ジムの卓上 / レジ横 / 待合スペース推奨。
+</div>
+
+<div class="pop">
+
+  <!-- ===== ヘッダー ===== -->
+  <div class="pop-header">
+    <div class="header-icon">
+      <img src="../../public/icon-skeleton-sensei-face.png" alt="ガイコツ先生" />
+    </div>
+    <div class="header-text">
+      <div class="brand-name">ZERO-PAIN</div>
+      <div class="brand-tagline">AI姿勢チェック・食事分析・セルフケア</div>
+      <div class="release-badge">★ App Store 配信開始</div>
+    </div>
+  </div>
+
+  <!-- ===== キャッチコピー ===== -->
+  <div class="catch">
+    <div class="catch-line1">痛みのある毎日に、</div>
+    <div class="catch-line2">
+      <span class="catch-em">AIパーソナル</span><br>トレーナーを。
+    </div>
+    <div class="catch-sub">
+      スマホで全身写真を撮るだけ。<br>
+      AIがあなた専用のセルフケアを提案します。
+    </div>
+  </div>
+
+  <!-- ===== 機能 3 つ ===== -->
+  <div class="features">
+    <div class="feature-card">
+      <div class="feature-icon">A</div>
+      <div class="feature-title">AI 姿勢分析</div>
+      <div class="feature-desc">骨格バランスを<br>自動で数値化</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">B</div>
+      <div class="feature-title">AI カウンセリング</div>
+      <div class="feature-desc">ガイコツ先生が<br>24時間相談に乗る</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">C</div>
+      <div class="feature-title">AI 食事分析</div>
+      <div class="feature-desc">写真1枚で<br>栄養を自動計算</div>
+    </div>
+  </div>
+
+  <!-- ===== ガイコツ先生キャラ + メッセージ ===== -->
+  <div class="visual-area">
+    <div class="sensei-large">
+      <img src="../../public/icon-skeleton-sensei.png" alt="ガイコツ先生" />
+    </div>
+    <div class="visual-text">
+      <h3>こんにちは、<br>ガイコツ先生です</h3>
+      <p>
+        肩こり・腰痛・姿勢の悩みは、
+        毎日少しずつのセルフケアで
+        変えていけるんです。
+        ぜひ一緒に始めましょう。
+      </p>
+    </div>
+  </div>
+
+  <!-- ===== CTA + QR ===== -->
+  <div class="cta-section">
+    <div class="cta-qr">
+      <img src="../qr/qr-app-store.png" alt="App Store QR" />
+    </div>
+    <div class="cta-content">
+      <div class="cta-title">
+        QR を <span class="accent">スマホでスキャン</span><br>
+        今すぐダウンロード
+      </div>
+      <div class="cta-desc">
+        iPhone 専用 / App Store からインストールできます。
+      </div>
+      <div class="cta-price">
+        <span class="price-label">🎁</span>
+        <span class="price-value">7日間 完全無料</span>
+        <span class="price-period">／ いつでも解約OK</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== フッター ===== -->
+  <div class="pop-footer">
+    <span class="url">apps.apple.com/jp/app/zero-pain</span>
+    <span style="margin: 0 3mm;">|</span>
+    © TOPBANK.INC
+    <span style="margin: 0 3mm;">|</span>
+    お問い合わせ: posture-app-steel.vercel.app/support
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<title>ZERO-PAIN 名刺 - 印刷用</title>
+<style>
+  /* 印刷設定 */
+  @page {
+    size: A4;
+    margin: 10mm;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    background: #f5f5f5;
+    padding: 20px;
+  }
+
+  /* 印刷時はガイド非表示 */
+  .print-guide {
+    margin-bottom: 20px;
+    padding: 12px 16px;
+    background: #ecfdf5;
+    border-left: 4px solid #059669;
+    font-size: 13px;
+    color: #047857;
+  }
+  @media print {
+    body { background: white; padding: 0; }
+    .print-guide { display: none; }
+    .card-page { page-break-after: always; }
+  }
+
+  .card-page {
+    width: 190mm;
+    margin: 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4mm;
+    justify-content: center;
+    padding: 10mm 0;
+  }
+
+  /* 名刺サイズ: 91 x 55 mm (日本標準) */
+  .card {
+    width: 91mm;
+    height: 55mm;
+    background: white;
+    border: 0.2mm dashed #cbd5e1;
+    border-radius: 2mm;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+  }
+  @media print {
+    .card { box-shadow: none; border: 0.15mm dashed #d1d5db; }
+  }
+
+  /* ===== 表 (Front) ===== */
+  .card.front {
+    background: linear-gradient(135deg, #ecfdf5 0%, #ffffff 50%, #f0fdfa 100%);
+    padding: 5mm 6mm;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .front-header {
+    display: flex;
+    align-items: center;
+    gap: 3mm;
+  }
+  .sensei-icon {
+    width: 11mm;
+    height: 11mm;
+    border-radius: 2.5mm;
+    background: linear-gradient(135deg, #d1fae5, #99f6e4);
+    padding: 1mm;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .sensei-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+  .brand-text {
+    flex: 1;
+  }
+  .brand-name {
+    font-size: 13pt;
+    font-weight: 900;
+    color: #0f172a;
+    letter-spacing: -0.3pt;
+    line-height: 1;
+  }
+  .brand-tagline {
+    font-size: 6.5pt;
+    color: #047857;
+    font-weight: 600;
+    margin-top: 1mm;
+    letter-spacing: 0.2pt;
+  }
+
+  .front-mid {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 3mm;
+  }
+  .catch-copy {
+    font-size: 9pt;
+    font-weight: 800;
+    line-height: 1.35;
+    color: #0f172a;
+  }
+  .catch-copy .em {
+    background: linear-gradient(90deg, #059669, #14b8a6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .sensei-mini {
+    width: 14mm;
+    height: 14mm;
+    flex-shrink: 0;
+  }
+  .sensei-mini img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .front-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 1.5mm;
+    border-top: 0.2mm solid #d1fae5;
+  }
+  .features-strip {
+    font-size: 6pt;
+    color: #475569;
+    font-weight: 600;
+    letter-spacing: 0.1pt;
+  }
+  .features-strip .dot { color: #10b981; margin: 0 1mm; }
+  .free-badge {
+    background: #0f172a;
+    color: white;
+    font-size: 6.5pt;
+    font-weight: 800;
+    padding: 1mm 2mm;
+    border-radius: 1mm;
+    white-space: nowrap;
+  }
+
+  /* ===== 裏 (Back) ===== */
+  .card.back {
+    background: white;
+    padding: 4mm;
+    display: flex;
+    align-items: center;
+    gap: 4mm;
+  }
+
+  .back-qr {
+    width: 35mm;
+    height: 35mm;
+    flex-shrink: 0;
+    background: white;
+    padding: 1mm;
+    border: 0.3mm solid #e5e7eb;
+    border-radius: 1.5mm;
+  }
+  .back-qr img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .back-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
+  }
+
+  .back-info-top {
+    margin-bottom: 2mm;
+  }
+  .back-title {
+    font-size: 9pt;
+    font-weight: 900;
+    color: #0f172a;
+    line-height: 1.3;
+    margin-bottom: 1.5mm;
+  }
+  .back-title .accent {
+    color: #059669;
+  }
+  .back-desc {
+    font-size: 6.5pt;
+    color: #475569;
+    line-height: 1.45;
+  }
+
+  .back-info-bottom {
+    margin-top: auto;
+    padding-top: 1.5mm;
+    border-top: 0.2mm solid #f1f5f9;
+  }
+  .back-url-row {
+    display: flex;
+    align-items: center;
+    gap: 1.5mm;
+    font-size: 6pt;
+    color: #475569;
+    margin-bottom: 1mm;
+  }
+  .url-label {
+    font-weight: 700;
+    color: #059669;
+    font-size: 6pt;
+  }
+  .url-text {
+    font-family: ui-monospace, "SF Mono", monospace;
+    font-size: 5.8pt;
+    color: #1e293b;
+    word-break: break-all;
+  }
+
+  .back-corp {
+    font-size: 5.5pt;
+    color: #94a3b8;
+    margin-top: 1mm;
+    text-align: right;
+  }
+
+  /* セクション見出し */
+  h2 {
+    text-align: center;
+    margin: 30px 0 12px;
+    font-size: 14px;
+    color: #334155;
+    font-weight: 700;
+  }
+  @media print { h2 { display: none; } }
+</style>
+</head>
+<body>
+
+<div class="print-guide">
+  📄 <strong>印刷方法</strong>:
+  ブラウザの「印刷」(Cmd/Ctrl+P) → 用紙: A4 → 余白: 標準 / 倍率: 100% → 印刷。
+  名刺サイズ (91×55mm) で 1 ページに表 4 枚、次のページに裏 4 枚配置されます。
+  カッティングマシン or ハサミで点線でカット。
+</div>
+
+<h2>▼ 名刺 表面 (4 枚 / A4)</h2>
+<div class="card-page">
+
+  <!-- 表 ×4 -->
+  <div class="card front">
+    <div class="front-header">
+      <div class="sensei-icon">
+        <img src="../../public/icon-skeleton-sensei-face.png" alt="ガイコツ先生" />
+      </div>
+      <div class="brand-text">
+        <div class="brand-name">ZERO-PAIN</div>
+        <div class="brand-tagline">AI セルフケアアプリ</div>
+      </div>
+    </div>
+    <div class="front-mid">
+      <div class="catch-copy">
+        痛みのある毎日に、<br>
+        <span class="em">AIパーソナルトレーナー</span>を。
+      </div>
+      <div class="sensei-mini">
+        <img src="../../public/icon-skeleton-sensei.png" alt="ガイコツ先生" />
+      </div>
+    </div>
+    <div class="front-bottom">
+      <div class="features-strip">
+        AI姿勢分析<span class="dot">•</span>食事分析<span class="dot">•</span>30日コーチング
+      </div>
+      <div class="free-badge">7日間無料</div>
+    </div>
+  </div>
+
+  <div class="card front">
+    <div class="front-header">
+      <div class="sensei-icon">
+        <img src="../../public/icon-skeleton-sensei-face.png" alt="" />
+      </div>
+      <div class="brand-text">
+        <div class="brand-name">ZERO-PAIN</div>
+        <div class="brand-tagline">AI セルフケアアプリ</div>
+      </div>
+    </div>
+    <div class="front-mid">
+      <div class="catch-copy">
+        痛みのある毎日に、<br>
+        <span class="em">AIパーソナルトレーナー</span>を。
+      </div>
+      <div class="sensei-mini">
+        <img src="../../public/icon-skeleton-sensei.png" alt="" />
+      </div>
+    </div>
+    <div class="front-bottom">
+      <div class="features-strip">
+        AI姿勢分析<span class="dot">•</span>食事分析<span class="dot">•</span>30日コーチング
+      </div>
+      <div class="free-badge">7日間無料</div>
+    </div>
+  </div>
+
+  <div class="card front">
+    <div class="front-header">
+      <div class="sensei-icon">
+        <img src="../../public/icon-skeleton-sensei-face.png" alt="" />
+      </div>
+      <div class="brand-text">
+        <div class="brand-name">ZERO-PAIN</div>
+        <div class="brand-tagline">AI セルフケアアプリ</div>
+      </div>
+    </div>
+    <div class="front-mid">
+      <div class="catch-copy">
+        痛みのある毎日に、<br>
+        <span class="em">AIパーソナルトレーナー</span>を。
+      </div>
+      <div class="sensei-mini">
+        <img src="../../public/icon-skeleton-sensei.png" alt="" />
+      </div>
+    </div>
+    <div class="front-bottom">
+      <div class="features-strip">
+        AI姿勢分析<span class="dot">•</span>食事分析<span class="dot">•</span>30日コーチング
+      </div>
+      <div class="free-badge">7日間無料</div>
+    </div>
+  </div>
+
+  <div class="card front">
+    <div class="front-header">
+      <div class="sensei-icon">
+        <img src="../../public/icon-skeleton-sensei-face.png" alt="" />
+      </div>
+      <div class="brand-text">
+        <div class="brand-name">ZERO-PAIN</div>
+        <div class="brand-tagline">AI セルフケアアプリ</div>
+      </div>
+    </div>
+    <div class="front-mid">
+      <div class="catch-copy">
+        痛みのある毎日に、<br>
+        <span class="em">AIパーソナルトレーナー</span>を。
+      </div>
+      <div class="sensei-mini">
+        <img src="../../public/icon-skeleton-sensei.png" alt="" />
+      </div>
+    </div>
+    <div class="front-bottom">
+      <div class="features-strip">
+        AI姿勢分析<span class="dot">•</span>食事分析<span class="dot">•</span>30日コーチング
+      </div>
+      <div class="free-badge">7日間無料</div>
+    </div>
+  </div>
+
+</div>
+
+<h2>▼ 名刺 裏面 (4 枚 / A4 / 表と同じ並びで両面印刷)</h2>
+<div class="card-page">
+
+  <!-- 裏 ×4 -->
+  <div class="card back">
+    <div class="back-qr">
+      <img src="../qr/qr-app-store.png" alt="App Store QR" />
+    </div>
+    <div class="back-info">
+      <div class="back-info-top">
+        <div class="back-title">
+          QRから<br>
+          <span class="accent">今すぐダウンロード</span>
+        </div>
+        <div class="back-desc">
+          AI姿勢分析・食事分析・ガイコツ先生のカウンセリング。7日間無料でお試しいただけます。
+        </div>
+      </div>
+      <div class="back-info-bottom">
+        <div class="back-url-row">
+          <span class="url-label">App</span>
+          <span class="url-text">apps.apple.com/jp/app/zero-pain</span>
+        </div>
+        <div class="back-corp">© TOPBANK.INC</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card back">
+    <div class="back-qr">
+      <img src="../qr/qr-app-store.png" alt="" />
+    </div>
+    <div class="back-info">
+      <div class="back-info-top">
+        <div class="back-title">
+          QRから<br>
+          <span class="accent">今すぐダウンロード</span>
+        </div>
+        <div class="back-desc">
+          AI姿勢分析・食事分析・ガイコツ先生のカウンセリング。7日間無料でお試しいただけます。
+        </div>
+      </div>
+      <div class="back-info-bottom">
+        <div class="back-url-row">
+          <span class="url-label">App</span>
+          <span class="url-text">apps.apple.com/jp/app/zero-pain</span>
+        </div>
+        <div class="back-corp">© TOPBANK.INC</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card back">
+    <div class="back-qr">
+      <img src="../qr/qr-app-store.png" alt="" />
+    </div>
+    <div class="back-info">
+      <div class="back-info-top">
+        <div class="back-title">
+          QRから<br>
+          <span class="accent">今すぐダウンロード</span>
+        </div>
+        <div class="back-desc">
+          AI姿勢分析・食事分析・ガイコツ先生のカウンセリング。7日間無料でお試しいただけます。
+        </div>
+      </div>
+      <div class="back-info-bottom">
+        <div class="back-url-row">
+          <span class="url-label">App</span>
+          <span class="url-text">apps.apple.com/jp/app/zero-pain</span>
+        </div>
+        <div class="back-corp">© TOPBANK.INC</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card back">
+    <div class="back-qr">
+      <img src="../qr/qr-app-store.png" alt="" />
+    </div>
+    <div class="back-info">
+      <div class="back-info-top">
+        <div class="back-title">
+          QRから<br>
+          <span class="accent">今すぐダウンロード</span>
+        </div>
+        <div class="back-desc">
+          AI姿勢分析・食事分析・ガイコツ先生のカウンセリング。7日間無料でお試しいただけます。
+        </div>
+      </div>
+      <div class="back-info-bottom">
+        <div class="back-url-row">
+          <span class="url-label">App</span>
+          <span class="url-text">apps.apple.com/jp/app/zero-pain</span>
+        </div>
+        <div class="back-corp">© TOPBANK.INC</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
