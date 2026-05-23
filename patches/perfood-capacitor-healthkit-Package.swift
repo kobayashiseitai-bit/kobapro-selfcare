@@ -29,6 +29,9 @@ let package = Package(
                 "Info.plist",
                 "CapacitorHealthkitPlugin.h",
                 "CapacitorHealthkitPlugin.m"
+            ],
+            linkerSettings: [
+                .linkedFramework("HealthKit")
             ]
         )
     ]
