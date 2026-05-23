@@ -16,10 +16,9 @@ const geistMono = localFont({
 export const viewport = {
   width: "device-width",
   initialScale: 1,
-  // アクセシビリティ向上のため 2 本指ピンチズームを許可
-  // (Apple のアクセシビリティガイドライン推奨)
-  maximumScale: 5,
-  userScalable: true,
+  // ピンチズーム有効化はレイアウト崩れを引き起こすため v1.1 で再検討
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export const metadata: Metadata = {
