@@ -78,6 +78,8 @@ export default function RootLayout({
             __html: `
               (function() {
                 try {
+                  // LP は独自デザインを使うので theme-mint を適用しない
+                  if (window.location.pathname.startsWith('/lp')) return;
                   var saved = localStorage.getItem('zero_pain_theme') || 'light';
                   var resolved = saved;
                   if (saved === 'system') {

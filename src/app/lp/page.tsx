@@ -83,17 +83,19 @@ function AppStoreButton({ size = 'lg' }: { size?: 'lg' | 'md' }) {
       href={APP_STORE_URL}
       target="_blank"
       rel="noopener noreferrer"
-      className={`inline-flex items-center justify-center gap-2 ${sizing} rounded-full bg-slate-900 text-white font-semibold shadow-lg shadow-slate-900/20 hover:bg-slate-800 transition-all hover:scale-[1.02] active:scale-[0.98]`}
+      className={`inline-flex items-center justify-center gap-2 ${sizing} rounded-full font-semibold shadow-lg shadow-slate-900/20 hover:opacity-90 transition-all hover:scale-[1.02] active:scale-[0.98]`}
+      style={{ background: '#0f172a', color: '#ffffff' }}
     >
       <svg
         className="w-5 h-5 sm:w-6 sm:h-6"
         viewBox="0 0 24 24"
         fill="currentColor"
         aria-hidden
+        style={{ color: '#ffffff' }}
       >
         <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
       </svg>
-      <span>App Store でダウンロード</span>
+      <span style={{ color: '#ffffff' }}>App Store でダウンロード</span>
     </a>
   );
 }
@@ -107,13 +109,19 @@ export default function LPPage() {
       />
 
       {/* ===== Sticky Header ===== */}
-      <header className="sticky top-0 z-50 backdrop-blur-md bg-white/70 border-b border-emerald-100">
+      <header className="sticky top-0 z-50 backdrop-blur-md bg-white/80 border-b border-emerald-100">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-white font-bold text-sm shadow-md">
-              ZP
+            <div className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-emerald-100 to-teal-100 p-1 shadow-md overflow-hidden">
+              <Image
+                src="/icon-skeleton-sensei-face.png"
+                alt="ガイコツ先生"
+                fill
+                sizes="40px"
+                className="object-contain"
+              />
             </div>
-            <span className="font-bold text-base sm:text-lg tracking-tight">
+            <span className="font-bold text-base sm:text-lg tracking-tight text-slate-900">
               ZERO-PAIN
             </span>
           </div>
@@ -184,6 +192,23 @@ export default function LPPage() {
                 />
               </div>
             </div>
+            {/* ガイコツ先生キャラ - iPhone モックの右下に配置 */}
+            <div className="absolute -bottom-6 -right-6 sm:-bottom-10 sm:-right-10 w-32 sm:w-44 lg:w-52 z-10 pointer-events-none">
+              <div className="relative w-full aspect-square drop-shadow-2xl">
+                <Image
+                  src="/icon-skeleton-sensei.png"
+                  alt="ガイコツ先生"
+                  fill
+                  sizes="(min-width: 1024px) 208px, 176px"
+                  className="object-contain"
+                  priority
+                />
+              </div>
+              <div className="absolute -top-4 sm:-top-6 -left-4 sm:-left-8 bg-white rounded-2xl px-3 py-2 shadow-lg border border-emerald-100 text-xs sm:text-sm font-bold text-emerald-700 whitespace-nowrap">
+                先生にお任せ！
+                <span className="absolute -bottom-2 right-6 w-3 h-3 bg-white border-r border-b border-emerald-100 transform rotate-45" />
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -221,12 +246,31 @@ export default function LPPage() {
               </div>
             ))}
           </div>
-          <div className="mt-10 sm:mt-14 text-center">
-            <p className="inline-block text-base sm:text-xl text-slate-700 px-6 py-4 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-100">
-              ZERO-PAIN は、これらの悩みすべてに
-              <br className="sm:hidden" />
-              <strong className="text-emerald-700">AI と一緒に向き合うアプリ</strong>です。
-            </p>
+          <div className="mt-12 sm:mt-16 flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-8">
+            <div className="relative w-32 sm:w-40 flex-shrink-0">
+              <div className="relative w-full aspect-square">
+                <Image
+                  src="/icon-skeleton-sensei.png"
+                  alt="ガイコツ先生"
+                  fill
+                  sizes="(min-width: 640px) 160px, 128px"
+                  className="object-contain drop-shadow-xl"
+                />
+              </div>
+            </div>
+            <div className="relative max-w-md">
+              <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl px-6 py-5 shadow-md">
+                <p className="text-base sm:text-lg text-slate-800 leading-relaxed">
+                  全部、AI と一緒に向き合えば<br className="sm:hidden" />
+                  <strong className="text-emerald-700">解決できますよ。</strong>
+                </p>
+                <p className="text-xs sm:text-sm text-slate-500 mt-2">
+                  — ガイコツ先生（あなた専属AIトレーナー）
+                </p>
+              </div>
+              {/* 吹き出しのしっぽ - PC のみ左向き */}
+              <span className="hidden sm:block absolute top-8 -left-3 w-6 h-6 bg-gradient-to-br from-emerald-50 to-emerald-50 border-l border-b border-emerald-200 transform rotate-45" />
+            </div>
           </div>
         </div>
       </section>
@@ -296,6 +340,51 @@ export default function LPPage() {
             image="/lp/08-family.png"
             imageAlt="家族グループ画面"
           />
+        </div>
+      </section>
+
+      {/* ===== Screenshots Gallery ===== */}
+      <section className="py-16 sm:py-20 bg-white border-t border-emerald-50">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-10 sm:mb-12">
+            <p className="text-emerald-600 font-bold text-sm sm:text-base mb-2">
+              アプリ画面
+            </p>
+            <h2 className="text-2xl sm:text-4xl font-black tracking-tight">
+              シンプル、でも本格的なセルフケア体験
+            </h2>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+            {[
+              { src: '/lp/01-top.png', alt: 'トップ画面' },
+              { src: '/lp/11-skeleton.png', alt: '骨格チェック' },
+              { src: '/lp/03-result.png', alt: '姿勢分析結果' },
+              { src: '/lp/07-streak.png', alt: '連続記録グラフ' },
+              { src: '/lp/05-meal.png', alt: '食事記録' },
+              { src: '/lp/09-subscription.png', alt: 'プラン管理' },
+            ].map((shot, idx) => (
+              <div
+                key={idx}
+                className="relative aspect-[9/19.5] rounded-2xl overflow-hidden bg-slate-900 p-1.5 shadow-lg hover:scale-105 transition-transform"
+              >
+                <div className="relative w-full h-full rounded-xl overflow-hidden bg-white">
+                  <Image
+                    src={shot.src}
+                    alt={shot.alt}
+                    fill
+                    sizes="(min-width: 1024px) 160px, (min-width: 640px) 200px, 150px"
+                    className="object-cover"
+                  />
+                </div>
+                <p className="absolute -bottom-7 left-0 right-0 text-center text-xs text-slate-500">
+                  {shot.alt}
+                </p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-16 text-center">
+            <AppStoreButton size="lg" />
+          </div>
         </div>
       </section>
 
@@ -478,10 +567,19 @@ export default function LPPage() {
           <div className="absolute bottom-10 right-10 w-96 h-96 bg-white rounded-full blur-3xl" />
         </div>
         <div className="relative max-w-3xl mx-auto px-4 sm:px-6 text-center">
-          <h2 className="text-3xl sm:text-5xl font-black tracking-tight mb-4">
+          <div className="relative w-32 sm:w-40 mx-auto mb-6 drop-shadow-2xl">
+            <Image
+              src="/icon-skeleton-sensei.png"
+              alt="ガイコツ先生"
+              width={160}
+              height={160}
+              className="mx-auto"
+            />
+          </div>
+          <h2 className="text-3xl sm:text-5xl font-black tracking-tight mb-4" style={{ color: '#ffffff' }}>
             痛みのない毎日を、今日から。
           </h2>
-          <p className="text-base sm:text-lg text-emerald-50 mb-8 leading-relaxed">
+          <p className="text-base sm:text-lg mb-8 leading-relaxed" style={{ color: '#ecfdf5' }}>
             7日間無料で全機能をお試し。
             <br />
             合わなければ、料金は一切かかりません。
@@ -490,14 +588,15 @@ export default function LPPage() {
             href={APP_STORE_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center justify-center gap-2 px-8 py-5 rounded-full bg-white text-emerald-700 font-black text-lg sm:text-xl shadow-2xl hover:scale-[1.03] active:scale-[0.98] transition-transform"
+            className="inline-flex items-center justify-center gap-2 px-8 py-5 rounded-full bg-white font-black text-lg sm:text-xl shadow-2xl hover:scale-[1.03] active:scale-[0.98] transition-transform"
+            style={{ color: '#047857' }}
           >
             <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
               <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
             </svg>
             App Store で無料ダウンロード
           </a>
-          <p className="mt-4 text-sm text-emerald-50/80">
+          <p className="mt-4 text-sm" style={{ color: 'rgba(236, 253, 245, 0.85)' }}>
             iPhone 専用 / iOS 16.0 以上
           </p>
         </div>
