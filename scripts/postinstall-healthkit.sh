@@ -1,16 +1,15 @@
 #!/usr/bin/env bash
-# postinstall: @perfood/capacitor-healthkit に SPM 用 Package.swift を復元する
-# npm install で node_modules が再生成されると Package.swift が消えるため、
-# patches/ から復元する。
+# postinstall: @perfood/capacitor-healthkit を Capacitor 8 SPM 互換にパッチする
+# npm install で node_modules が再生成されると消えるため毎回復元する。
 #
-# 詳細: @perfood/capacitor-healthkit は CocoaPods のみ対応で SPM 非対応のため、
-# Capacitor 8 (SPM ベース) で利用するには Package.swift を手動追加する必要がある。
+# 修正内容:
+# 1. Package.swift を追加 (SPM パッケージ化)
+# 2. Plugin.swift に CAPBridgedPlugin プロトコル実装を追加
+#    (CAP_PLUGIN ObjC マクロが SPM 環境で動作しないため)
 
 set -euo pipefail
 
-PATCH_FILE="patches/perfood-capacitor-healthkit-Package.swift"
 TARGET_DIR="node_modules/@perfood/capacitor-healthkit"
-TARGET_FILE="${TARGET_DIR}/Package.swift"
 
 # node_modules が存在しない or 対象パッケージが未インストールならスキップ
 if [ ! -d "${TARGET_DIR}" ]; then
@@ -18,11 +17,20 @@ if [ ! -d "${TARGET_DIR}" ]; then
   exit 0
 fi
 
-if [ ! -f "${PATCH_FILE}" ]; then
-  echo "[postinstall-healthkit] Patch file ${PATCH_FILE} not found, skipping."
-  exit 0
+# Package.swift
+PKG_PATCH="patches/perfood-capacitor-healthkit-Package.swift"
+PKG_TARGET="${TARGET_DIR}/Package.swift"
+if [ -f "${PKG_PATCH}" ]; then
+  cp "${PKG_PATCH}" "${PKG_TARGET}"
+  echo "[postinstall-healthkit] Restored ${PKG_TARGET}"
 fi
 
-# 既に存在しても上書きする (バージョンを最新に保つ)
-cp "${PATCH_FILE}" "${TARGET_FILE}"
-echo "[postinstall-healthkit] Restored ${TARGET_FILE}"
+# Plugin.swift (CAPBridgedPlugin 対応版)
+PLUGIN_PATCH="patches/perfood-capacitor-healthkit-Plugin.swift"
+PLUGIN_TARGET="${TARGET_DIR}/ios/Plugin/CapacitorHealthkitPlugin.swift"
+if [ -f "${PLUGIN_PATCH}" ]; then
+  cp "${PLUGIN_PATCH}" "${PLUGIN_TARGET}"
+  echo "[postinstall-healthkit] Restored ${PLUGIN_TARGET}"
+fi
+
+echo "[postinstall-healthkit] Done."
