@@ -9,6 +9,7 @@
  */
 
 import Link from "next/link";
+import SmartBackLink from "../components/SmartBackLink";
 
 export const metadata = {
   title: "参考文献・情報源 | ZERO-PAIN",
@@ -118,12 +119,11 @@ export default function ReferencesPage() {
   return (
     <main className="min-h-screen bg-gray-950 text-white p-5 space-y-8">
       <header className="max-w-2xl mx-auto space-y-2">
-        <Link
-          href="/"
+        <SmartBackLink
           className="inline-block text-sm text-emerald-400 underline"
-        >
-          ← トップへ戻る
-        </Link>
+          defaultLabel="← トップへ戻る"
+          lpLabel="← LP に戻る"
+        />
         <h1 className="text-2xl font-extrabold">参考文献・情報源</h1>
         <p className="text-sm text-gray-300 leading-relaxed">
           本アプリで提供する姿勢分析・セルフケア・栄養に関する情報は、

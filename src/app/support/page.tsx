@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import SmartBackLink from "../components/SmartBackLink";
 
 function getDeviceId(): string {
   if (typeof window === "undefined") return "";
@@ -222,12 +223,7 @@ export default function SupportPage() {
     return (
       <main className="min-h-screen bg-gray-950 text-white flex flex-col">
         <header className="sticky top-0 z-10 bg-gray-950/90 backdrop-blur-xl border-b border-white/5 px-4 py-3 flex items-center gap-3">
-          <Link
-            href="/"
-            className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm"
-          >
-            ← 戻る
-          </Link>
+          <SmartBackLink className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm" />
           <h1 className="text-base font-bold">💬 サポート</h1>
         </header>
 
@@ -254,12 +250,11 @@ export default function SupportPage() {
               通常 3 営業日以内にご返信いたします。
             </p>
             <div className="pt-2">
-              <Link
-                href="/"
+              <SmartBackLink
                 className="btn-primary inline-block px-6 py-3 text-sm"
-              >
-                ホームに戻る
-              </Link>
+                defaultLabel="ホームに戻る"
+                lpLabel="LP に戻る"
+              />
             </div>
           </div>
         </div>
@@ -270,12 +265,7 @@ export default function SupportPage() {
   return (
     <main className="min-h-screen bg-gray-950 text-white">
       <header className="sticky top-0 z-10 bg-gray-950/90 backdrop-blur-xl border-b border-white/5 px-4 py-3 flex items-center gap-3">
-        <Link
-          href="/"
-          className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm"
-        >
-          ← 戻る
-        </Link>
+        <SmartBackLink className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm" />
         <h1 className="text-base font-bold">💬 サポート</h1>
       </header>
 

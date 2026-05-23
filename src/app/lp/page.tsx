@@ -678,16 +678,16 @@ export default function LPPage() {
             <span className="text-slate-500">by TOPBANK.INC</span>
           </div>
           <nav className="flex flex-wrap items-center gap-4 sm:gap-6">
-            <Link href="/privacy" className="hover:text-white transition-colors">
+            <Link href="/privacy?from=lp" className="hover:text-white transition-colors">
               プライバシー
             </Link>
-            <Link href="/terms" className="hover:text-white transition-colors">
+            <Link href="/terms?from=lp" className="hover:text-white transition-colors">
               利用規約
             </Link>
-            <Link href="/support" className="hover:text-white transition-colors">
+            <Link href="/support?from=lp" className="hover:text-white transition-colors">
               サポート
             </Link>
-            <Link href="/references" className="hover:text-white transition-colors">
+            <Link href="/references?from=lp" className="hover:text-white transition-colors">
               参考文献
             </Link>
           </nav>

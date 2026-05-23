@@ -1,17 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import SmartBackLink from "../components/SmartBackLink";
 
 export default function TermsPage() {
   return (
     <main className="min-h-screen bg-gray-950 text-white">
       <header className="sticky top-0 z-10 bg-gray-950/90 backdrop-blur-xl border-b border-white/5 px-4 py-3 flex items-center gap-3">
-        <Link
-          href="/"
-          className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm"
-        >
-          ← 戻る
-        </Link>
+        <SmartBackLink className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm" />
         <h1 className="text-base font-bold">利用規約</h1>
       </header>
 
@@ -168,12 +164,11 @@ export default function TermsPage() {
         </section>
 
         <div className="pt-6 pb-12 text-center">
-          <Link
-            href="/"
+          <SmartBackLink
             className="inline-block px-6 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm"
-          >
-            アプリに戻る
-          </Link>
+            defaultLabel="アプリに戻る"
+            lpLabel="LP に戻る"
+          />
         </div>
       </div>
     </main>
