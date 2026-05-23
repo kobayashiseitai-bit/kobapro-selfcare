@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import Faq from './Faq';
+import PhoneDemo from './PhoneDemo';
+import AnimateOnScroll from './AnimateOnScroll';
 
 export const metadata: Metadata = {
   title: 'ZERO-PAIN | AI姿勢分析・セルフケアで「痛みゼロ」へ',
@@ -179,21 +181,12 @@ export default function LPPage() {
             </div>
           </div>
           <div className="relative mx-auto lg:mx-0 max-w-xs sm:max-w-sm">
-            <div className="absolute inset-0 bg-gradient-to-br from-emerald-300 to-indigo-300 rounded-[3rem] blur-2xl opacity-30 scale-105" />
-            <div className="relative bg-slate-900 rounded-[3rem] p-3 shadow-2xl">
-              <div className="relative rounded-[2.5rem] overflow-hidden bg-white aspect-[9/19.5]">
-                <Image
-                  src="/lp/01-top.png"
-                  alt="ZERO-PAIN トップ画面"
-                  fill
-                  sizes="(min-width: 1024px) 384px, 320px"
-                  className="object-cover"
-                  priority
-                />
-              </div>
+            <div className="absolute inset-0 bg-gradient-to-br from-emerald-300 to-indigo-300 rounded-[3rem] blur-2xl opacity-40 scale-105 animate-pulse" />
+            <div className="relative lp-float-slow">
+              <PhoneDemo />
             </div>
-            {/* ガイコツ先生キャラ - iPhone モックの右下に配置 */}
-            <div className="absolute -bottom-6 -right-6 sm:-bottom-10 sm:-right-10 w-32 sm:w-44 lg:w-52 z-10 pointer-events-none">
+            {/* ガイコツ先生キャラ - iPhone モックの右下に配置 (フローティング) */}
+            <div className="absolute -bottom-2 -right-4 sm:-bottom-6 sm:-right-10 w-32 sm:w-44 lg:w-52 z-10 pointer-events-none lp-float">
               <div className="relative w-full aspect-square drop-shadow-2xl">
                 <Image
                   src="/icon-skeleton-sensei.png"
@@ -216,16 +209,18 @@ export default function LPPage() {
       {/* ===== Pain Points (共感) ===== */}
       <section className="bg-white py-16 sm:py-24">
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-12">
-            <p className="text-emerald-600 font-bold text-sm sm:text-base mb-2">
-              こんな悩み、ありませんか？
-            </p>
-            <h2 className="text-2xl sm:text-4xl font-black tracking-tight">
-              「もう何年も付き合っている痛み」
-              <br className="sm:hidden" />
-              卒業しませんか。
-            </h2>
-          </div>
+          <AnimateOnScroll animation="fade-up">
+            <div className="text-center mb-12">
+              <p className="text-emerald-600 font-bold text-sm sm:text-base mb-2">
+                こんな悩み、ありませんか？
+              </p>
+              <h2 className="text-2xl sm:text-4xl font-black tracking-tight">
+                「もう何年も付き合っている痛み」
+                <br className="sm:hidden" />
+                卒業しませんか。
+              </h2>
+            </div>
+          </AnimateOnScroll>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {[
               { emoji: '💻', text: 'デスクワークで肩がガチガチ。マッサージに行ってもすぐ戻る' },
@@ -235,19 +230,22 @@ export default function LPPage() {
               { emoji: '💊', text: '湿布や痛み止めに頼りがちで、根本改善したい' },
               { emoji: '🏥', text: '整体・接骨院に通う時間とお金がかかる' },
             ].map((item, idx) => (
-              <div
+              <AnimateOnScroll
                 key={idx}
-                className="flex items-start gap-3 p-5 rounded-2xl bg-slate-50 border border-slate-100"
+                animation="fade-up"
+                delay={idx * 80}
               >
-                <span className="text-2xl flex-shrink-0">{item.emoji}</span>
-                <p className="text-slate-700 text-sm sm:text-base leading-relaxed">
-                  {item.text}
-                </p>
-              </div>
+                <div className="flex items-start gap-3 p-5 rounded-2xl bg-slate-50 border border-slate-100 hover:border-emerald-200 hover:bg-emerald-50/40 hover:-translate-y-1 transition-all duration-300">
+                  <span className="text-2xl flex-shrink-0">{item.emoji}</span>
+                  <p className="text-slate-700 text-sm sm:text-base leading-relaxed">
+                    {item.text}
+                  </p>
+                </div>
+              </AnimateOnScroll>
             ))}
           </div>
           <div className="mt-12 sm:mt-16 flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-8">
-            <div className="relative w-32 sm:w-40 flex-shrink-0">
+            <div className="relative w-32 sm:w-40 flex-shrink-0 lp-float-slow">
               <div className="relative w-full aspect-square">
                 <Image
                   src="/icon-skeleton-sensei.png"
@@ -363,23 +361,26 @@ export default function LPPage() {
               { src: '/lp/05-meal.png', alt: '食事記録' },
               { src: '/lp/09-subscription.png', alt: 'プラン管理' },
             ].map((shot, idx) => (
-              <div
+              <AnimateOnScroll
                 key={idx}
-                className="relative aspect-[9/19.5] rounded-2xl overflow-hidden bg-slate-900 p-1.5 shadow-lg hover:scale-105 transition-transform"
+                animation="zoom-in"
+                delay={idx * 70}
               >
-                <div className="relative w-full h-full rounded-xl overflow-hidden bg-white">
-                  <Image
-                    src={shot.src}
-                    alt={shot.alt}
-                    fill
-                    sizes="(min-width: 1024px) 160px, (min-width: 640px) 200px, 150px"
-                    className="object-cover"
-                  />
+                <div className="relative aspect-[9/19.5] rounded-2xl overflow-hidden bg-slate-900 p-1.5 shadow-lg hover:scale-105 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
+                  <div className="relative w-full h-full rounded-xl overflow-hidden bg-white">
+                    <Image
+                      src={shot.src}
+                      alt={shot.alt}
+                      fill
+                      sizes="(min-width: 1024px) 160px, (min-width: 640px) 200px, 150px"
+                      className="object-cover"
+                    />
+                  </div>
+                  <p className="absolute -bottom-7 left-0 right-0 text-center text-xs text-slate-500">
+                    {shot.alt}
+                  </p>
                 </div>
-                <p className="absolute -bottom-7 left-0 right-0 text-center text-xs text-slate-500">
-                  {shot.alt}
-                </p>
-              </div>
+              </AnimateOnScroll>
             ))}
           </div>
           <div className="mt-16 text-center">
@@ -419,8 +420,13 @@ export default function LPPage() {
                 desc: 'AIが提案するストレッチを毎日5分。30日コーチングで習慣化。',
                 img: '/lp/06-coaching.png',
               },
-            ].map((s) => (
-              <div key={s.step} className="text-center">
+            ].map((s, sIdx) => (
+              <AnimateOnScroll
+                key={s.step}
+                animation="fade-up"
+                delay={sIdx * 150}
+                className="text-center"
+              >
                 <div className="relative mx-auto w-44 sm:w-48 mb-4">
                   <div className="absolute -top-3 -left-3 w-12 h-12 rounded-full bg-emerald-500 flex items-center justify-center font-black text-lg z-10 shadow-lg">
                     {s.step}
@@ -439,7 +445,7 @@ export default function LPPage() {
                 </div>
                 <h3 className="text-lg sm:text-xl font-bold mb-2">{s.title}</h3>
                 <p className="text-sm text-slate-300 leading-relaxed">{s.desc}</p>
-              </div>
+              </AnimateOnScroll>
             ))}
           </div>
         </div>
@@ -462,31 +468,35 @@ export default function LPPage() {
             </p>
           </div>
           <div className="grid sm:grid-cols-2 gap-4 sm:gap-6 max-w-3xl mx-auto">
-            <PricingCard
-              name="月額プラン"
-              price="1,280"
-              period="月"
-              features={[
-                'AI 姿勢分析 無制限',
-                'AI 食事分析 無制限',
-                'ガイコツ先生カウンセリング 無制限',
-                '30日コーチング',
-                'HealthKit 連携',
-              ]}
-            />
-            <PricingCard
-              name="年額プラン"
-              price="12,800"
-              period="年"
-              badge="2ヶ月分お得"
-              recommended
-              features={[
-                '月額プランのすべて',
-                '月換算 1,067 円',
-                '14日分お得 (¥3,560 OFF)',
-                '長く続ける人におすすめ',
-              ]}
-            />
+            <AnimateOnScroll animation="fade-up" delay={0}>
+              <PricingCard
+                name="月額プラン"
+                price="1,280"
+                period="月"
+                features={[
+                  'AI 姿勢分析 無制限',
+                  'AI 食事分析 無制限',
+                  'ガイコツ先生カウンセリング 無制限',
+                  '30日コーチング',
+                  'HealthKit 連携',
+                ]}
+              />
+            </AnimateOnScroll>
+            <AnimateOnScroll animation="fade-up" delay={150}>
+              <PricingCard
+                name="年額プラン"
+                price="12,800"
+                period="年"
+                badge="2ヶ月分お得"
+                recommended
+                features={[
+                  '月額プランのすべて',
+                  '月換算 1,067 円',
+                  '14日分お得 (¥3,560 OFF)',
+                  '長く続ける人におすすめ',
+                ]}
+              />
+            </AnimateOnScroll>
           </div>
           <div className="mt-6 text-center">
             <details className="inline-block text-sm text-slate-500">
@@ -532,14 +542,13 @@ export default function LPPage() {
                 icon: '❤️',
               },
             ].map((t, idx) => (
-              <div
-                key={idx}
-                className="p-6 rounded-2xl bg-white border border-emerald-100 shadow-sm"
-              >
-                <div className="text-3xl mb-3">{t.icon}</div>
-                <h3 className="font-bold text-base sm:text-lg mb-2">{t.title}</h3>
-                <p className="text-sm text-slate-600 leading-relaxed">{t.desc}</p>
-              </div>
+              <AnimateOnScroll key={idx} animation="fade-up" delay={idx * 120}>
+                <div className="p-6 rounded-2xl bg-white border border-emerald-100 shadow-sm hover:shadow-lg hover:-translate-y-1 hover:border-emerald-200 transition-all duration-300 h-full">
+                  <div className="text-3xl mb-3">{t.icon}</div>
+                  <h3 className="font-bold text-base sm:text-lg mb-2">{t.title}</h3>
+                  <p className="text-sm text-slate-600 leading-relaxed">{t.desc}</p>
+                </div>
+              </AnimateOnScroll>
             ))}
           </div>
         </div>
@@ -567,7 +576,7 @@ export default function LPPage() {
           <div className="absolute bottom-10 right-10 w-96 h-96 bg-white rounded-full blur-3xl" />
         </div>
         <div className="relative max-w-3xl mx-auto px-4 sm:px-6 text-center">
-          <div className="relative w-32 sm:w-40 mx-auto mb-6 drop-shadow-2xl">
+          <div className="relative w-32 sm:w-40 mx-auto mb-6 drop-shadow-2xl lp-float">
             <Image
               src="/icon-skeleton-sensei.png"
               alt="ガイコツ先生"
@@ -660,50 +669,54 @@ function FeatureRow({
         reverse ? 'lg:[&>*:first-child]:order-2' : ''
       }`}
     >
-      <div className="space-y-4">
-        <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 font-black text-lg">
-          {badge}
+      <AnimateOnScroll animation={reverse ? 'fade-left' : 'fade-right'}>
+        <div className="space-y-4">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 font-black text-lg">
+            {badge}
+          </div>
+          <h3 className="text-2xl sm:text-3xl font-black tracking-tight">
+            {title}
+          </h3>
+          <p className="text-slate-600 text-base sm:text-lg leading-relaxed">
+            {description}
+          </p>
+          <ul className="space-y-2 pt-2">
+            {bullets.map((b, idx) => (
+              <li key={idx} className="flex items-start gap-2 text-slate-700">
+                <svg
+                  className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                  aria-hidden
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                <span className="text-sm sm:text-base">{b}</span>
+              </li>
+            ))}
+          </ul>
         </div>
-        <h3 className="text-2xl sm:text-3xl font-black tracking-tight">
-          {title}
-        </h3>
-        <p className="text-slate-600 text-base sm:text-lg leading-relaxed">
-          {description}
-        </p>
-        <ul className="space-y-2 pt-2">
-          {bullets.map((b, idx) => (
-            <li key={idx} className="flex items-start gap-2 text-slate-700">
-              <svg
-                className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-                aria-hidden
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              <span className="text-sm sm:text-base">{b}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-      <div className="relative mx-auto max-w-xs">
-        <div className="absolute inset-0 bg-gradient-to-br from-emerald-200 to-indigo-200 rounded-[3rem] blur-2xl opacity-50 scale-105" />
-        <div className="relative bg-slate-900 rounded-[3rem] p-3 shadow-2xl">
-          <div className="relative rounded-[2.5rem] overflow-hidden bg-white aspect-[9/19.5]">
-            <Image
-              src={image}
-              alt={imageAlt}
-              fill
-              sizes="(min-width: 1024px) 320px, 280px"
-              className="object-cover"
-            />
+      </AnimateOnScroll>
+      <AnimateOnScroll animation={reverse ? 'fade-right' : 'fade-left'} delay={150}>
+        <div className="relative mx-auto max-w-xs">
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-200 to-indigo-200 rounded-[3rem] blur-2xl opacity-50 scale-105" />
+          <div className="relative bg-slate-900 rounded-[3rem] p-3 shadow-2xl hover:scale-[1.03] hover:rotate-1 transition-transform duration-500">
+            <div className="relative rounded-[2.5rem] overflow-hidden bg-white aspect-[9/19.5]">
+              <Image
+                src={image}
+                alt={imageAlt}
+                fill
+                sizes="(min-width: 1024px) 320px, 280px"
+                className="object-cover"
+              />
+            </div>
           </div>
         </div>
-      </div>
+      </AnimateOnScroll>
     </div>
   );
 }

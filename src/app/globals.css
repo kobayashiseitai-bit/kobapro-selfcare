@@ -2,6 +2,62 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ==========================================================
+   LP 専用アニメーション (theme-mint の影響を受けない)
+   ========================================================== */
+@keyframes lp-float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-12px); }
+}
+@keyframes lp-float-slow {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-8px) rotate(-2deg); }
+}
+@keyframes lp-pulse-soft {
+  0%, 100% { box-shadow: 0 10px 30px -10px rgba(15, 23, 42, 0.3); }
+  50% { box-shadow: 0 16px 40px -8px rgba(16, 185, 129, 0.45); }
+}
+@keyframes lp-shine {
+  0% { transform: translateX(-100%) skewX(-12deg); }
+  100% { transform: translateX(220%) skewX(-12deg); }
+}
+
+.lp-float {
+  animation: lp-float 4s ease-in-out infinite;
+}
+.lp-float-slow {
+  animation: lp-float-slow 5s ease-in-out infinite;
+}
+.lp-pulse-soft {
+  animation: lp-pulse-soft 2.6s ease-in-out infinite;
+}
+.lp-shine-wrapper {
+  position: relative;
+  overflow: hidden;
+}
+.lp-shine-wrapper::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 30%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.45), transparent);
+  animation: lp-shine 3.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-float,
+  .lp-float-slow,
+  .lp-pulse-soft {
+    animation: none;
+  }
+  .lp-shine-wrapper::after {
+    display: none;
+  }
+}
+
 :root {
   --background: #030712;
   --foreground: #f9fafb;
