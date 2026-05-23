@@ -1,5 +1,6 @@
 import UIKit
 import Capacitor
+import CapApp_SPM  // プラグインのデッドストリップ防止用
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -7,6 +8,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        // SPM ビルドで HealthKit プラグインがデッドストリップされないように明示参照
+        _forceLinkPlugins()
         // Override point for customization after application launch.
         return true
     }
