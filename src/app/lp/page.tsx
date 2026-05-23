@@ -63,7 +63,7 @@ export const metadata: Metadata = {
   },
 };
 
-const APP_STORE_URL = 'https://apps.apple.com/app/zero-pain/id6768903915';
+const APP_STORE_URL = 'https://apps.apple.com/jp/app/zero-pain/id6768903915';
 
 // JSON-LD: SoftwareApplication
 const jsonLd = {
