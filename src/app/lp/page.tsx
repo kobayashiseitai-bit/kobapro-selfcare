@@ -97,7 +97,7 @@ function AppStoreButton({ size = 'lg' }: { size?: 'lg' | 'md' }) {
       href={APP_STORE_URL}
       target="_blank"
       rel="noopener noreferrer"
-      className={`inline-flex items-center justify-center gap-2 ${sizing} rounded-full font-semibold shadow-lg shadow-slate-900/20 hover:opacity-90 transition-all hover:scale-[1.02] active:scale-[0.98]`}
+      className={`inline-flex items-center justify-center gap-2 ${sizing} rounded-full font-semibold shadow-lg shadow-slate-900/20 hover:opacity-90 transition-all hover:scale-[1.02] active:scale-[0.98] whitespace-nowrap`}
       style={{ background: '#0f172a', color: '#ffffff' }}
     >
       <svg
@@ -124,9 +124,9 @@ export default function LPPage() {
 
       {/* ===== Sticky Header ===== */}
       <header className="sticky top-0 z-50 backdrop-blur-md bg-white/80 border-b border-emerald-100">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-emerald-100 to-teal-100 p-1 shadow-md overflow-hidden">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 flex-shrink-0 min-w-0">
+            <div className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-emerald-100 to-teal-100 p-1 shadow-md overflow-hidden flex-shrink-0">
               <Image
                 src="/icon-skeleton-sensei-face.png"
                 alt="ガイコツ先生"
@@ -135,11 +135,27 @@ export default function LPPage() {
                 className="object-contain"
               />
             </div>
-            <span className="font-bold text-base sm:text-lg tracking-tight text-slate-900">
+            <span className="font-bold text-base sm:text-lg tracking-tight text-slate-900 whitespace-nowrap">
               ZERO-PAIN
             </span>
           </div>
-          <AppStoreButton size="md" />
+          {/* モバイル: アイコン + 「入手」のコンパクトボタン */}
+          <a
+            href={APP_STORE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="sm:hidden inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-full font-semibold text-sm shadow-md flex-shrink-0 whitespace-nowrap active:scale-95 transition-transform"
+            style={{ background: '#0f172a', color: '#ffffff' }}
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden style={{ color: '#ffffff' }}>
+              <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
+            </svg>
+            <span style={{ color: '#ffffff' }}>入手</span>
+          </a>
+          {/* sm 以上: フル表示ボタン */}
+          <div className="hidden sm:block">
+            <AppStoreButton size="md" />
+          </div>
         </div>
       </header>
 
@@ -192,27 +208,45 @@ export default function LPPage() {
               </span>
             </div>
           </div>
-          <div className="relative mx-auto lg:mx-0 max-w-xs sm:max-w-sm">
+          <div className="relative mx-auto lg:mx-0 max-w-xs sm:max-w-sm mt-8 lg:mt-0">
             <div className="absolute inset-0 bg-gradient-to-br from-emerald-300 to-indigo-300 rounded-[3rem] blur-2xl opacity-40 scale-105 animate-pulse" />
             <div className="relative lp-float-slow">
               <PhoneDemo />
             </div>
-            {/* ガイコツ先生キャラ - iPhone モックの右下に配置 (フローティング) */}
-            <div className="absolute -bottom-2 -right-4 sm:-bottom-6 sm:-right-10 w-32 sm:w-44 lg:w-52 z-10 pointer-events-none lp-float">
+            {/* ガイコツ先生キャラ - lg 以上のみ: iPhone モックの右下に重ねる */}
+            <div className="hidden lg:block absolute -bottom-6 -right-10 w-52 z-10 pointer-events-none lp-float">
               <div className="relative w-full aspect-square drop-shadow-2xl">
                 <Image
                   src="/icon-skeleton-sensei.png"
                   alt="ガイコツ先生"
                   fill
-                  sizes="(min-width: 1024px) 208px, 176px"
+                  sizes="208px"
                   className="object-contain"
                   priority
                 />
               </div>
-              <div className="absolute -top-4 sm:-top-6 -left-4 sm:-left-8 bg-white rounded-2xl px-3 py-2 shadow-lg border border-emerald-100 text-xs sm:text-sm font-bold text-emerald-700 whitespace-nowrap">
+              <div className="absolute -top-6 -left-8 bg-white rounded-2xl px-3 py-2 shadow-lg border border-emerald-100 text-sm font-bold text-emerald-700 whitespace-nowrap">
                 先生にお任せ！
                 <span className="absolute -bottom-2 right-6 w-3 h-3 bg-white border-r border-b border-emerald-100 transform rotate-45" />
               </div>
+            </div>
+          </div>
+          {/* モバイル / タブレット用: iPhone の下に独立して横並び配置 */}
+          <div className="lg:hidden flex items-center justify-center gap-4 mt-16 pointer-events-none">
+            <div className="relative w-28 sm:w-32 flex-shrink-0 lp-float">
+              <div className="relative w-full aspect-square drop-shadow-2xl">
+                <Image
+                  src="/icon-skeleton-sensei.png"
+                  alt="ガイコツ先生"
+                  fill
+                  sizes="128px"
+                  className="object-contain"
+                />
+              </div>
+            </div>
+            <div className="relative bg-white rounded-2xl px-4 py-3 shadow-lg border border-emerald-100 text-sm font-bold text-emerald-700">
+              先生にお任せ！
+              <span className="absolute top-1/2 -translate-y-1/2 -left-1.5 w-3 h-3 bg-white border-l border-b border-emerald-100 transform rotate-45" />
             </div>
           </div>
         </div>
