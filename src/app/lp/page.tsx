@@ -4,6 +4,18 @@ import Link from 'next/link';
 import Faq from './Faq';
 import PhoneDemo from './PhoneDemo';
 import AnimateOnScroll from './AnimateOnScroll';
+import {
+  LaptopIcon,
+  MoonIcon,
+  PhoneIcon,
+  BoltIcon,
+  PillIcon,
+  BuildingIcon,
+  BookIcon,
+  LockIcon,
+  HeartPulseIcon,
+  SparklesIcon,
+} from './icons';
 
 export const metadata: Metadata = {
   title: 'ZERO-PAIN | AI姿勢分析・セルフケアで「痛みゼロ」へ',
@@ -223,21 +235,23 @@ export default function LPPage() {
           </AnimateOnScroll>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {[
-              { emoji: '💻', text: 'デスクワークで肩がガチガチ。マッサージに行ってもすぐ戻る' },
-              { emoji: '🛏️', text: '朝起きると腰が重い。何が原因か分からない' },
-              { emoji: '📱', text: 'スマホ首が気になる。猫背と言われる' },
-              { emoji: '🏃', text: '運動したいけど、何をすればいいか分からない' },
-              { emoji: '💊', text: '湿布や痛み止めに頼りがちで、根本改善したい' },
-              { emoji: '🏥', text: '整体・接骨院に通う時間とお金がかかる' },
+              { Icon: LaptopIcon, text: 'デスクワークで肩がガチガチ。マッサージに行ってもすぐ戻る' },
+              { Icon: MoonIcon, text: '朝起きると腰が重い。何が原因か分からない' },
+              { Icon: PhoneIcon, text: 'スマホ首が気になる。猫背と言われる' },
+              { Icon: BoltIcon, text: '運動したいけど、何をすればいいか分からない' },
+              { Icon: PillIcon, text: '湿布や痛み止めに頼りがちで、根本改善したい' },
+              { Icon: BuildingIcon, text: '整体・接骨院に通う時間とお金がかかる' },
             ].map((item, idx) => (
               <AnimateOnScroll
                 key={idx}
                 animation="fade-up"
                 delay={idx * 80}
               >
-                <div className="flex items-start gap-3 p-5 rounded-2xl bg-slate-50 border border-slate-100 hover:border-emerald-200 hover:bg-emerald-50/40 hover:-translate-y-1 transition-all duration-300">
-                  <span className="text-2xl flex-shrink-0">{item.emoji}</span>
-                  <p className="text-slate-700 text-sm sm:text-base leading-relaxed">
+                <div className="flex items-start gap-4 p-5 rounded-2xl bg-white border border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/40 hover:-translate-y-1 hover:shadow-md transition-all duration-300">
+                  <div className="flex-shrink-0 w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                    <item.Icon className="w-6 h-6" />
+                  </div>
+                  <p className="text-slate-700 text-sm sm:text-base leading-relaxed pt-2">
                     {item.text}
                   </p>
                 </div>
@@ -529,22 +543,24 @@ export default function LPPage() {
               {
                 title: '医学的根拠に基づく情報',
                 desc: '厚生労働省「食事摂取基準」「健康日本21」などの公的機関の出典をベースに情報を提供。',
-                icon: '📚',
+                Icon: BookIcon,
               },
               {
                 title: 'プライバシー徹底保護',
                 desc: '通信は HTTPS で暗号化、写真は分析処理のみに使用。第三者への販売・広告利用は一切なし。',
-                icon: '🔒',
+                Icon: LockIcon,
               },
               {
                 title: 'Apple ヘルスケア連携',
                 desc: '歩数・睡眠・心拍データを連携することで、より精度の高いセルフケア提案が可能に。',
-                icon: '❤️',
+                Icon: HeartPulseIcon,
               },
             ].map((t, idx) => (
               <AnimateOnScroll key={idx} animation="fade-up" delay={idx * 120}>
                 <div className="p-6 rounded-2xl bg-white border border-emerald-100 shadow-sm hover:shadow-lg hover:-translate-y-1 hover:border-emerald-200 transition-all duration-300 h-full">
-                  <div className="text-3xl mb-3">{t.icon}</div>
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white flex items-center justify-center shadow-md mb-4">
+                    <t.Icon className="w-6 h-6" />
+                  </div>
                   <h3 className="font-bold text-base sm:text-lg mb-2">{t.title}</h3>
                   <p className="text-sm text-slate-600 leading-relaxed">{t.desc}</p>
                 </div>
@@ -774,8 +790,9 @@ function PricingCard({
           </li>
         ))}
       </ul>
-      <p className="text-xs text-emerald-700 font-semibold pt-2 border-t border-slate-100">
-        ✨ 7日間無料トライアル付き
+      <p className="text-xs text-emerald-700 font-semibold pt-2 border-t border-slate-100 flex items-center gap-1.5">
+        <SparklesIcon className="w-4 h-4" />
+        7日間無料トライアル付き
       </p>
     </div>
   );
