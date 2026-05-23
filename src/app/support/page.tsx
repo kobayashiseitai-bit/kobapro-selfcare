@@ -151,7 +151,11 @@ export default function SupportPage() {
   const [expandedFAQ, setExpandedFAQ] = useState<number | null>(null);
 
   // 登録済みユーザーなら名前をプリフィル
+  // ただし LP 経由 (?from=lp) の場合は新規問い合わせ前提なので補完しない
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("from") === "lp") return;
+
     (async () => {
       try {
         const res = await fetch("/api/user-profile", {
