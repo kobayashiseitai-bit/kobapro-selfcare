@@ -414,7 +414,7 @@ export default function LPPage() {
                 animation="zoom-in"
                 delay={idx * 70}
               >
-                <div className="relative aspect-[9/19.5] rounded-2xl overflow-hidden bg-slate-900 p-1.5 shadow-lg hover:scale-105 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
+                <div className="relative aspect-[9/18.2] rounded-2xl overflow-hidden bg-slate-900 p-1.5 shadow-lg hover:scale-105 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
                   <div className="relative w-full h-full rounded-xl overflow-hidden bg-white">
                     <Image
                       src={shot.src}
@@ -480,7 +480,7 @@ export default function LPPage() {
                     {s.step}
                   </div>
                   <div className="bg-slate-800 rounded-3xl p-2 shadow-xl">
-                    <div className="relative rounded-2xl overflow-hidden aspect-[9/19.5] bg-white">
+                    <div className="relative rounded-2xl overflow-hidden aspect-[9/18.2] bg-white">
                       <Image
                         src={s.img}
                         alt={s.title}
@@ -761,7 +761,7 @@ function FeatureRow({
         <div className="relative mx-auto max-w-xs">
           <div className="absolute inset-0 bg-gradient-to-br from-emerald-200 to-indigo-200 rounded-[3rem] blur-2xl opacity-50 scale-105" />
           <div className="relative bg-slate-900 rounded-[3rem] p-3 shadow-2xl hover:scale-[1.03] hover:rotate-1 transition-transform duration-500">
-            <div className="relative rounded-[2.5rem] overflow-hidden bg-white aspect-[9/19.5]">
+            <div className="relative rounded-[2.5rem] overflow-hidden bg-white aspect-[9/18.2]">
               <Image
                 src={image}
                 alt={imageAlt}

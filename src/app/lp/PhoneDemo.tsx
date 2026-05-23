@@ -28,7 +28,7 @@ export default function PhoneDemo() {
     <div className="relative">
       {/* iPhone モック */}
       <div className="relative bg-slate-900 rounded-[3rem] p-3 shadow-2xl">
-        <div className="relative rounded-[2.5rem] overflow-hidden bg-white aspect-[9/19.5]">
+        <div className="relative rounded-[2.5rem] overflow-hidden bg-white aspect-[9/18.2]">
           {SLIDES.map((slide, i) => (
             <div
               key={slide.src}
