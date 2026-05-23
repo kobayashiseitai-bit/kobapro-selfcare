@@ -631,8 +631,14 @@ export default function LPPage() {
       <footer className="bg-slate-950 text-slate-400 py-10">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-md bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-white font-bold text-xs">
-              ZP
+            <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-100 to-teal-100 p-1 shadow-md overflow-hidden">
+              <Image
+                src="/icon-skeleton-sensei-face.png"
+                alt="ガイコツ先生"
+                fill
+                sizes="36px"
+                className="object-contain"
+              />
             </div>
             <span className="font-bold text-white">ZERO-PAIN</span>
             <span className="text-slate-500">by TOPBANK.INC</span>
