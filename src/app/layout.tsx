@@ -90,6 +90,13 @@ export default function RootLayout({
                   if (resolved === 'light') {
                     document.documentElement.classList.add('theme-mint');
                   }
+                  // 文字サイズ設定の早期適用 (FOUC 防止)
+                  var textSize = localStorage.getItem('zero_pain_text_size') || 'medium';
+                  var rootSize = textSize === 'small' ? '14px'
+                              : textSize === 'large' ? '18px'
+                              : textSize === 'xlarge' ? '20px'
+                              : '16px';
+                  document.documentElement.style.fontSize = rootSize;
                 } catch (e) {}
               })();
             `,

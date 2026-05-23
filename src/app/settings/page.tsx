@@ -60,6 +60,7 @@ function getDeviceId(): string {
 }
 
 type ThemeMode = "light" | "dark" | "system";
+type TextSize = "small" | "medium" | "large" | "xlarge";
 type DialectPref = "standard" | "kansai";
 
 export default function SettingsPage() {
@@ -70,6 +71,7 @@ export default function SettingsPage() {
   const [deleting, setDeleting] = useState(false);
   const [message, setMessage] = useState<{ type: "ok" | "error"; text: string } | null>(null);
   const [theme, setTheme] = useState<ThemeMode>("light");
+  const [textSize, setTextSize] = useState<TextSize>("medium");
   const [dialect, setDialect] = useState<DialectPref>("standard");
   const [character, setCharacter] = useState<SenseiCharacterId>("kentaro");
 
@@ -294,6 +296,24 @@ export default function SettingsPage() {
     }
   };
 
+  // 文字サイズ初期化
+  useEffect(() => {
+    const saved = (localStorage.getItem("zero_pain_text_size") as TextSize | null) || "medium";
+    setTextSize(saved);
+  }, []);
+
+  // 文字サイズ変更時の処理
+  const applyTextSize = (size: TextSize) => {
+    setTextSize(size);
+    localStorage.setItem("zero_pain_text_size", size);
+    const rootSize =
+      size === "small" ? "14px" :
+      size === "large" ? "18px" :
+      size === "xlarge" ? "20px" :
+      "16px";
+    document.documentElement.style.fontSize = rootSize;
+  };
+
   useEffect(() => {
     (async () => {
       try {
@@ -445,6 +465,48 @@ export default function SettingsPage() {
                       {opt.label}
                     </p>
                     <p className="text-[10px] text-gray-500">{opt.desc}</p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* 文字サイズ設定 */}
+        <section>
+          <p className="text-[11px] text-gray-400 font-bold tracking-wide mb-2 px-1 flex items-center gap-1.5">
+            <IconPalette size={14} className="text-emerald-400" />
+            文字サイズ
+          </p>
+          <div className="card-base p-4 space-y-3">
+            <p className="text-xs text-gray-400 leading-relaxed">
+              小さい文字が見にくい場合は大きいサイズに設定してください。アプリ全体の文字サイズが変わります。
+            </p>
+            <div className="grid grid-cols-4 gap-2">
+              {([
+                { id: "small", label: "小", px: "14px", sample: "Aa", sampleSize: "text-xs" },
+                { id: "medium", label: "標準", px: "16px", sample: "Aa", sampleSize: "text-sm" },
+                { id: "large", label: "大", px: "18px", sample: "Aa", sampleSize: "text-base" },
+                { id: "xlarge", label: "特大", px: "20px", sample: "Aa", sampleSize: "text-lg" },
+              ] as const).map((opt) => {
+                const isActive = textSize === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    onClick={() => applyTextSize(opt.id)}
+                    className={`p-3 rounded-xl border-2 flex flex-col items-center gap-1 transition active:scale-95 ${
+                      isActive
+                        ? "bg-emerald-500/20 border-emerald-500"
+                        : "bg-gray-800 border-gray-700"
+                    }`}
+                  >
+                    <span className={`${opt.sampleSize} font-bold ${isActive ? "text-emerald-300" : "text-gray-200"}`}>
+                      {opt.sample}
+                    </span>
+                    <p className={`text-xs font-bold ${isActive ? "text-emerald-300" : "text-gray-200"}`}>
+                      {opt.label}
+                    </p>
+                    <p className="text-[10px] text-gray-500">{opt.px}</p>
                   </button>
                 );
               })}
