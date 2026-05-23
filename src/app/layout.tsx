@@ -16,11 +16,10 @@ const geistMono = localFont({
 export const viewport = {
   width: "device-width",
   initialScale: 1,
-  // minimumScale=1 を明示することで iOS による自動縮小を防止
-  minimumScale: 1,
-  // アクセシビリティ向上のため 2 本指ピンチズームを許可 (最大 5 倍)
-  maximumScale: 5,
-  userScalable: true,
+  // iOS WKWebView でピンチズームを許可するとレイアウトが崩れるため Build 7 と同じ設定に戻す
+  // 文字サイズ調整は v1.1 でアプリ内設定として実装予定
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export const metadata: Metadata = {
