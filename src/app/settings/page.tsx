@@ -746,7 +746,8 @@ export default function SettingsPage() {
           )}
         </section>
 
-        {/* Apple HealthKit 連携 (iOS ネイティブ全般で表示、App Store Guideline 2.5.1 対応：HealthKit 利用を UI で明示) */}
+        {/* Apple HealthKit 連携 - v1.0.1 では準備中表示 (v1.1 で本実装予定)
+            Info.plist の usage descriptions は維持 (App Store メタデータ整合性のため) */}
         {hkVisible && (
           <section>
             <p className="text-[11px] text-gray-400 font-bold tracking-wide mb-2 px-1 flex items-center gap-1.5">
@@ -754,7 +755,7 @@ export default function SettingsPage() {
               Apple HealthKit 連携（Apple ヘルスケア App との連携）
             </p>
             <div className="card-base p-4 space-y-3">
-              {/* HealthKit 利用の明示バナー（Apple Guideline 2.5.1 対応） */}
+              {/* HealthKit 利用の説明バナー (App Store Guideline 2.5.1 対応：HealthKit 利用を UI で明示) */}
               <div className="bg-pink-500/10 border border-pink-500/30 rounded-xl px-3 py-2 text-[11px] text-pink-200 leading-relaxed">
                 <p className="font-bold text-pink-300 flex items-center gap-1">
                   <IconHeart size={12} />
@@ -766,83 +767,19 @@ export default function SettingsPage() {
                 </p>
               </div>
 
-              {/* iPad 用の案内（App Store Guideline 2.5.1 + 2.1(a) 対応） */}
-              {hkIsIPad && (
-                <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl px-3 py-2 text-[11px] text-amber-200 leading-relaxed">
-                  <p className="font-bold text-amber-300">⚠️ iPad では Apple HealthKit を利用できません</p>
-                  <p className="mt-1 text-gray-300">
-                    Apple HealthKit は iPhone 専用機能です。iPad ではご利用いただけませんので、
-                    iPhone から本アプリを起動して連携してください。
-                  </p>
-                </div>
-              )}
+              {/* v1.0.1: Coming Soon 表示 */}
+              <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl px-4 py-3 text-center">
+                <p className="text-blue-200 font-bold text-sm mb-1">
+                  🚧 準備中
+                </p>
+                <p className="text-[11px] text-gray-300 leading-relaxed">
+                  Apple HealthKit との連携機能は<strong className="text-white">次回のアップデート (v1.1)</strong>で提供予定です。
+                  <br />
+                  もう少々お待ちください。
+                </p>
+              </div>
 
-              {!hkAuthorized ? (
-                <>
-                  {/* App Store Guideline 5.1.1(iv) 対応: 中立的な機能説明（許可を促す誘導文言は使わない） */}
-                  <p className="text-[12px] text-gray-300 leading-relaxed">
-                    次に進むと、iPhone の標準ダイアログで Apple HealthKit へのアクセス権限選択画面が表示されます。
-                    歩数・体重・心拍数などの項目ごとに、許可するかしないかをあなた自身で選択できます。
-                    <br />
-                    <span className="text-pink-300 text-[11px]">
-                      ※ どの項目も読み取りのみで、書き込みは一切行いません。許可後も Apple ヘルスケア App の設定からいつでも個別に取り消せます。
-                    </span>
-                  </p>
-                  <button
-                    onClick={handleConnectHealthKit}
-                    disabled={hkBusy || !hkAvailable}
-                    className="w-full py-3 px-4 rounded-xl bg-pink-600 hover:bg-pink-700 text-white font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.99] transition"
-                    aria-label="続ける"
-                  >
-                    <IconHeart size={16} />
-                    {hkBusy
-                      ? "処理中..."
-                      : !hkAvailable
-                        ? "続ける（iPhone でのみ利用可能）"
-                        : "続ける"}
-                  </button>
-                </>
-              ) : (
-                <>
-                  <div className="flex items-center justify-between mb-1">
-                    <p className="text-sm font-bold text-pink-300 flex items-center gap-1.5">
-                      <IconActivity size={14} />
-                      Apple HealthKit と連携中
-                    </p>
-                    <button
-                      onClick={handleRefreshHealthKit}
-                      disabled={hkBusy}
-                      className="text-[11px] text-blue-400 underline disabled:opacity-50"
-                    >
-                      {hkBusy ? "更新中..." : "更新"}
-                    </button>
-                  </div>
-                  {hkSnapshot && (
-                    <>
-                      <p className="text-[10px] text-gray-400 mb-1">
-                        ⓘ 下記は Apple ヘルスケア App から取得したデータです
-                      </p>
-                      <ul className="text-[12px] text-gray-300 space-y-1">
-                        {hkSnapshot.stepsToday !== null && (
-                          <li>👣 今日の歩数: <strong className="text-white">{hkSnapshot.stepsToday.toLocaleString()}</strong> 歩 <span className="text-[10px] text-gray-500">(Apple Health)</span></li>
-                        )}
-                        {hkSnapshot.stepsWeekAvg !== null && (
-                          <li>📊 過去7日平均: <strong className="text-white">{hkSnapshot.stepsWeekAvg.toLocaleString()}</strong> 歩/日 <span className="text-[10px] text-gray-500">(Apple Health)</span></li>
-                        )}
-                        {hkSnapshot.weightKg !== null && (
-                          <li>⚖️ 最新体重: <strong className="text-white">{hkSnapshot.weightKg.toFixed(1)}</strong> kg <span className="text-[10px] text-gray-500">(Apple Health)</span></li>
-                        )}
-                        {hkSnapshot.restingHeartRate !== null && (
-                          <li>💓 安静時心拍数: <strong className="text-white">{hkSnapshot.restingHeartRate}</strong> bpm <span className="text-[10px] text-gray-500">(Apple Health)</span></li>
-                        )}
-                        {hkSnapshot.activeEnergyToday !== null && (
-                          <li>🔥 アクティブカロリー: <strong className="text-white">{hkSnapshot.activeEnergyToday}</strong> kcal <span className="text-[10px] text-gray-500">(Apple Health)</span></li>
-                        )}
-                      </ul>
-                    </>
-                  )}
-                </>
-              )}
+              {/* v1.0.1 では「続ける」ボタンや実データ表示は無効化 (v1.1 で復活予定) */}
             </div>
           </section>
         )}
