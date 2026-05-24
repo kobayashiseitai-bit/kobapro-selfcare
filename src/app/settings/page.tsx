@@ -231,7 +231,7 @@ export default function SettingsPage() {
       const res = await fetch("/api/transfer/restore", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: restoreInput.trim() }),
+        body: JSON.stringify({ code: restoreInput.trim().toUpperCase() }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -1002,10 +1002,13 @@ export default function SettingsPage() {
               value={restoreInput}
               onChange={(e) => setRestoreInput(e.target.value)}
               placeholder="例: K7M2-X9P4"
-              className="w-full px-4 py-3 rounded-xl bg-gray-800 text-white text-center font-mono text-xl tracking-widest border border-gray-700 focus:border-purple-500 outline-none"
+              className="w-full px-4 py-3 rounded-xl bg-gray-800 text-white text-center font-mono text-xl tracking-widest border border-gray-700 focus:border-purple-500 outline-none uppercase"
+              style={{ textTransform: "uppercase" }}
               maxLength={9}
-              autoCapitalize="characters"
               autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
+              inputMode="text"
             />
             <div className="flex gap-2">
               <button

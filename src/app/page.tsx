@@ -788,7 +788,7 @@ function RegisterScreen({ onComplete }: { onComplete: () => void }) {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 deviceId: getDeviceId(),
-                code: inviteCode.trim(),
+                code: inviteCode.trim().toUpperCase(),
               }),
             });
             const inviteData = await inviteRes.json();
@@ -934,10 +934,15 @@ function RegisterScreen({ onComplete }: { onComplete: () => void }) {
                 <input
                   type="text"
                   value={inviteCode}
-                  onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                  onChange={(e) => setInviteCode(e.target.value)}
                   placeholder="例: KOBA2026"
                   maxLength={12}
-                  className="w-full px-4 py-2.5 bg-gray-800 border border-amber-500/30 rounded-lg text-white focus:outline-none focus:border-amber-500 text-sm font-mono tracking-wider text-center"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  inputMode="text"
+                  className="w-full px-4 py-2.5 bg-gray-800 border border-amber-500/30 rounded-lg text-white focus:outline-none focus:border-amber-500 text-sm font-mono tracking-wider text-center uppercase"
+                  style={{ textTransform: "uppercase" }}
                 />
                 <p className="text-[10px] text-gray-400 leading-relaxed">
                   招待コードを入力すると、無料トライアルが<strong className="text-amber-300">7日→14日に延長</strong>されます ✨
@@ -9444,10 +9449,15 @@ function FamilyScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
                 <input
                   type="text"
                   value={joinCode}
-                  onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                  onChange={(e) => setJoinCode(e.target.value)}
                   placeholder="例: ABCD1234"
                   maxLength={8}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-center font-mono text-lg tracking-widest text-white"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  inputMode="text"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-center font-mono text-lg tracking-widest text-white uppercase"
+                  style={{ textTransform: "uppercase" }}
                 />
                 <button
                   onClick={joinFamily}
