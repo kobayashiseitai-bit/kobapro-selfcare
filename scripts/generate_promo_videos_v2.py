@@ -283,39 +283,47 @@ def gen_problem(feature, progress):
 
 
 def gen_solution(feature, progress):
-    """Scene 3 (8-13s): 解決策 + スクショ"""
+    """Scene 3 (8-13s): 解決策 + スクショ (v3: シンプル化)"""
     img = make_gradient_bg(feature["color"])
     img = add_glow(img)
     draw = ImageDraw.Draw(img)
 
-    # 上部: 解決策バナー
+    # 上部: 半透明ピル形ヘッダー (白カード廃止)
+    f_label = ImageFont.truetype(JP_HEAVY, 38)
+    label = "ZERO-PAIN なら解決!"
+    lw = draw.textlength(label, font=f_label)
+    pill_y = 200
+    pill_h = 80
+    pill_x1 = (W - lw) // 2 - 90
+    pill_x2 = (W + lw) // 2 + 40
     overlay = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     od = ImageDraw.Draw(overlay)
-    od.rounded_rectangle((80, 180, W - 80, 400),
-                         radius=40, fill=(255, 255, 255, 240))
+    od.rounded_rectangle((pill_x1, pill_y, pill_x2, pill_y + pill_h),
+                         radius=40, fill=(255, 255, 255, 250))
+    # チェックマーク (V 字を線で描画)
+    cx = pill_x1 + 45
+    cy = pill_y + pill_h // 2
+    # 緑円
+    od.ellipse((cx - 24, cy - 24, cx + 24, cy + 24),
+               fill=(*feature["color"], 255))
+    # チェック (白い線、V 字)
+    check_pts = [(cx - 11, cy + 1), (cx - 3, cy + 9), (cx + 12, cy - 8)]
+    od.line(check_pts, fill=(255, 255, 255), width=6, joint="curve")
     img.paste(overlay, (0, 0), overlay)
     draw = ImageDraw.Draw(img)
 
-    # OK バッジ (緑の角丸 + テキスト)
-    f_sol_h = ImageFont.truetype(JP_HEAVY, 50)
-    sol_h = "ZERO-PAINなら解決!"
-    sw = draw.textlength(sol_h, font=f_sol_h)
-    badge_x = (W - sw) // 2 - 100
-    overlay_ok = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    od_ok = ImageDraw.Draw(overlay_ok)
-    od_ok.rounded_rectangle((badge_x, 235, badge_x + 90, 295),
-                             radius=15, fill=(*feature["color"], 255))
-    od_ok.text((badge_x + 18, 240), "OK", fill=(255, 255, 255),
-               font=ImageFont.truetype(JP_HEAVY, 44))
-    img.paste(overlay_ok, (0, 0), overlay_ok)
-    draw = ImageDraw.Draw(img)
-    draw.text(((W - sw) // 2 + 60, 240), sol_h, fill=feature["color"], font=f_sol_h)
+    # ピル内テキスト
+    draw.text((pill_x1 + 85, pill_y + 16), label,
+              fill=(15, 23, 42), font=f_label)
 
-    # ソリューションタイトル
-    f_st = ImageFont.truetype(JP_HEAVY, 70)
+    # ソリューションタイトル (大、中央、ピル下)
+    f_st = ImageFont.truetype(JP_HEAVY, 80)
     st = feature["solution_title"]
     stw = draw.textlength(st, font=f_st)
-    draw.text(((W - stw) // 2, 305), st, fill=(15, 23, 42), font=f_st)
+    # 影付き
+    draw.text(((W - stw) // 2 + 5, 340 + 5), st,
+              fill=(0, 0, 0, 80), font=f_st)
+    draw.text(((W - stw) // 2, 340), st, fill=(255, 255, 255), font=f_st)
 
     # スクショ (右からスライドイン)
     ss_path = feature["screenshots"][0]
@@ -372,10 +380,10 @@ def gen_steps(feature, progress):
     draw.rectangle((W // 2 - 80, bar_y, W // 2 + 80, bar_y + 8),
                    fill=(255, 255, 255))
 
-    # 3 ステップ (順次フェードイン)
-    f_num = ImageFont.truetype(JP_HEAVY, 120)
-    f_title = ImageFont.truetype(JP_HEAVY, 56)
-    f_desc = ImageFont.truetype(JP_REG, 40)
+    # 3 ステップ (順次フェードイン) - v3 でフォントサイズ調整
+    f_num = ImageFont.truetype(JP_HEAVY, 110)
+    f_title = ImageFont.truetype(JP_HEAVY, 52)
+    f_desc = ImageFont.truetype(JP_REG, 34)
 
     for i, (num, title, desc) in enumerate(feature["steps"]):
         item_progress = max(0, min((progress * 3 - i), 1))
@@ -387,19 +395,21 @@ def gen_steps(feature, progress):
         overlay = Image.new("RGBA", (W, H), (0, 0, 0, 0))
         od = ImageDraw.Draw(overlay)
 
-        # 番号サークル
-        circle_x = 130
-        od.ellipse((circle_x, cy + 30, circle_x + 180, cy + 210),
+        # 番号サークル (少し小さく、左マージン保ったまま)
+        circle_x = 100
+        circle_size = 160
+        od.ellipse((circle_x, cy + 35, circle_x + circle_size, cy + 35 + circle_size),
                    fill=(255, 255, 255, alpha))
         # 番号
         nw = od.textlength(num, font=f_num)
-        od.text((circle_x + (180 - nw) // 2, cy + 50), num,
+        od.text((circle_x + (circle_size - nw) // 2, cy + 55), num,
                 fill=(*feature["color"], alpha), font=f_num)
 
-        # タイトル
-        od.text((350, cy + 50), title, fill=(255, 255, 255, alpha), font=f_title)
+        # タイトル (左マージン拡大、右安全)
+        text_x = 300
+        od.text((text_x, cy + 55), title, fill=(255, 255, 255, alpha), font=f_title)
         # 説明
-        od.text((350, cy + 130), desc, fill=(220, 220, 220, alpha), font=f_desc)
+        od.text((text_x, cy + 130), desc, fill=(220, 220, 220, alpha), font=f_desc)
 
         img.paste(overlay, (0, 0), overlay)
 
@@ -450,19 +460,19 @@ def gen_benefit(feature, progress):
         img.paste(shadow, (0, 0), shadow)
         img.paste(ss_masked, (x, y), ss_masked)
 
-    # 効果リスト (順次)
-    f_b = ImageFont.truetype(JP_BOLD, 44)
+    # 効果リスト (順次) - v3 でフォント縮小 + 余白調整
+    f_b = ImageFont.truetype(JP_BOLD, 38)
     for i, bn in enumerate(feature["benefits"]):
         item_progress = max(0, min((progress * 3 - i * 0.5), 1))
         if item_progress <= 0:
             continue
         alpha = int(item_progress * 255)
 
-        cy = 1280 + i * 100
+        cy = 1290 + i * 95
         overlay = Image.new("RGBA", (W, H), (0, 0, 0, 0))
         od = ImageDraw.Draw(overlay)
         # 星マーク (多角形で描画、絵文字非依存)
-        sx, sy, ss = 145, cy + 25, 22
+        sx, sy, ss = 110, cy + 22, 20
         star_points = []
         import math
         for k in range(10):
@@ -470,7 +480,7 @@ def gen_benefit(feature, progress):
             r = ss if k % 2 == 0 else ss * 0.45
             star_points.append((sx + r * math.cos(angle), sy - r * math.sin(angle)))
         od.polygon(star_points, fill=(255, 235, 100, alpha))
-        od.text((200, cy + 5), bn, fill=(255, 255, 255, alpha), font=f_b)
+        od.text((160, cy + 5), bn, fill=(255, 255, 255, alpha), font=f_b)
         img.paste(overlay, (0, 0), overlay)
 
     add_brand_footer(img, feature["color"])
