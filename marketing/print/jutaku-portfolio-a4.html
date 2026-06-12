@@ -22,12 +22,12 @@
   }
 
   .sheet {
-    width: 210mm; height: 297mm;
+    width: 210mm; height: 296mm;
     margin: 0 auto;
     background: #0f172a;
     color: #f8fafc;
     position: relative; overflow: hidden;
-    padding: 14mm 15mm;
+    padding: 10mm 13mm;
     display: flex; flex-direction: column;
     box-shadow: 0 4px 24px rgba(0,0,0,0.15);
   }
@@ -49,139 +49,141 @@
   .sheet > * { position: relative; z-index: 1; }
 
   /* ヘッダー */
-  .header { margin-bottom: 6mm; }
+  .header { margin-bottom: 4.5mm; }
   .header-label {
     display: inline-block;
     background: #10b981; color: #0f172a;
-    font-size: 9pt; font-weight: 800;
-    padding: 1.5mm 4mm; border-radius: 1.5mm;
-    letter-spacing: 1pt; margin-bottom: 3mm;
+    font-size: 8.5pt; font-weight: 800;
+    padding: 1.2mm 3.5mm; border-radius: 1.5mm;
+    letter-spacing: 1pt; margin-bottom: 2.5mm;
   }
   .header h1 {
-    font-size: 23pt; font-weight: 900;
-    line-height: 1.35; letter-spacing: -0.3pt;
+    font-size: 20.5pt; font-weight: 900;
+    line-height: 1.32; letter-spacing: -0.3pt;
   }
   .header h1 .em { color: #34d399; }
   .header .sub {
-    margin-top: 2.5mm; font-size: 10.5pt; color: #94a3b8; line-height: 1.6;
+    margin-top: 2mm; font-size: 9.5pt; color: #94a3b8; line-height: 1.55;
   }
+  .header .sub strong { color: #f8fafc; }
 
   /* 実績カード */
   .case {
     background: rgba(255,255,255,0.06);
     border: 0.4mm solid rgba(52,211,153,0.35);
     border-radius: 4mm;
-    padding: 5mm 6mm;
-    display: flex; gap: 6mm;
-    margin-bottom: 5mm;
+    padding: 4mm 5mm;
+    display: flex; gap: 5mm;
+    margin-bottom: 4mm;
   }
   .case-left { flex: 1; }
   .case-badge {
     display: inline-block;
     background: rgba(52,211,153,0.15); color: #34d399;
     border: 0.3mm solid rgba(52,211,153,0.5);
-    font-size: 8pt; font-weight: 700;
-    padding: 1mm 3mm; border-radius: 5mm; margin-bottom: 2.5mm;
+    font-size: 7.5pt; font-weight: 700;
+    padding: 0.8mm 2.8mm; border-radius: 5mm; margin-bottom: 2mm;
   }
   .case h2 {
-    font-size: 16pt; font-weight: 900; margin-bottom: 1.5mm;
+    font-size: 14.5pt; font-weight: 900; margin-bottom: 1mm;
   }
-  .case .case-sub { font-size: 9.5pt; color: #94a3b8; margin-bottom: 3mm; }
-  .case p.desc { font-size: 9.5pt; line-height: 1.65; color: #cbd5e1; }
+  .case .case-sub { font-size: 9pt; color: #94a3b8; margin-bottom: 2mm; }
+  .case p.desc { font-size: 9pt; line-height: 1.6; color: #cbd5e1; }
+  .case p.desc strong { color: #f8fafc; }
 
   .case-right {
-    width: 40mm; flex-shrink: 0;
-    display: flex; flex-direction: column; align-items: center; gap: 2mm;
+    width: 36mm; flex-shrink: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2mm;
   }
   .case-right img.appicon {
-    width: 26mm; height: 26mm; border-radius: 6mm;
+    width: 24mm; height: 24mm; border-radius: 5.5mm;
     box-shadow: 0 2mm 6mm rgba(0,0,0,0.4);
   }
   .case-right .store-note {
-    font-size: 7pt; color: #94a3b8; text-align: center; line-height: 1.5;
+    font-size: 6.8pt; color: #94a3b8; text-align: center; line-height: 1.5;
   }
 
   /* 数字ハイライト */
   .stats {
     display: grid; grid-template-columns: repeat(4, 1fr);
-    gap: 3mm; margin-bottom: 5mm;
+    gap: 2.5mm; margin-bottom: 4mm;
   }
   .stat {
     background: rgba(255,255,255,0.05);
-    border-radius: 3mm; padding: 3.5mm 2mm;
+    border-radius: 3mm; padding: 3mm 2mm;
     text-align: center;
     border: 0.3mm solid rgba(255,255,255,0.1);
   }
   .stat .num {
-    font-size: 17pt; font-weight: 900; color: #34d399; line-height: 1.1;
+    font-size: 15.5pt; font-weight: 900; color: #34d399; line-height: 1.1;
   }
-  .stat .num small { font-size: 9pt; }
-  .stat .label { font-size: 7.5pt; color: #94a3b8; margin-top: 1mm; }
+  .stat .num small { font-size: 8.5pt; }
+  .stat .label { font-size: 7pt; color: #94a3b8; margin-top: 1mm; line-height: 1.4; }
 
   /* セクション見出し */
   .sec-title {
-    font-size: 12pt; font-weight: 900;
+    font-size: 11pt; font-weight: 900;
     display: flex; align-items: center; gap: 2.5mm;
-    margin-bottom: 3mm;
+    margin-bottom: 2.5mm;
   }
   .sec-title::before {
-    content: ""; width: 5mm; height: 5mm;
+    content: ""; width: 4.5mm; height: 4.5mm;
     background: #10b981; border-radius: 1.2mm; flex-shrink: 0;
   }
-
-  /* できることグリッド */
-  .skills {
-    display: grid; grid-template-columns: repeat(2, 1fr);
-    gap: 2.5mm; margin-bottom: 5mm;
-  }
-  .skill {
-    background: rgba(255,255,255,0.05);
-    border-radius: 2.5mm; padding: 3mm 4mm;
-    border-left: 1mm solid #10b981;
-  }
-  .skill h3 { font-size: 9.5pt; font-weight: 800; margin-bottom: 1mm; }
-  .skill p { font-size: 8pt; color: #94a3b8; line-height: 1.5; }
 
   /* 開発ストーリー */
   .story {
     background: linear-gradient(135deg, rgba(16,185,129,0.12), rgba(20,184,166,0.06));
     border: 0.3mm solid rgba(52,211,153,0.3);
-    border-radius: 3mm; padding: 4mm 5mm;
-    margin-bottom: 5mm;
+    border-radius: 3mm; padding: 3.5mm 4.5mm;
+    margin-bottom: 4mm;
   }
   .story h3 {
-    font-size: 10.5pt; font-weight: 900; color: #34d399; margin-bottom: 2mm;
+    font-size: 9.8pt; font-weight: 900; color: #34d399; margin-bottom: 1.5mm;
   }
-  .story p { font-size: 8.5pt; line-height: 1.7; color: #cbd5e1; }
+  .story p { font-size: 8.2pt; line-height: 1.62; color: #cbd5e1; }
   .story p strong { color: #f8fafc; }
 
+  /* できることグリッド */
+  .skills {
+    display: grid; grid-template-columns: repeat(2, 1fr);
+    gap: 2.2mm; margin-bottom: 4mm;
+  }
+  .skill {
+    background: rgba(255,255,255,0.05);
+    border-radius: 2.5mm; padding: 2.6mm 3.6mm;
+    border-left: 1mm solid #10b981;
+  }
+  .skill h3 { font-size: 9pt; font-weight: 800; margin-bottom: 0.8mm; }
+  .skill p { font-size: 7.6pt; color: #94a3b8; line-height: 1.45; }
+
   /* テックスタック */
-  .tech-tags { display: flex; flex-wrap: wrap; gap: 1.5mm; margin-bottom: 5mm; }
+  .tech-tags { display: flex; flex-wrap: wrap; gap: 1.4mm; margin-bottom: 4mm; }
   .tag {
     background: rgba(255,255,255,0.08);
     border: 0.25mm solid rgba(255,255,255,0.18);
-    font-size: 7.5pt; font-weight: 600; color: #cbd5e1;
-    padding: 1.2mm 3mm; border-radius: 5mm;
+    font-size: 7.2pt; font-weight: 600; color: #cbd5e1;
+    padding: 1mm 2.8mm; border-radius: 5mm;
   }
 
   /* フッター CTA */
   .footer {
     margin-top: auto;
     background: #f8fafc; color: #0f172a;
-    border-radius: 4mm; padding: 4.5mm 6mm;
-    display: flex; align-items: center; gap: 5mm;
+    border-radius: 4mm; padding: 4mm 5mm;
+    display: flex; align-items: center; gap: 4.5mm;
   }
   .footer .qr {
-    width: 22mm; height: 22mm; flex-shrink: 0;
+    width: 20mm; height: 20mm; flex-shrink: 0;
     background: white; border-radius: 2mm; padding: 1mm;
   }
   .footer .qr img { width: 100%; height: 100%; }
   .footer .f-main { flex: 1; }
-  .footer .f-title { font-size: 11.5pt; font-weight: 900; margin-bottom: 1mm; }
-  .footer .f-desc { font-size: 8pt; color: #475569; line-height: 1.55; }
+  .footer .f-title { font-size: 10.5pt; font-weight: 900; margin-bottom: 1mm; }
+  .footer .f-desc { font-size: 7.6pt; color: #475569; line-height: 1.5; }
   .footer .f-company { text-align: right; flex-shrink: 0; }
-  .footer .f-company .name { font-size: 10.5pt; font-weight: 900; }
-  .footer .f-company .info { font-size: 7.5pt; color: #475569; margin-top: 1mm; line-height: 1.6; }
+  .footer .f-company .name { font-size: 10pt; font-weight: 900; }
+  .footer .f-company .info { font-size: 7.2pt; color: #475569; margin-top: 1mm; line-height: 1.6; }
 </style>
 </head>
 <body>
@@ -198,8 +200,8 @@
     <div class="header-label">DEVELOPMENT PORTFOLIO</div>
     <h1>AI アプリ開発、<br>企画から <span class="em">App Store 公開</span> まで一社完結。</h1>
     <p class="sub">
-      「AI を使った自社アプリを作りたい。でも、本当に作り切れる会社が見つからない」<br>
-      私たちは、自社プロダクトを<strong style="color:#f8fafc">実際に世に出した</strong>開発会社です。
+      「AI を使った自社アプリを作りたい。でも、本当に作り切れる会社が見つからない」——<br>
+      私たちは、自社プロダクトを<strong>実際に App Store で公開・運用している</strong>開発会社です。
     </p>
   </div>
 
@@ -210,10 +212,9 @@
       <h2>ZERO-PAIN（ゼロペイン）</h2>
       <p class="case-sub">AI 姿勢分析・食事分析・セルフケア iPhone アプリ</p>
       <p class="desc">
-        全身写真から AI が骨格バランスを数値化。AI キャラクター「ガイコツ先生」が
-        24 時間カウンセリング。食事写真の栄養解析、30 日習慣化プログラム、
-        家族プラン（サブスクリプション課金）まで、フル機能の商用アプリを
-        <strong style="color:#f8fafc">企画から公開・運用まで完全自社開発</strong>。
+        全身写真から AI が骨格バランスを数値化。AI キャラクター「ガイコツ先生」が 24 時間カウンセリング。
+        食事写真の栄養解析、30 日習慣化プログラム、家族プラン（サブスク課金）まで、
+        フル機能の商用アプリを<strong>企画から公開・運用まで完全自社開発</strong>。
       </p>
     </div>
     <div class="case-right">
@@ -238,19 +239,19 @@
     </div>
     <div class="stat">
       <div class="num">0.5<small>日</small></div>
-      <div class="label">v1.0.1 アップデート<br>審査通過スピード</div>
+      <div class="label">アップデート版の<br>審査通過スピード</div>
     </div>
   </div>
 
   <!-- 開発ストーリー -->
   <div class="story">
-    <h3>■ なぜこの実績が「保証」になるのか</h3>
+    <h3>■ なぜこの実績が「品質の保証」になるのか</h3>
     <p>
-      ヘルスケア × AI × サブスクリプション × HealthKit は、<strong>Apple 審査で最も厳しいカテゴリ</strong>です。
-      医療情報の出典明示、AI へのデータ送信の同意設計、課金画面のガイドライン、プライバシー対応——
-      審査で求められる要件をすべて潰し、公開まで到達しました。
-      つまり、<strong>「審査に通るアプリの作り方」を実戦で知っている</strong>ということです。
-      作って終わりではなく、世に出して運用するところまで、確実に伴走します。
+      ヘルスケア × AI × サブスク × HealthKit は <strong>Apple 審査で最も厳しい組み合わせ</strong>です。
+      医療情報の出典明示、AI へのデータ送信同意、課金画面のガイドライン、プライバシー対応——
+      求められる要件をすべて満たして公開に到達しました。
+      <strong>「審査に通るアプリの作り方」を実戦で知っている</strong>から、
+      作って終わりではなく、世に出して運用するところまで確実に伴走できます。
     </p>
   </div>
 
@@ -259,7 +260,7 @@
   <div class="skills">
     <div class="skill">
       <h3>AI チャットボット / AI 分析機能の実装</h3>
-      <p>ChatGPT・Claude 等の API を使った対話 AI、画像解析、パーソナライズ提案の実装</p>
+      <p>ChatGPT・Claude 等の API を使った対話 AI、画像解析、パーソナライズ提案</p>
     </div>
     <div class="skill">
       <h3>iPhone アプリ開発（App Store 申請代行込み）</h3>
