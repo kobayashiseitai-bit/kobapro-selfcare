@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<title>ZERO-PAIN 院内パートナープラン - 整体院・接骨院さま向けご提案</title>
+<style>
+  @page { size: A4 portrait; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    background: #e2e8f0;
+    padding: 20px;
+  }
+  .print-guide {
+    max-width: 210mm; margin: 0 auto 20px;
+    padding: 12px 16px; background: #ecfdf5;
+    border-left: 4px solid #059669; font-size: 13px; color: #047857;
+  }
+  @media print {
+    body { background: white; padding: 0; }
+    .print-guide { display: none; }
+    .page { page-break-after: always; }
+    .page:last-child { page-break-after: auto; }
+  }
+
+  .page {
+    width: 210mm; height: 297mm;
+    margin: 0 auto 20px;
+    background: linear-gradient(180deg, #ecfdf5 0%, #ffffff 30%, #ffffff 85%, #d1fae5 100%);
+    color: #0f172a;
+    position: relative; overflow: hidden;
+    padding: 13mm 15mm;
+    display: flex; flex-direction: column;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+  }
+  @media print { .page { box-shadow: none; margin: 0 auto; } }
+
+  /* ===== Page 1 ===== */
+  .p1-header { display: flex; align-items: center; gap: 5mm; margin-bottom: 5mm; }
+  .p1-header .sensei { width: 20mm; height: 20mm; flex-shrink: 0; }
+  .p1-header .sensei img { width: 100%; height: 100%; object-fit: contain; }
+  .p1-header .brand-line { font-size: 9pt; color: #047857; font-weight: 700; letter-spacing: 0.5pt; }
+  .p1-header .doc-title { font-size: 13pt; font-weight: 900; margin-top: 1mm; }
+
+  .catch {
+    text-align: center; margin: 4mm 0 6mm;
+  }
+  .catch .small { font-size: 11pt; font-weight: 700; color: #334155; margin-bottom: 2mm; }
+  .catch h1 {
+    font-size: 22pt; font-weight: 900; line-height: 1.4; letter-spacing: -0.3pt;
+  }
+  .catch h1 .em {
+    background: linear-gradient(90deg, #059669, #14b8a6);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .peer-box {
+    background: #fff;
+    border: 0.5mm solid #059669;
+    border-radius: 4mm;
+    padding: 4.5mm 6mm;
+    margin-bottom: 5mm;
+    display: flex; gap: 5mm; align-items: center;
+  }
+  .peer-box .icon { font-size: 22pt; flex-shrink: 0; }
+  .peer-box .txt { font-size: 9.5pt; line-height: 1.7; color: #334155; }
+  .peer-box .txt strong { color: #047857; }
+
+  .sec-h {
+    font-size: 12.5pt; font-weight: 900;
+    display: flex; align-items: center; gap: 2.5mm;
+    margin: 4mm 0 3mm;
+  }
+  .sec-h::before {
+    content: ""; width: 4.5mm; height: 4.5mm;
+    background: #059669; border-radius: 1.2mm; flex-shrink: 0;
+  }
+
+  .pains { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3mm; margin-bottom: 5mm; }
+  .pain {
+    background: #fff; border: 0.3mm solid #e2e8f0;
+    border-radius: 3mm; padding: 4mm;
+  }
+  .pain .p-icon {
+    width: 9mm; height: 9mm; border-radius: 50%;
+    background: #fee2e2; color: #dc2626;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 11pt; margin-bottom: 2mm;
+  }
+  .pain h3 { font-size: 9.5pt; font-weight: 800; margin-bottom: 1.5mm; line-height: 1.4; }
+  .pain p { font-size: 8pt; color: #64748b; line-height: 1.55; }
+
+  .solution {
+    background: linear-gradient(135deg, #059669, #0d9488);
+    color: #fff; border-radius: 4mm;
+    padding: 5mm 6mm; margin-bottom: 5mm;
+    display: flex; gap: 5mm; align-items: center;
+  }
+  .solution .sensei2 { width: 24mm; flex-shrink: 0; }
+  .solution .sensei2 img { width: 100%; object-fit: contain; filter: drop-shadow(0 2mm 3mm rgba(0,0,0,0.3)); }
+  .solution h2 { font-size: 14pt; font-weight: 900; margin-bottom: 2mm; }
+  .solution p { font-size: 9pt; line-height: 1.7; color: #d1fae5; }
+  .solution p strong { color: #fff; }
+
+  .merits { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2.5mm; }
+  .merit {
+    background: #fff; border-radius: 3mm; padding: 3.5mm 4.5mm;
+    border-left: 1.2mm solid #059669;
+    display: flex; gap: 3mm; align-items: flex-start;
+  }
+  .merit .m-num {
+    font-size: 13pt; font-weight: 900; color: #059669; flex-shrink: 0; line-height: 1.2;
+  }
+  .merit .m-body h3 { font-size: 9.5pt; font-weight: 800; margin-bottom: 1mm; }
+  .merit .m-body p { font-size: 8pt; color: #64748b; line-height: 1.55; }
+
+  .p1-footer {
+    margin-top: auto; text-align: center;
+    font-size: 8pt; color: #94a3b8;
+  }
+
+  /* ===== Page 2 ===== */
+  .roi-box {
+    background: #fff; border: 0.5mm solid #f59e0b;
+    border-radius: 4mm; padding: 4.5mm 6mm; margin-bottom: 5mm;
+  }
+  .roi-box h3 { font-size: 11pt; font-weight: 900; color: #b45309; margin-bottom: 2.5mm; }
+  .roi-calc {
+    display: flex; align-items: center; justify-content: center;
+    gap: 4mm; padding: 3mm 0; flex-wrap: wrap;
+  }
+  .roi-item { text-align: center; }
+  .roi-item .v { font-size: 14pt; font-weight: 900; color: #0f172a; }
+  .roi-item .l { font-size: 7.5pt; color: #64748b; margin-top: 0.5mm; }
+  .roi-op { font-size: 14pt; font-weight: 900; color: #94a3b8; }
+  .roi-result .v { color: #059669; font-size: 16pt; }
+  .roi-note { font-size: 7.5pt; color: #92400e; text-align: center; margin-top: 2mm; }
+
+  .plans { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; margin-bottom: 5mm; }
+  .plan {
+    background: #fff; border-radius: 4mm; padding: 5mm;
+    border: 0.4mm solid #e2e8f0; text-align: center;
+  }
+  .plan.recommended {
+    border: 0.6mm solid #059669;
+    background: linear-gradient(180deg, #ecfdf5, #fff);
+    position: relative;
+  }
+  .plan .p-badge {
+    position: absolute; top: -3mm; left: 50%; transform: translateX(-50%);
+    background: #059669; color: #fff;
+    font-size: 7.5pt; font-weight: 800;
+    padding: 1mm 4mm; border-radius: 5mm; white-space: nowrap;
+  }
+  .plan h3 { font-size: 11pt; font-weight: 900; margin-bottom: 2mm; }
+  .plan .price { font-size: 19pt; font-weight: 900; }
+  .plan .price small { font-size: 9pt; color: #64748b; font-weight: 700; }
+  .plan ul { list-style: none; text-align: left; margin-top: 3mm; }
+  .plan li {
+    font-size: 8.5pt; color: #334155; line-height: 1.5;
+    padding: 1.2mm 0 1.2mm 6mm; position: relative;
+    border-top: 0.2mm solid #f1f5f9;
+  }
+  .plan li::before {
+    content: "✓"; position: absolute; left: 1mm;
+    color: #059669; font-weight: 900;
+  }
+  .free-banner {
+    background: #0f172a; color: #fff;
+    border-radius: 3mm; padding: 3mm;
+    text-align: center; font-size: 10.5pt; font-weight: 900;
+    margin-bottom: 5mm;
+  }
+  .free-banner .y { color: #fbbf24; }
+
+  .steps3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3mm; margin-bottom: 5mm; }
+  .step3 {
+    background: #fff; border-radius: 3mm; padding: 4mm; text-align: center;
+    border: 0.3mm solid #e2e8f0;
+  }
+  .step3 .s-num {
+    width: 10mm; height: 10mm; border-radius: 50%;
+    background: #059669; color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 12pt; margin: 0 auto 2mm;
+  }
+  .step3 h3 { font-size: 9.5pt; font-weight: 800; margin-bottom: 1.5mm; }
+  .step3 p { font-size: 8pt; color: #64748b; line-height: 1.5; }
+
+  .faq-mini { margin-bottom: 5mm; }
+  .faq-row { display: flex; gap: 3mm; margin-bottom: 2mm; }
+  .faq-row .q {
+    flex-shrink: 0; width: 7mm; height: 7mm; border-radius: 50%;
+    background: #ecfdf5; color: #059669;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 9pt;
+  }
+  .faq-row .a { font-size: 8.5pt; line-height: 1.6; color: #334155; padding-top: 0.8mm; }
+  .faq-row .a strong { color: #0f172a; }
+
+  .p2-footer {
+    margin-top: auto;
+    background: #0f172a; color: #fff;
+    border-radius: 4mm; padding: 4.5mm 6mm;
+    display: flex; align-items: center; gap: 5mm;
+  }
+  .p2-footer .qr {
+    width: 20mm; height: 20mm; flex-shrink: 0;
+    background: #fff; border-radius: 2mm; padding: 1mm;
+  }
+  .p2-footer .qr img { width: 100%; height: 100%; }
+  .p2-footer .f-main { flex: 1; }
+  .p2-footer .f-title { font-size: 11pt; font-weight: 900; margin-bottom: 1mm; }
+  .p2-footer .f-desc { font-size: 8pt; color: #94a3b8; line-height: 1.55; }
+  .p2-footer .f-company { text-align: right; font-size: 7.5pt; color: #94a3b8; line-height: 1.7; }
+  .p2-footer .f-company .nm { font-size: 9.5pt; font-weight: 900; color: #fff; }
+</style>
+</head>
+<body>
+
+<div class="print-guide">
+  📄 <strong>印刷方法</strong>: ⌘P → A4 縦 → 余白なし → 「背景のグラフィック」ON → 2 ページ出力されます。
+  営業訪問時に手渡し / 事前にPDFでメール送付にも使えます。
+</div>
+
+<!-- ============ PAGE 1 ============ -->
+<div class="page">
+
+  <div class="p1-header">
+    <div class="sensei"><img src="../../public/icon-skeleton-sensei-face.png" alt="ガイコツ先生" /></div>
+    <div>
+      <div class="brand-line">ZERO-PAIN 院内パートナープラン</div>
+      <div class="doc-title">整体院・接骨院さま向けご提案資料</div>
+    </div>
+  </div>
+
+  <div class="catch">
+    <div class="small">「家でもセルフケアしてくださいね」——その一言、患者さんに届いていますか？</div>
+    <h1>治療の間の <span class="em">6 日と 23 時間</span> を、<br>AI があなたの院の代わりに支える。</h1>
+  </div>
+
+  <div class="peer-box">
+    <div class="icon">🤝</div>
+    <div class="txt">
+      はじめまして。私自身、<strong>姫路で整体院を営む施術者</strong>です。
+      「患者さんが自宅でケアを続けてくれない」「数回で来なくなってしまう」——
+      同じ悩みを抱えた当事者として、自分の院で使うためにこのアプリを開発し、
+      App Store で正式公開しました。<strong>同業のあなたの院でも使っていただきたい</strong>のがこの提案です。
+    </div>
+  </div>
+
+  <div class="sec-h">院経営の「あるある」な悩み</div>
+  <div class="pains">
+    <div class="pain">
+      <div class="p-icon">!</div>
+      <h3>自宅ケアが続かない</h3>
+      <p>指導したストレッチ、次の来院までにやってくる患者さんは 1 割もいない。効果が出ず「通っても変わらない」と思われてしまう。</p>
+    </div>
+    <div class="pain">
+      <div class="p-icon">!</div>
+      <h3>来院間隔が空くと離脱</h3>
+      <p>痛みが引くと足が遠のき、悪化してから別の院へ。LTV が伸びず、新規集客に追われ続ける。</p>
+    </div>
+    <div class="pain">
+      <div class="p-icon">!</div>
+      <h3>差別化が難しい</h3>
+      <p>技術には自信があっても、患者さんから見れば近所の院との違いが伝わらない。価格競争に巻き込まれる。</p>
+    </div>
+  </div>
+
+  <div class="solution">
+    <div class="sensei2"><img src="../../public/icon-skeleton-sensei.png" alt="ガイコツ先生" /></div>
+    <div>
+      <h2>AI セルフケアアプリ「ZERO-PAIN」を、あなたの院の患者さま特典に。</h2>
+      <p>
+        院がパートナー契約すると、<strong>患者さま用のプレミアム利用コード</strong>を発行できます。
+        患者さまは無料でフル機能（AI 姿勢分析・ガイコツ先生 AI 相談・食事分析・30 日コーチング）を利用可能。
+        <strong>「この院は家に帰ってからもケアしてくれる」</strong>——それが、あなたの院の新しい強みになります。
+      </p>
+    </div>
+  </div>
+
+  <div class="sec-h">院にとっての 4 つのメリット</div>
+  <div class="merits">
+    <div class="merit">
+      <div class="m-num">1</div>
+      <div class="m-body">
+        <h3>リピート率の向上</h3>
+        <p>アプリが毎日患者さんに寄り添い、院の存在を思い出させる。治療間隔が空いても関係が切れない。</p>
+      </div>
+    </div>
+    <div class="merit">
+      <div class="m-num">2</div>
+      <div class="m-body">
+        <h3>施術効果の持続 = 院の評判</h3>
+        <p>自宅ケアが続くから施術効果も持続。「あの院に行ったら良くなった」の口コミが生まれる。</p>
+      </div>
+    </div>
+    <div class="merit">
+      <div class="m-num">3</div>
+      <div class="m-body">
+        <h3>明確な差別化</h3>
+        <p>「AI アプリで 24 時間サポートする院」は地域でまだほぼゼロ。チラシ・HP・口コミの強い訴求材料に。</p>
+      </div>
+    </div>
+    <div class="merit">
+      <div class="m-num">4</div>
+      <div class="m-body">
+        <h3>施術の質も上がる</h3>
+        <p>患者さんのアプリ記録（姿勢スコアの推移・セルフケア実施状況）を来院時に見せてもらえば、施術方針の精度が上がる。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="p1-footer">— 料金と導入の流れは次ページへ —</div>
+</div>
+
+<!-- ============ PAGE 2 ============ -->
+<div class="page">
+
+  <div class="sec-h">投資対効果（こんな計算になります）</div>
+  <div class="roi-box">
+    <h3>💡 月に患者さん 2 人の離脱を防げれば、元が取れます</h3>
+    <div class="roi-calc">
+      <div class="roi-item"><div class="v">¥5,000</div><div class="l">平均施術単価</div></div>
+      <div class="roi-op">×</div>
+      <div class="roi-item"><div class="v">2人</div><div class="l">離脱を防いだ患者数/月</div></div>
+      <div class="roi-op">×</div>
+      <div class="roi-item"><div class="v">2回</div><div class="l">月の平均来院回数</div></div>
+      <div class="roi-op">=</div>
+      <div class="roi-item roi-result"><div class="v">¥20,000</div><div class="l">守れた売上/月</div></div>
+    </div>
+    <p class="roi-note">※ プラン料金（下記）を上回ります。10 人なら月 10 万円の売上防衛です。</p>
+  </div>
+
+  <div class="free-banner">🎁 <span class="y">初月無料</span> でお試しいただけます。効果を見てから続けるか決めてください。</div>
+
+  <div class="sec-h">料金プラン（院単位・税込）</div>
+  <div class="plans">
+    <div class="plan">
+      <h3>ライトプラン</h3>
+      <div class="price">¥9,800<small> / 月</small></div>
+      <ul>
+        <li>患者さま用プレミアムコード 20 名分</li>
+        <li>院内 POP・紹介カード無償提供</li>
+        <li>導入サポート（操作説明）</li>
+        <li>いつでも解約可・違約金なし</li>
+      </ul>
+    </div>
+    <div class="plan recommended">
+      <div class="p-badge">おすすめ</div>
+      <h3>スタンダードプラン</h3>
+      <div class="price">¥19,800<small> / 月</small></div>
+      <ul>
+        <li>患者さま用プレミアムコード <strong>無制限</strong></li>
+        <li>院内 POP・紹介カード無償提供</li>
+        <li>導入サポート + 優先サポート窓口</li>
+        <li>院名入り紹介ページ作成</li>
+        <li>いつでも解約可・違約金なし</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="sec-h">導入はかんたん 3 ステップ</div>
+  <div class="steps3">
+    <div class="step3">
+      <div class="s-num">1</div>
+      <h3>お申し込み</h3>
+      <p>この資料の QR からお問い合わせ。導入日を決めるだけ。</p>
+    </div>
+    <div class="step3">
+      <div class="s-num">2</div>
+      <h3>コード発行・POP 設置</h3>
+      <p>患者さま用コードと院内 POP 一式をこちらで準備してお渡しします。</p>
+    </div>
+    <div class="step3">
+      <div class="s-num">3</div>
+      <h3>患者さまにご案内</h3>
+      <p>会計時に「当院の特典でこのアプリが無料で使えますよ」とひと言だけ。</p>
+    </div>
+  </div>
+
+  <div class="sec-h">よくあるご質問</div>
+  <div class="faq-mini">
+    <div class="faq-row">
+      <div class="q">Q</div>
+      <div class="a"><strong>ITに詳しいスタッフがいなくても大丈夫?</strong> — 大丈夫です。院側の作業は「コードが印刷されたカードを渡すだけ」。設定・管理はすべて弊社が代行します。</div>
+    </div>
+    <div class="faq-row">
+      <div class="q">Q</div>
+      <div class="a"><strong>患者がアプリに依存して来院しなくなりませんか?</strong> — 逆です。アプリは「セルフケアの補助」であり、分析結果には専門家による施術の重要性が明示されます。アプリで体への意識が高まった患者さんほど、定期的に通う傾向があります。</div>
+    </div>
+    <div class="faq-row">
+      <div class="q">Q</div>
+      <div class="a"><strong>Android の患者さんは使えますか?</strong> — 現在は iPhone 専用です（Android 版は開発予定）。日本のスマホ利用者の約 7 割が iPhone のため、大半の患者さまにご利用いただけます。</div>
+    </div>
+  </div>
+
+  <div class="p2-footer">
+    <div class="qr"><img src="../qr/qr-lp.png" alt="QR" /></div>
+    <div class="f-main">
+      <div class="f-title">まずはご自身のスマホでお試しください</div>
+      <div class="f-desc">QR からアプリ紹介ページへ。実際に触っていただくのが一番伝わります。<br>初月無料のお申し込み・ご質問もこちらのページのサポート窓口から。</div>
+    </div>
+    <div class="f-company">
+      <div class="nm">有限会社トップバンク</div>
+      代表: 小林 誠（整体師 / 開発者）<br>
+      兵庫県姫路市
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

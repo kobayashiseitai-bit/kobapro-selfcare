@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<title>開発実績シート - 有限会社トップバンク</title>
+<style>
+  @page { size: A4 portrait; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    background: #e2e8f0;
+    padding: 20px;
+  }
+  .print-guide {
+    max-width: 210mm; margin: 0 auto 20px;
+    padding: 12px 16px; background: #ecfdf5;
+    border-left: 4px solid #059669; font-size: 13px; color: #047857;
+  }
+  @media print {
+    body { background: white; padding: 0; }
+    .print-guide { display: none; }
+  }
+
+  .sheet {
+    width: 210mm; height: 297mm;
+    margin: 0 auto;
+    background: #0f172a;
+    color: #f8fafc;
+    position: relative; overflow: hidden;
+    padding: 14mm 15mm;
+    display: flex; flex-direction: column;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+  }
+  @media print { .sheet { box-shadow: none; } }
+
+  /* 背景装飾 */
+  .sheet::before {
+    content: ""; position: absolute;
+    width: 120mm; height: 120mm; border-radius: 50%;
+    top: -40mm; right: -40mm;
+    background: radial-gradient(circle, rgba(16,185,129,0.25), transparent 70%);
+  }
+  .sheet::after {
+    content: ""; position: absolute;
+    width: 100mm; height: 100mm; border-radius: 50%;
+    bottom: -35mm; left: -35mm;
+    background: radial-gradient(circle, rgba(20,184,166,0.18), transparent 70%);
+  }
+  .sheet > * { position: relative; z-index: 1; }
+
+  /* ヘッダー */
+  .header { margin-bottom: 6mm; }
+  .header-label {
+    display: inline-block;
+    background: #10b981; color: #0f172a;
+    font-size: 9pt; font-weight: 800;
+    padding: 1.5mm 4mm; border-radius: 1.5mm;
+    letter-spacing: 1pt; margin-bottom: 3mm;
+  }
+  .header h1 {
+    font-size: 23pt; font-weight: 900;
+    line-height: 1.35; letter-spacing: -0.3pt;
+  }
+  .header h1 .em { color: #34d399; }
+  .header .sub {
+    margin-top: 2.5mm; font-size: 10.5pt; color: #94a3b8; line-height: 1.6;
+  }
+
+  /* 実績カード */
+  .case {
+    background: rgba(255,255,255,0.06);
+    border: 0.4mm solid rgba(52,211,153,0.35);
+    border-radius: 4mm;
+    padding: 5mm 6mm;
+    display: flex; gap: 6mm;
+    margin-bottom: 5mm;
+  }
+  .case-left { flex: 1; }
+  .case-badge {
+    display: inline-block;
+    background: rgba(52,211,153,0.15); color: #34d399;
+    border: 0.3mm solid rgba(52,211,153,0.5);
+    font-size: 8pt; font-weight: 700;
+    padding: 1mm 3mm; border-radius: 5mm; margin-bottom: 2.5mm;
+  }
+  .case h2 {
+    font-size: 16pt; font-weight: 900; margin-bottom: 1.5mm;
+  }
+  .case .case-sub { font-size: 9.5pt; color: #94a3b8; margin-bottom: 3mm; }
+  .case p.desc { font-size: 9.5pt; line-height: 1.65; color: #cbd5e1; }
+
+  .case-right {
+    width: 40mm; flex-shrink: 0;
+    display: flex; flex-direction: column; align-items: center; gap: 2mm;
+  }
+  .case-right img.appicon {
+    width: 26mm; height: 26mm; border-radius: 6mm;
+    box-shadow: 0 2mm 6mm rgba(0,0,0,0.4);
+  }
+  .case-right .store-note {
+    font-size: 7pt; color: #94a3b8; text-align: center; line-height: 1.5;
+  }
+
+  /* 数字ハイライト */
+  .stats {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 3mm; margin-bottom: 5mm;
+  }
+  .stat {
+    background: rgba(255,255,255,0.05);
+    border-radius: 3mm; padding: 3.5mm 2mm;
+    text-align: center;
+    border: 0.3mm solid rgba(255,255,255,0.1);
+  }
+  .stat .num {
+    font-size: 17pt; font-weight: 900; color: #34d399; line-height: 1.1;
+  }
+  .stat .num small { font-size: 9pt; }
+  .stat .label { font-size: 7.5pt; color: #94a3b8; margin-top: 1mm; }
+
+  /* セクション見出し */
+  .sec-title {
+    font-size: 12pt; font-weight: 900;
+    display: flex; align-items: center; gap: 2.5mm;
+    margin-bottom: 3mm;
+  }
+  .sec-title::before {
+    content: ""; width: 5mm; height: 5mm;
+    background: #10b981; border-radius: 1.2mm; flex-shrink: 0;
+  }
+
+  /* できることグリッド */
+  .skills {
+    display: grid; grid-template-columns: repeat(2, 1fr);
+    gap: 2.5mm; margin-bottom: 5mm;
+  }
+  .skill {
+    background: rgba(255,255,255,0.05);
+    border-radius: 2.5mm; padding: 3mm 4mm;
+    border-left: 1mm solid #10b981;
+  }
+  .skill h3 { font-size: 9.5pt; font-weight: 800; margin-bottom: 1mm; }
+  .skill p { font-size: 8pt; color: #94a3b8; line-height: 1.5; }
+
+  /* 開発ストーリー */
+  .story {
+    background: linear-gradient(135deg, rgba(16,185,129,0.12), rgba(20,184,166,0.06));
+    border: 0.3mm solid rgba(52,211,153,0.3);
+    border-radius: 3mm; padding: 4mm 5mm;
+    margin-bottom: 5mm;
+  }
+  .story h3 {
+    font-size: 10.5pt; font-weight: 900; color: #34d399; margin-bottom: 2mm;
+  }
+  .story p { font-size: 8.5pt; line-height: 1.7; color: #cbd5e1; }
+  .story p strong { color: #f8fafc; }
+
+  /* テックスタック */
+  .tech-tags { display: flex; flex-wrap: wrap; gap: 1.5mm; margin-bottom: 5mm; }
+  .tag {
+    background: rgba(255,255,255,0.08);
+    border: 0.25mm solid rgba(255,255,255,0.18);
+    font-size: 7.5pt; font-weight: 600; color: #cbd5e1;
+    padding: 1.2mm 3mm; border-radius: 5mm;
+  }
+
+  /* フッター CTA */
+  .footer {
+    margin-top: auto;
+    background: #f8fafc; color: #0f172a;
+    border-radius: 4mm; padding: 4.5mm 6mm;
+    display: flex; align-items: center; gap: 5mm;
+  }
+  .footer .qr {
+    width: 22mm; height: 22mm; flex-shrink: 0;
+    background: white; border-radius: 2mm; padding: 1mm;
+  }
+  .footer .qr img { width: 100%; height: 100%; }
+  .footer .f-main { flex: 1; }
+  .footer .f-title { font-size: 11.5pt; font-weight: 900; margin-bottom: 1mm; }
+  .footer .f-desc { font-size: 8pt; color: #475569; line-height: 1.55; }
+  .footer .f-company { text-align: right; flex-shrink: 0; }
+  .footer .f-company .name { font-size: 10.5pt; font-weight: 900; }
+  .footer .f-company .info { font-size: 7.5pt; color: #475569; margin-top: 1mm; line-height: 1.6; }
+</style>
+</head>
+<body>
+
+<div class="print-guide">
+  📄 <strong>印刷方法</strong>: ⌘P → A4 縦 → 余白なし → 「背景のグラフィック」ON。
+  受託開発の提案書に添付 / 商談で手渡し / PDF 化してクラウドソーシング応募に添付。
+</div>
+
+<div class="sheet">
+
+  <!-- ヘッダー -->
+  <div class="header">
+    <div class="header-label">DEVELOPMENT PORTFOLIO</div>
+    <h1>AI アプリ開発、<br>企画から <span class="em">App Store 公開</span> まで一社完結。</h1>
+    <p class="sub">
+      「AI を使った自社アプリを作りたい。でも、本当に作り切れる会社が見つからない」<br>
+      私たちは、自社プロダクトを<strong style="color:#f8fafc">実際に世に出した</strong>開発会社です。
+    </p>
+  </div>
+
+  <!-- 実績カード -->
+  <div class="case">
+    <div class="case-left">
+      <div class="case-badge">自社開発・App Store 公開中</div>
+      <h2>ZERO-PAIN（ゼロペイン）</h2>
+      <p class="case-sub">AI 姿勢分析・食事分析・セルフケア iPhone アプリ</p>
+      <p class="desc">
+        全身写真から AI が骨格バランスを数値化。AI キャラクター「ガイコツ先生」が
+        24 時間カウンセリング。食事写真の栄養解析、30 日習慣化プログラム、
+        家族プラン（サブスクリプション課金）まで、フル機能の商用アプリを
+        <strong style="color:#f8fafc">企画から公開・運用まで完全自社開発</strong>。
+      </p>
+    </div>
+    <div class="case-right">
+      <img class="appicon" src="../../public/icon-1024.png" alt="ZERO-PAIN アイコン" />
+      <p class="store-note">App Store にて公開中<br>「ZERO-PAIN」で検索</p>
+    </div>
+  </div>
+
+  <!-- 数字 -->
+  <div class="stats">
+    <div class="stat">
+      <div class="num">2<small>ヶ月</small></div>
+      <div class="label">企画→公開までの期間</div>
+    </div>
+    <div class="stat">
+      <div class="num">1<small>社完結</small></div>
+      <div class="label">企画・開発・審査・運用</div>
+    </div>
+    <div class="stat">
+      <div class="num">100<small>%</small></div>
+      <div class="label">Apple 審査突破<br>(最難関カテゴリ)</div>
+    </div>
+    <div class="stat">
+      <div class="num">0.5<small>日</small></div>
+      <div class="label">v1.0.1 アップデート<br>審査通過スピード</div>
+    </div>
+  </div>
+
+  <!-- 開発ストーリー -->
+  <div class="story">
+    <h3>■ なぜこの実績が「保証」になるのか</h3>
+    <p>
+      ヘルスケア × AI × サブスクリプション × HealthKit は、<strong>Apple 審査で最も厳しいカテゴリ</strong>です。
+      医療情報の出典明示、AI へのデータ送信の同意設計、課金画面のガイドライン、プライバシー対応——
+      審査で求められる要件をすべて潰し、公開まで到達しました。
+      つまり、<strong>「審査に通るアプリの作り方」を実戦で知っている</strong>ということです。
+      作って終わりではなく、世に出して運用するところまで、確実に伴走します。
+    </p>
+  </div>
+
+  <!-- できること -->
+  <div class="sec-title">ご依頼いただけること</div>
+  <div class="skills">
+    <div class="skill">
+      <h3>AI チャットボット / AI 分析機能の実装</h3>
+      <p>ChatGPT・Claude 等の API を使った対話 AI、画像解析、パーソナライズ提案の実装</p>
+    </div>
+    <div class="skill">
+      <h3>iPhone アプリ開発（App Store 申請代行込み）</h3>
+      <p>Web 技術ベースのハイブリッド開発で低コスト・短納期。審査対応も全て代行</p>
+    </div>
+    <div class="skill">
+      <h3>サブスクリプション課金の導入</h3>
+      <p>アプリ内課金（IAP）・定期課金・無料トライアル・家族プランの設計と実装</p>
+    </div>
+    <div class="skill">
+      <h3>Web サービス / LP / 業務システム開発</h3>
+      <p>ランディングページからデータベース連携の業務アプリまで一貫対応</p>
+    </div>
+  </div>
+
+  <!-- テックスタック -->
+  <div class="sec-title">技術スタック</div>
+  <div class="tech-tags">
+    <span class="tag">Next.js / React</span>
+    <span class="tag">TypeScript</span>
+    <span class="tag">Capacitor (iOS)</span>
+    <span class="tag">Swift</span>
+    <span class="tag">Claude / OpenAI API</span>
+    <span class="tag">Supabase (DB)</span>
+    <span class="tag">RevenueCat (課金)</span>
+    <span class="tag">Vercel</span>
+    <span class="tag">App Store Connect</span>
+    <span class="tag">HealthKit</span>
+  </div>
+
+  <!-- フッター -->
+  <div class="footer">
+    <div class="qr">
+      <img src="../qr/qr-lp.png" alt="ZERO-PAIN 紹介ページ QR" />
+    </div>
+    <div class="f-main">
+      <div class="f-title">まず、実物を触ってみてください。</div>
+      <div class="f-desc">
+        QR コードから ZERO-PAIN の紹介ページをご覧いただけます。<br>
+        「こんなアプリを自社でも作りたい」——その一言から、お気軽にご相談ください。
+      </div>
+    </div>
+    <div class="f-company">
+      <div class="name">有限会社トップバンク</div>
+      <div class="info">
+        TOPBANK.INC（兵庫県姫路市）<br>
+        お問い合わせ: posture-app-steel.vercel.app/support
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
