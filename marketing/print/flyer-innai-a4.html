@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<title>ZERO-PAIN 院内配布用チラシ</title>
+<style>
+  @page { size: A4 portrait; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    background: #e2e8f0;
+    padding: 20px;
+  }
+  .print-guide {
+    max-width: 210mm; margin: 0 auto 20px;
+    padding: 12px 16px; background: #ecfdf5;
+    border-left: 4px solid #059669; font-size: 13px; color: #047857;
+  }
+  @media print {
+    body { background: white; padding: 0; }
+    .print-guide { display: none; }
+  }
+
+  .flyer {
+    width: 210mm; height: 296mm;
+    margin: 0 auto;
+    background: #ffffff;
+    color: #1e293b;
+    position: relative; overflow: hidden;
+    padding: 10mm 13mm;
+    display: flex; flex-direction: column;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+  }
+  @media print { .flyer { box-shadow: none; } }
+
+  /* 上部の帯 */
+  .top-band {
+    position: absolute; top: 0; left: 0; right: 0; height: 5mm;
+    background: linear-gradient(90deg, #059669, #14b8a6);
+  }
+  .flyer > * { position: relative; }
+
+  /* ===== 1. キャッチ ===== */
+  .catch { text-align: center; margin: 2mm 0 2.5mm; }
+  .catch .lead {
+    display: inline-block;
+    font-size: 10.5pt; font-weight: 700; color: #475569;
+    border-bottom: 0.8mm solid #a7f3d0;
+    padding-bottom: 1mm; margin-bottom: 2mm;
+  }
+  .catch h1 {
+    font-size: 19pt; font-weight: 900; line-height: 1.38;
+    color: #0f172a; letter-spacing: -0.2pt;
+  }
+  .catch h1 .em { color: #059669; }
+
+  /* ===== 2. アプリ紹介 ===== */
+  .intro {
+    background: #ecfdf5;
+    border-radius: 4mm;
+    padding: 2.5mm 4.5mm;
+    display: flex; align-items: center; gap: 4mm;
+    margin-bottom: 2.5mm;
+  }
+  .intro .sensei { width: 21mm; flex-shrink: 0; }
+  .intro .sensei img { width: 100%; object-fit: contain; }
+  .intro .txt { flex: 1; }
+  .intro .app-name {
+    display: flex; align-items: center; gap: 3mm; margin-bottom: 1.5mm;
+  }
+  .intro .app-name img { width: 10mm; height: 10mm; border-radius: 2.2mm; }
+  .intro .app-name .nm { font-size: 15pt; font-weight: 900; color: #0f172a; }
+  .intro .app-name .yomi { font-size: 8.5pt; color: #64748b; }
+  .intro p {
+    font-size: 9.5pt; line-height: 1.55; color: #334155;
+  }
+  .intro p strong { color: #047857; }
+
+  /* ===== 3. 機能 4 つ ===== */
+  .sec-h {
+    font-size: 12.5pt; font-weight: 900; color: #0f172a;
+    display: flex; align-items: center; gap: 2.5mm;
+    margin-bottom: 2.5mm;
+  }
+  .sec-h::before {
+    content: ""; width: 4.5mm; height: 4.5mm;
+    background: #059669; border-radius: 1.2mm; flex-shrink: 0;
+  }
+  .features {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 2.2mm; margin-bottom: 2.5mm;
+  }
+  .feature {
+    background: #fff;
+    border: 0.35mm solid #d1fae5;
+    border-radius: 3mm; padding: 2.5mm 3.5mm;
+    display: flex; gap: 3mm; align-items: flex-start;
+  }
+  .feature .f-num {
+    width: 8mm; height: 8mm; border-radius: 50%;
+    background: #059669; color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 10pt; flex-shrink: 0;
+    margin-top: 0.5mm;
+  }
+  .feature h3 { font-size: 10pt; font-weight: 800; margin-bottom: 1mm; color: #0f172a; }
+  .feature p { font-size: 8.5pt; color: #475569; line-height: 1.55; }
+
+  /* ===== 4. 使い方 3 ステップ ===== */
+  .howto {
+    background: #f0fdf4;
+    border: 0.5mm solid #a7f3d0;
+    border-radius: 4mm;
+    padding: 2.5mm 4.5mm 3mm;
+    margin-bottom: 2.5mm;
+  }
+  .howto .sec-h { margin-bottom: 2.2mm; }
+  .steps { display: flex; flex-direction: column; gap: 2mm; }
+  .step {
+    background: #fff; border-radius: 3mm;
+    padding: 2.5mm 3.5mm;
+    display: flex; align-items: center; gap: 3.5mm;
+  }
+  .step .s-num {
+    width: 9.5mm; height: 9.5mm; border-radius: 50%;
+    background: #059669; color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 12.5pt; flex-shrink: 0;
+  }
+  .step .s-body h3 { font-size: 11pt; font-weight: 900; color: #0f172a; margin-bottom: 0.8mm; }
+  .step .s-body p { font-size: 9pt; color: #475569; line-height: 1.5; }
+  .step .s-body p strong { color: #047857; }
+
+  /* ===== 5. 料金 ===== */
+  .pricing { margin-bottom: 2.5mm; }
+  .free-line {
+    background: linear-gradient(90deg, #059669, #0d9488);
+    color: #fff; border-radius: 3.5mm;
+    text-align: center; padding: 2.5mm;
+    margin-bottom: 2mm;
+  }
+  .free-line .big { font-size: 13.5pt; font-weight: 900; }
+  .free-line .small { font-size: 8.5pt; margin-top: 0.8mm; color: #d1fae5; }
+  .price-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 2.5mm;
+  }
+  .price-cell {
+    background: #fff; border: 0.35mm solid #e2e8f0;
+    border-radius: 3mm; padding: 2.5mm; text-align: center;
+  }
+  .price-cell .nm { font-size: 8.5pt; font-weight: 700; color: #475569; }
+  .price-cell .pr { font-size: 12pt; font-weight: 900; color: #0f172a; margin-top: 0.8mm; }
+  .price-cell .pr small { font-size: 7.5pt; color: #64748b; font-weight: 600; }
+  .price-cell .note { font-size: 7pt; color: #059669; font-weight: 700; margin-top: 0.8mm; }
+  .price-foot {
+    text-align: center; font-size: 8pt; color: #64748b; margin-top: 1.5mm;
+  }
+
+  /* ===== 6. QR + CTA ===== */
+  .cta {
+    background: #0f172a; color: #fff;
+    border-radius: 4mm; padding: 3mm 4.5mm;
+    display: flex; align-items: center; gap: 4.5mm;
+  }
+  .cta .qr {
+    width: 22mm; height: 22mm; flex-shrink: 0;
+    background: #fff; border-radius: 2.5mm; padding: 1.2mm;
+  }
+  .cta .qr img { width: 100%; height: 100%; }
+  .cta .c-main { flex: 1; }
+  .cta .c-title { font-size: 12pt; font-weight: 900; margin-bottom: 1.2mm; }
+  .cta .c-title .y { color: #fbbf24; }
+  .cta .c-desc { font-size: 8.5pt; color: #cbd5e1; line-height: 1.6; }
+  .cta .c-desc strong { color: #fff; }
+  .cta .sensei-mini { width: 16mm; flex-shrink: 0; }
+  .cta .sensei-mini img { width: 100%; object-fit: contain; }
+
+  /* ===== 7. フッター ===== */
+  .foot {
+    margin-top: auto;
+    padding-top: 1.8mm;
+    border-top: 0.3mm solid #e2e8f0;
+  }
+  .foot .caution {
+    font-size: 7pt; color: #64748b; line-height: 1.5;
+    margin-bottom: 1mm;
+  }
+  .foot .company {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 7.5pt; color: #94a3b8;
+  }
+  .foot .company .nm { font-weight: 800; color: #475569; }
+</style>
+</head>
+<body>
+
+<div class="print-guide">
+  📄 <strong>印刷方法</strong>: ⌘P → A4 縦 → 余白なし → 「背景のグラフィック」ON。
+  院内の受付・会計時に手渡し用。
+</div>
+
+<div class="flyer">
+  <div class="top-band"></div>
+
+  <!-- 1. キャッチ -->
+  <div class="catch">
+    <div class="lead">当院からのご案内です</div>
+    <h1>その肩こり・腰の痛み、<br><span class="em">家に帰ってからが勝負</span>です。</h1>
+  </div>
+
+  <!-- 2. アプリ紹介 -->
+  <div class="intro">
+    <div class="sensei"><img src="../../public/icon-skeleton-sensei.png" alt="ガイコツ先生" /></div>
+    <div class="txt">
+      <div class="app-name">
+        <img src="../../public/icon-1024.png" alt="アプリアイコン" />
+        <span class="nm">ZERO-PAIN</span>
+        <span class="yomi">（ゼロペイン）</span>
+      </div>
+      <p>
+        体にやさしい「骨のお医者さん」<strong>ガイコツ先生</strong>が、
+        あなたの自宅でのセルフケアをお手伝いする iPhone アプリです。
+        写真を撮るだけで姿勢の状態が分かり、あなたに合った体操を教えてくれます。
+      </p>
+    </div>
+  </div>
+
+  <!-- 3. 機能 4 つ -->
+  <div class="sec-h">このアプリでできること</div>
+  <div class="features">
+    <div class="feature">
+      <div class="f-num">1</div>
+      <div>
+        <h3>AI 姿勢チェック</h3>
+        <p>全身の写真 2 枚で、肩・骨盤・ひざの傾きを数字で見える化します。</p>
+      </div>
+    </div>
+    <div class="feature">
+      <div class="f-num">2</div>
+      <div>
+        <h3>ガイコツ先生に相談</h3>
+        <p>夜中でも早朝でも、体の悩みをいつでも文字で相談できます。</p>
+      </div>
+    </div>
+    <div class="feature">
+      <div class="f-num">3</div>
+      <div>
+        <h3>食事チェック</h3>
+        <p>食事の写真 1 枚で栄養バランスを確認。足りない栄養も分かります。</p>
+      </div>
+    </div>
+    <div class="feature">
+      <div class="f-num">4</div>
+      <div>
+        <h3>30 日間の毎日メニュー</h3>
+        <p>1 日 5 分の課題が毎日届き、無理なくセルフケアが習慣になります。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. 使い方 3 ステップ -->
+  <div class="howto">
+    <div class="sec-h">はじめ方は、かんたん 3 つだけ</div>
+    <div class="steps">
+      <div class="step">
+        <div class="s-num">1</div>
+        <div class="s-body">
+          <h3>App Store で「ゼロペイン」と検索</h3>
+          <p>下の <strong>QR コードをカメラで写す</strong>だけでも開けます。</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="s-num">2</div>
+        <div class="s-body">
+          <h3>「入手」を押して、名前と年齢を入れる</h3>
+          <p>むずかしい登録はありません。<strong>1〜2 分で終わります</strong>。</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="s-num">3</div>
+        <div class="s-body">
+          <h3>まずは姿勢チェックを 1 回やってみる</h3>
+          <p>画面下の「チェック」を押して、案内のとおりに写真を撮るだけ。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. 料金 -->
+  <div class="pricing">
+    <div class="free-line">
+      <div class="big">まずは無料で始められます</div>
+      <div class="small">全機能が使えるプレミアムも、7 日間は無料でお試しできます</div>
+    </div>
+    <div class="price-grid">
+      <div class="price-cell">
+        <div class="nm">月額プラン</div>
+        <div class="pr">1,280<small> 円/月</small></div>
+        <div class="note">7日間無料つき</div>
+      </div>
+      <div class="price-cell">
+        <div class="nm">年額プラン</div>
+        <div class="pr">12,800<small> 円/年</small></div>
+        <div class="note">2ヶ月分お得</div>
+      </div>
+      <div class="price-cell">
+        <div class="nm">家族プラン（4人まで）</div>
+        <div class="pr">1,980<small> 円/月</small></div>
+        <div class="note">1人あたり約500円</div>
+      </div>
+    </div>
+    <p class="price-foot">いつでも解約できます。解約料はかかりません。</p>
+  </div>
+
+  <!-- 6. QR + CTA -->
+  <div class="cta">
+    <div class="qr"><img src="../qr/qr-app-store.png" alt="App Store QR コード" /></div>
+    <div class="c-main">
+      <div class="c-title">スマホのカメラで QR を写すだけ <span class="y">→</span></div>
+      <div class="c-desc">
+        App Store が開いたら「入手」を押してください。<br>
+        分からないことがあれば、<strong>当院スタッフにお気軽にお声がけください</strong>。
+      </div>
+    </div>
+    <div class="sensei-mini"><img src="../../public/icon-skeleton-sensei.png" alt="ガイコツ先生" /></div>
+  </div>
+
+  <!-- 7. フッター -->
+  <div class="foot">
+    <p class="caution">
+      ※ 本アプリはセルフケア支援が目的で、医療診断・治療を行うものではありません。痛みが続く場合は医療機関へ。※ iPhone 専用（Android 版は開発予定）。
+    </p>
+    <div class="company">
+      <span class="nm">開発・運営: 有限会社トップバンク（兵庫県姫路市）</span>
+      <span>お問い合わせ: posture-app-steel.vercel.app/support</span>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
