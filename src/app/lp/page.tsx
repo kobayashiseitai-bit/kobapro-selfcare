@@ -200,7 +200,7 @@ export default function LPPage() {
               </span>
               <span className="flex items-center gap-1">
                 <svg className="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
-                Apple HealthKit 連携
+                無料で始められる
               </span>
               <span className="flex items-center gap-1">
                 <svg className="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
@@ -526,7 +526,7 @@ export default function LPPage() {
                   'AI 食事分析 無制限',
                   'ガイコツ先生カウンセリング 無制限',
                   '30日コーチング',
-                  'HealthKit 連携',
+                  '7日間無料トライアル付き',
                 ]}
               />
             </AnimateOnScroll>
@@ -585,8 +585,8 @@ export default function LPPage() {
                 Icon: LockIcon,
               },
               {
-                title: 'Apple ヘルスケア連携',
-                desc: '歩数・睡眠・心拍データを連携することで、より精度の高いセルフケア提案が可能に。',
+                title: '施術者が開発したアプリ',
+                desc: '世界各地で施術を重ねてきたカイロプラクターが開発。現場で見てきた「続かない悩み」に寄り添う設計です。',
                 Icon: HeartPulseIcon,
               },
             ].map((t, idx) => (

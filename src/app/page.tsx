@@ -8266,11 +8266,10 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
                     👑 プレミアムプランで全機能開放
                   </p>
                   <ul className="text-sm text-gray-200 space-y-1.5">
-                    <li>✅ 姿勢チェック・AIチャット・食事分析 無制限</li>
-                    <li>✅ 30種類のストレッチ全開放</li>
-                    <li>✅ 音声ガイド機能</li>
-                    <li>✅ 過去データを無期限保存</li>
-                    <li>✅ AI姿勢写真分析</li>
+                    <li>✅ AI姿勢チェック 無制限（無料プランは月3回）</li>
+                    <li>✅ ガイコツ先生AIチャット 無制限（無料プランは月5回）</li>
+                    <li>✅ AI食事分析 無制限（無料プランは月3回）</li>
+                    <li>✅ 7日間無料トライアル付き・いつでも解約OK</li>
                   </ul>
                 </div>
 
