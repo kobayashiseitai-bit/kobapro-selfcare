@@ -133,7 +133,7 @@ ${postureIssues.length > 0 ? postureIssues.join("\n") : "特になし"}
 {"prediction":"今日の予測メッセージ（50文字以内）","detail":"具体的なアドバイス（100文字以内）","riskLevel":"low/medium/high","symptomId":"neck/shoulder_stiff/shoulder_pain/back/eye_fatigue/eye_recovery/null"}`;
 
     const response = await getClient().messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-5",
       max_tokens: 200,
       system: SAFE_LANGUAGE_RULES,
       messages: [{ role: "user", content: analysisPrompt }],
