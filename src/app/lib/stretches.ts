@@ -2,6 +2,8 @@
 // 6症状 × 5ストレッチ = 30件
 // 画像は /public/stretches/ に配置（後でGIF/動画に差し替え可能）
 
+import { STRETCHES_EN } from "./stretches.en";
+
 export interface Stretch {
   id: string;
   title: string;
@@ -567,7 +569,18 @@ export const STRETCH_DATA: StretchCategory[] = [
   },
 ];
 
-export function getStretchesBySymptom(symptomId: string): Stretch[] {
+/**
+ * 症状IDに対応するストレッチ一覧を返す。
+ * locale="en" のときは stretches.en.ts の英文で title/steps 等を差し替える
+ * （id・image・duration の構造は共通。英訳が無い項目は日本語のまま返す）。
+ * 既定は "ja" なので既存の呼び出しは無変更で動く。
+ */
+export function getStretchesBySymptom(symptomId: string, locale: "ja" | "en" = "ja"): Stretch[] {
   const category = STRETCH_DATA.find((c) => c.symptomId === symptomId);
-  return category?.stretches || [];
+  const list = category?.stretches || [];
+  if (locale !== "en") return list;
+  return list.map((st) => {
+    const en = STRETCHES_EN[st.id];
+    return en ? { ...st, ...en } : st;
+  });
 }
