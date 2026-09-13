@@ -73,3 +73,10 @@ android/*.keystore
 # Google Play サービスアカウント鍵（絶対にコミットしない）
 secrets/
 *.json.key
+
+# Android ネイティブプロジェクト: ソースは管理下に置き、ビルド成果物だけ除外
+android/build/
+android/app/build/
+android/.gradle/
+android/local.properties
+android/capacitor-cordova-android-plugins/build/

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">ZERO-PAIN</string>
+    <string name="title_activity_main">ZERO-PAIN</string>
+    <string name="package_name">com.topbank.zeropain</string>
+    <string name="custom_url_scheme">com.topbank.zeropain</string>
+</resources>

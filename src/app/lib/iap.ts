@@ -1,18 +1,21 @@
 /**
  * In-App Purchase ラッパー (RevenueCat 統合)
  *
- * iOS ネイティブビルド時のみ動作。Web/PWA では noop となり、
+ * iOS / Android ネイティブビルド時のみ動作。Web/PWA では noop となり、
  * 既存の /api/subscription を使用する。
  *
  * 必要な事前準備:
- *   1. App Store Connect でサブスク商品登録
+ *   1. ストアにサブスク商品を登録(iOS/Android で同じ商品ID)
  *      - zero_pain_monthly_1280
  *      - zero_pain_yearly_12800
+ *      ※Android は Google Play Console →「定期購入」で作成
  *   2. RevenueCat ダッシュボードでアプリ登録
- *      - Apple App Store API キー設定
- *      - Entitlement「premium」作成
- *      - 上記2商品を premium にひも付け
- *   3. NEXT_PUBLIC_REVENUECAT_IOS_KEY 環境変数を設定
+ *      - iOS: Apple App Store API キー / Android: Google Play サービスアカウント
+ *      - Entitlement「premium」作成(iOS/Android 共通)
+ *      - 上記商品を premium にひも付け
+ *   3. 環境変数を設定
+ *      - NEXT_PUBLIC_REVENUECAT_IOS_KEY     (appl_ で始まる公開キー)
+ *      - NEXT_PUBLIC_REVENUECAT_ANDROID_KEY (goog_ で始まる公開キー)
  *   4. RevenueCat の Webhook を /api/revenuecat/webhook に設定
  */
 
@@ -26,21 +29,33 @@ let initialized = false;
 
 const ENTITLEMENT_ID = "premium"; // RevenueCat側で設定したentitlement名
 
-/** ネイティブiOS環境かどうか */
-export function isNativeIOS(): boolean {
-  if (typeof window === "undefined") return false;
-  // Capacitor.getPlatform() === "ios" の判定
-  // Capacitor.isNativePlatform() で WebView 内ネイティブ判定
+/** ネイティブのプラットフォーム名を返す (Web/PWA なら null) */
+export function nativePlatform(): "ios" | "android" | null {
+  if (typeof window === "undefined") return null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const cap = (window as any).Capacitor;
-  return cap?.isNativePlatform?.() === true && cap?.getPlatform?.() === "ios";
+  if (cap?.isNativePlatform?.() !== true) return null;
+  const p = cap?.getPlatform?.();
+  return p === "ios" || p === "android" ? p : null;
 }
+
+/** ストア課金が使える環境か (iOS / Android のネイティブビルド) */
+export function isNativeIAP(): boolean {
+  return nativePlatform() !== null;
+}
+
+/**
+ * @deprecated isNativeIAP() を使うこと。Android 対応前の名残り。
+ * 互換のため残しているが、判定内容は「iOS または Android」になっている。
+ */
+export const isNativeIOS = isNativeIAP;
 
 /** RevenueCat SDK の初期化 (アプリ起動時に1回呼ぶ) */
 export async function initIAP(deviceId: string): Promise<boolean> {
   console.log("[IAP] initIAP called, deviceId:", deviceId);
-  if (!isNativeIOS()) {
-    console.log("[IAP] isNativeIOS=false, skipping");
+  const platform = nativePlatform();
+  if (!platform) {
+    console.log("[IAP] not a native platform, skipping");
     return false;
   }
   if (initialized) {
@@ -48,11 +63,18 @@ export async function initIAP(deviceId: string): Promise<boolean> {
     return true;
   }
 
-  // env var が空の場合のフォールバック（iOS 公開キーなので埋め込み可）
+  // RevenueCat の公開キーはクライアント埋め込み前提の設計(env が空でも動くようフォールバック)
   const apiKey =
-    process.env.NEXT_PUBLIC_REVENUECAT_IOS_KEY ||
-    "appl_uxudppFzNcOpKAVWjwRhcqhgBfQ";
-  console.log("[IAP] apiKey present:", !!apiKey);
+    platform === "android"
+      ? process.env.NEXT_PUBLIC_REVENUECAT_ANDROID_KEY || ""
+      : process.env.NEXT_PUBLIC_REVENUECAT_IOS_KEY ||
+        "appl_uxudppFzNcOpKAVWjwRhcqhgBfQ";
+  if (!apiKey) {
+    // Android キー未設定のまま初期化すると RevenueCat 側で例外になるため手前で止める
+    console.warn(`[IAP] ${platform} の RevenueCat API キーが未設定のため IAP を無効化`);
+    return false;
+  }
+  console.log("[IAP] platform:", platform, "apiKey present:", !!apiKey);
 
   try {
     if (!purchasesModule) {
@@ -76,7 +98,7 @@ export async function initIAP(deviceId: string): Promise<boolean> {
 
 /** 購入可能なサブスク商品一覧を取得 */
 export async function getAvailablePackages(): Promise<PurchasesPackage[]> {
-  if (!isNativeIOS() || !initialized || !purchasesModule) return [];
+  if (!isNativeIAP() || !initialized || !purchasesModule) return [];
   try {
     const { Purchases } = purchasesModule;
     const offerings = await Purchases.getOfferings();
@@ -91,8 +113,8 @@ export async function getAvailablePackages(): Promise<PurchasesPackage[]> {
 export async function purchasePackage(
   pkg: PurchasesPackage
 ): Promise<{ success: boolean; customerInfo?: CustomerInfo; error?: string }> {
-  if (!isNativeIOS() || !initialized || !purchasesModule) {
-    return { success: false, error: "IAP は iOS ネイティブのみ対応" };
+  if (!isNativeIAP() || !initialized || !purchasesModule) {
+    return { success: false, error: "IAP はアプリ版のみ対応" };
   }
   try {
     const { Purchases } = purchasesModule;
@@ -116,8 +138,8 @@ export async function restorePurchases(): Promise<{
   isPremium: boolean;
   error?: string;
 }> {
-  if (!isNativeIOS() || !initialized || !purchasesModule) {
-    return { success: false, isPremium: false, error: "IAP は iOS ネイティブのみ対応" };
+  if (!isNativeIAP() || !initialized || !purchasesModule) {
+    return { success: false, isPremium: false, error: "IAP はアプリ版のみ対応" };
   }
   try {
     const { Purchases } = purchasesModule;
@@ -132,7 +154,7 @@ export async function restorePurchases(): Promise<{
 
 /** 現在のサブスク状態を取得 */
 export async function getCustomerInfo(): Promise<CustomerInfo | null> {
-  if (!isNativeIOS() || !initialized || !purchasesModule) return null;
+  if (!isNativeIAP() || !initialized || !purchasesModule) return null;
   try {
     const { Purchases } = purchasesModule;
     const result = await Purchases.getCustomerInfo();
