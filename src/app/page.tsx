@@ -38,7 +38,7 @@ import { CHARACTERS } from "./lib/sensei-characters";
 import { addRecord, getRecords, deleteRecord, Landmark, PostureRecord } from "./lib/storage";
 import { analyzeFrontPosture, analyzeSidePosture, drawDiagnosisOverlay, drawSideDiagnosisOverlay, addLandmarkFrame, clearLandmarkBuffer } from "./lib/postureAnalysis";
 import { getStretchesBySymptom } from "./lib/stretches";
-import { initIAP, isNativeIOS, getAvailablePackages, purchasePackage, restorePurchases } from "./lib/iap";
+import { initIAP, isNativeIAP, nativePlatform as nativePlatformName, getAvailablePackages, purchasePackage, restorePurchases } from "./lib/iap";
 import type { PurchasesPackage } from "@revenuecat/purchases-capacitor";
 import type { DiagnosisItem } from "./lib/storage";
 // Supabase保存はAPI経由
@@ -1725,9 +1725,47 @@ function HomeScreen({
           </div>
         )}
 
-        {/* Step 1: 姿勢チェック */}
+        {/* Step 1: ガイコツ先生に相談（毎日の入口。継続利用の中核） */}
         <div className="space-y-3">
-          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Step 1 · 姿勢チェック</h2>
+          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Step 1 · ガイコツ先生に相談</h2>
+
+          {/* パーソナルトレーナー統合ボタン */}
+          <button
+            onClick={() => onNavigate("ai-counsel")}
+            className="w-full rounded-2xl overflow-hidden text-left shadow-[0_8px_24px_rgba(99,102,241,0.35)] active:scale-[0.99] transition"
+          >
+            {/* 上段: パーソナルトレーナー訴求バー（独立・重ならない） */}
+            <div className="bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 px-4 py-2 flex items-center gap-1.5">
+              <IconSparkles size={14} strokeWidth={2.5} className="text-amber-950" />
+              <p className="text-xs font-extrabold text-amber-950 tracking-wide">
+                あなた専用のパーソナルトレーナー
+              </p>
+            </div>
+            {/* 下段: ガイコツ先生 + タイトル */}
+            <div className="bg-gradient-to-br from-indigo-500 via-indigo-600 to-indigo-800 flex items-center gap-3 px-4 py-4">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/icon-skeleton-sensei.png"
+                alt="ガイコツ先生"
+                className="w-20 h-20 object-contain drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)] flex-shrink-0"
+              />
+              <div className="flex-1 min-w-0">
+                <p className="text-base font-bold text-white leading-tight">
+                  ガイコツ先生に相談
+                </p>
+                <p className="text-sm text-indigo-100 mt-1 leading-snug">
+                  今日の痛みや不調を、いつでも相談できます
+                </p>
+              </div>
+              <IconChevronRight size={20} className="text-indigo-300 flex-shrink-0" />
+            </div>
+          </button>
+
+        </div>
+
+        {/* Step 2: 姿勢の記録（健康診断のように月1回。毎日撮るものではない） */}
+        <div className="space-y-3">
+          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Step 2 · 姿勢の記録（月1回）</h2>
           <button
             onClick={() => onNavigate("check")}
             className="btn-primary w-full px-5 py-5 flex items-center gap-4"
@@ -1736,8 +1774,18 @@ function HomeScreen({
               <IconScan size={28} strokeWidth={2.2} className="text-white" />
             </span>
             <div className="text-left flex-1 min-w-0">
-              <p className="text-base font-bold">ZERO-PAIN AIで姿勢スキャン</p>
-              <p className="text-sm text-emerald-50/90 mt-0.5">スマホを置いて全身撮影 → 歪みを自動チェック</p>
+              <p className="text-base font-bold">AIで姿勢を記録する</p>
+              <p className="text-sm text-emerald-50/90 mt-0.5">
+                {(() => {
+                  // 姿勢チェックは「健康診断」。毎日ではなく月1回が目安なので、
+                  // 前回からの経過日数を出して「今撮るべきか」を判断できるようにする
+                  if (records.length === 0) return "まずは1回、全身2枚を撮ってみましょう";
+                  const latest = records.reduce((a, b) => (a.date > b.date ? a : b));
+                  const days = Math.max(0, Math.floor((Date.now() - new Date(latest.date).getTime()) / 86400000));
+                  if (days < 21) return `前回から${days}日 · 次は来月ごろでOK`;
+                  return `前回から${days}日 · そろそろ記録のタイミングです`;
+                })()}
+              </p>
             </div>
           </button>
           <div className="grid grid-cols-2 gap-2">
@@ -1766,44 +1814,6 @@ function HomeScreen({
               </p>
             </button>
           </div>
-        </div>
-
-        {/* Step 2: AIカウンセリング */}
-        <div className="space-y-3">
-          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Step 2 · AI相談</h2>
-
-          {/* パーソナルトレーナー統合ボタン */}
-          <button
-            onClick={() => onNavigate("ai-counsel")}
-            className="w-full rounded-2xl overflow-hidden text-left shadow-[0_8px_24px_rgba(99,102,241,0.35)] active:scale-[0.99] transition"
-          >
-            {/* 上段: パーソナルトレーナー訴求バー（独立・重ならない） */}
-            <div className="bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 px-4 py-2 flex items-center gap-1.5">
-              <IconSparkles size={14} strokeWidth={2.5} className="text-amber-950" />
-              <p className="text-xs font-extrabold text-amber-950 tracking-wide">
-                あなた専用のパーソナルトレーナー
-              </p>
-            </div>
-            {/* 下段: ガイコツ先生 + タイトル */}
-            <div className="bg-gradient-to-br from-indigo-500 via-indigo-600 to-indigo-800 flex items-center gap-3 px-4 py-4">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/icon-skeleton-sensei.png"
-                alt="ガイコツ先生"
-                className="w-20 h-20 object-contain drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)] flex-shrink-0"
-              />
-              <div className="flex-1 min-w-0">
-                <p className="text-base font-bold text-white leading-tight">
-                  ガイコツ先生に相談
-                </p>
-                <p className="text-sm text-indigo-100 mt-1 leading-snug">
-                  お悩みを聞き取り最適なケアを提案
-                </p>
-              </div>
-              <IconChevronRight size={20} className="text-indigo-300 flex-shrink-0" />
-            </div>
-          </button>
-
         </div>
 
         {/* Step 3: 食事記録 */}
@@ -8046,10 +8056,11 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // ===== IAP (iOS native のみ) =====
+  // ===== IAP (iOS / Android native のみ) =====
   const [iapReady, setIapReady] = useState(false);
   const [iapPackages, setIapPackages] = useState<PurchasesPackage[]>([]);
-  const isIOS = isNativeIOS();
+  const isIOS = isNativeIAP(); // ストア課金が使えるか(iOS/Android)
+  const isAndroid = nativePlatformName() === "android"; // 開示文言の出し分け用
 
   useEffect(() => {
     if (!isIOS) return;
@@ -8407,17 +8418,22 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
               </button>
             )}
 
-            {/* 自動更新サブスクの開示 (App Store ガイドライン要件、常に表示) */}
+            {/* 自動更新サブスクの開示 (App Store / Google Play ガイドライン要件、常に表示) */}
             <div className="card-base px-4 py-3 text-[11px] text-gray-400 leading-relaxed space-y-2">
               <p className="font-bold text-gray-300">自動更新サブスクリプションについて</p>
                 <ul className="space-y-1 list-disc list-inside">
-                  <li>支払いは購入確定時にApple IDアカウントに請求されます</li>
+                  <li>支払いは購入確定時に{isAndroid ? "Google アカウント" : "Apple ID アカウント"}に請求されます</li>
                   <li>サブスクリプションは現在の期間が終了する24時間前までに自動更新をオフにしない限り、自動的に更新されます（同額）</li>
                   <li>更新の請求は現在の期間の終了前24時間以内に行われます</li>
                   <li>
-                    サブスクリプションの管理・自動更新の停止は、購入後にApple IDのアカウント設定から行えます（
+                    サブスクリプションの管理・自動更新の停止は、購入後に
+                    {isAndroid ? "Google Play のアカウント設定" : "Apple ID のアカウント設定"}から行えます（
                     <a
-                      href="https://apps.apple.com/account/subscriptions"
+                      href={
+                        isAndroid
+                          ? "https://play.google.com/store/account/subscriptions"
+                          : "https://apps.apple.com/account/subscriptions"
+                      }
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-emerald-400 underline"
@@ -8437,7 +8453,7 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
             {/* 開発中の注意書き (Web/PWAのみ表示) */}
             {!isIOS && (
               <div className="card-base px-4 py-3 text-[11px] text-gray-500 leading-relaxed">
-                ℹ️ Web版ではテスト用のサブスク管理を行っています。iOSアプリ版ではApple App Store経由の正式な課金になります。
+                ℹ️ Web版ではテスト用のサブスク管理を行っています。アプリ版では App Store / Google Play 経由の正式な課金になります。
               </div>
             )}
           </>

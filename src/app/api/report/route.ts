@@ -220,7 +220,9 @@ ${goalRes.data ? `- 目標: ${goalRes.data.goal_type} / 目標カロリー${goal
 - 絵文字を1〜2個使う（過度にならない）`;
 
     const response = await getClient().messages.create({
-      model: "claude-sonnet-4-5",
+      model: "claude-sonnet-5",
+      // Sonnet 5 は既定で adaptive thinking ON。小さな max_tokens だと本文が途切れるため無効化（4.5時代と同じ挙動）
+      thinking: { type: "disabled" },
       max_tokens: 800,
       system: SAFE_LANGUAGE_RULES,
       messages: [{ role: "user", content: analysisPrompt }],

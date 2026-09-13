@@ -610,7 +610,15 @@ export async function POST(req: NextRequest) {
       latestMealImageUrl,
       latestMealInfo,
     } = await buildUserContext(deviceId || "", dialectSafe);
-    const systemPrompt = buildBasePrompt(character) + STRETCH_CATALOG_PROMPT + buildAvailableImagesForPrompt() + contextText;
+    // プロンプトキャッシュのため2ブロックに分ける。
+    //  - stableSystem: キャラ定義＋ストレッチ全30件＋画像一覧（約11,000tok・全ユーザー共通）→ cache_control で 1/10 の単価
+    //  - contextText : そのユーザーの履歴など（毎回変わる）→ キャッシュ境界の後ろに置く
+    // 注意: キャッシュは最低1,024tok未満だと黙って無効化される。stableSystem は十分な長さがある。
+    const stableSystem = buildBasePrompt(character) + STRETCH_CATALOG_PROMPT + buildAvailableImagesForPrompt();
+    const systemBlocks = [
+      { type: "text" as const, text: stableSystem, cache_control: { type: "ephemeral" as const } },
+      { type: "text" as const, text: contextText },
+    ];
 
     const isFirstMessage = !messages || messages.length === 0;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -828,9 +836,12 @@ export async function POST(req: NextRequest) {
 
         try {
           const stream = client.messages.stream({
-            model: "claude-sonnet-4-5",
+            model: "claude-sonnet-5",
+            // Sonnet 5 は既定で adaptive thinking が ON。max_tokens 800 では thinking に食われて
+            // 本文が途切れるため明示的に無効化する（Sonnet 4.5 時代と同じ「思考なし」の挙動）
+            thinking: { type: "disabled" },
             max_tokens: 800,
-            system: systemPrompt,
+            system: systemBlocks,
             messages: apiMessages,
           });
 
@@ -850,6 +861,13 @@ export async function POST(req: NextRequest) {
           }
 
           // recommendation抽出
+          // キャッシュが実際に効いているかを Vercel ログで実測する
+          // （設定した≠効いている。cache_read_input_tokens が 0 なら無効化されている）
+          try {
+            const finalMsg = await stream.finalMessage();
+            console.log("[chat usage]", JSON.stringify(finalMsg.usage));
+          } catch { /* ログ取得失敗は本処理に影響させない */ }
+
           const match = fullText.match(/<recommendation>\s*(\{.*?\})\s*<\/recommendation>/);
           let recommendedSymptomId: string | null = null;
           let cleanText = fullText;

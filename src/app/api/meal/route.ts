@@ -257,7 +257,9 @@ export async function POST(req: NextRequest) {
       : "image/jpeg";
 
     const response = await client.messages.create({
-      model: "claude-sonnet-4-5",
+      model: "claude-sonnet-5",
+      // Sonnet 5 は既定で adaptive thinking ON。小さな max_tokens だと本文が途切れるため無効化（4.5時代と同じ挙動）
+      thinking: { type: "disabled" },
       max_tokens: 1200,
       system: SAFE_LANGUAGE_RULES + "\n\n" + MEAL_SYSTEM_PROMPT + userContext,
       messages: [

@@ -133,7 +133,9 @@ ${postureIssues.length > 0 ? postureIssues.join("\n") : "特になし"}
 {"prediction":"今日の予測メッセージ（50文字以内）","detail":"具体的なアドバイス（100文字以内）","riskLevel":"low/medium/high","symptomId":"neck/shoulder_stiff/shoulder_pain/back/eye_fatigue/eye_recovery/null"}`;
 
     const response = await getClient().messages.create({
-      model: "claude-sonnet-4-5",
+      model: "claude-sonnet-5",
+      // Sonnet 5 は既定で adaptive thinking ON。小さな max_tokens だと本文が途切れるため無効化（4.5時代と同じ挙動）
+      thinking: { type: "disabled" },
       max_tokens: 200,
       system: SAFE_LANGUAGE_RULES,
       messages: [{ role: "user", content: analysisPrompt }],
