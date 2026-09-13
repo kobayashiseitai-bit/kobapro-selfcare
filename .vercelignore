@@ -1,0 +1,13 @@
+# ネイティブアプリのビルド成果物（Webデプロイには不要・344MB）
+android
+ios
+android-store
+
+# マーケティング素材・ストア用スクリーンショット
+marketing
+screenshots
+screenshots_v2
+assets
+
+# 認証情報
+secrets

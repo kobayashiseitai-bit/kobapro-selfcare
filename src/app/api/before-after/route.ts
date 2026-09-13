@@ -75,7 +75,7 @@ export async function GET(req: NextRequest) {
     // 画像があるレコードだけ取得（初回と最新）
     const { data: records } = await supabase
       .from("posture_records")
-      .select("id, image_url, diagnosis, score, created_at")
+      .select("id, image_url, diagnosis, created_at")
       .eq("user_id", user.id)
       .not("image_url", "is", null)
       .order("created_at", { ascending: true });

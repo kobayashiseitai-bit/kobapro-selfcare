@@ -64,3 +64,12 @@ ios/DerivedData/
 ios/App/App.xcworkspace/xcuserdata/
 ios/App/App.xcodeproj/xcuserdata/
 ios/App/App.xcodeproj/project.xcworkspace/xcuserdata/
+
+# Android 署名鍵(絶対にコミットしない)
+android/keystore.properties
+android/*.jks
+android/*.keystore
+
+# Google Play サービスアカウント鍵（絶対にコミットしない）
+secrets/
+*.json.key
