@@ -575,6 +575,28 @@ const PAIN_AREAS = [
 ];
 
 // ==================== 🌟 オンボーディング（初回体験） ====================
+// 2026-09-13 変更: 登録直後にいきなりカメラを起動するのをやめ、チャット先行にした。
+// 背景: 登録89人のうち62人が姿勢チェックを一度も完了しておらず、撮影が最初の関門になっていた。
+// ホーム画面は既にチャットを Step 1 にしてあるので、初回導線もそれに揃える。
+// 使い方の説明は、マナーモードや音量ゼロでも読めるよう、音声も動画も使わない図解にしている。
+const ONBOARDING_STEPS: { icon: LucideIcon; title: string; body: string }[] = [
+  {
+    icon: IconMessage,
+    title: "気になることを話しかける",
+    body: "「肩が痛い」「よく眠れない」など、ふだんの言葉で大丈夫です。",
+  },
+  {
+    icon: IconSparkles,
+    title: "その場でアドバイスが届く",
+    body: "あなたに合った体操を、ガイコツ先生が選んで教えてくれます。",
+  },
+  {
+    icon: IconScan,
+    title: "ときどき姿勢を記録する",
+    body: "月に1回、全身を2枚撮るだけ。体の変化がグラフで分かります。",
+  },
+];
+
 function OnboardingScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   const [slide, setSlide] = useState(0);
   const [userName, setUserName] = useState<string>("");
@@ -601,6 +623,7 @@ function OnboardingScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   const slides = useMemo(
     () => [
       {
+        kind: "hero" as const,
         emoji: "🦴",
         title: userName ? `${userName}さん、はじめまして！` : "はじめまして！",
         subtitle: "ガイコツ先生です",
@@ -609,19 +632,20 @@ function OnboardingScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
         image: "/icon-skeleton-sensei.png",
       },
       {
-        emoji: "🧍",
-        title: "AIが姿勢を瞬時に分析",
-        subtitle: "スマホ1台で本格チェック",
-        description:
-          "全身撮影するだけで、肩のズレ・骨盤の傾き・重心バランスなど、カイロプラクティックの視点で姿勢を分析します。",
-        image: "/icon-skeleton-sensei-face.png",
+        kind: "steps" as const,
+        emoji: "🗺️",
+        title: "使い方は、これだけです",
+        subtitle: "覚えることは3つだけ",
+        description: "",
+        image: "",
       },
       {
-        emoji: "💫",
-        title: "毎朝30秒で体が変わる",
-        subtitle: "コンディションチェック習慣",
+        kind: "hero" as const,
+        emoji: "📷",
+        title: "写真は、あとからで大丈夫",
+        subtitle: "健康診断と同じ、月1回が目安です",
         description:
-          "朝の体調タップ → AIがその日のケアを提案。続けるほど、ガイコツ先生との関係も深まります（31日目にはタメ口も）。",
+          "姿勢の記録は急ぎません。まずはガイコツ先生と話してみてください。撮りたくなったら、ホームの「Step 2」からいつでも始められます。",
         image: "/icon-skeleton-sensei-face.png",
       },
     ],
@@ -630,17 +654,20 @@ function OnboardingScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
 
   const completeOnboarding = () => {
     localStorage.setItem("zero_pain_onboarded", "1");
+    // 「初回チェックの祝福がまだ」という印。実際に姿勢チェックを終えた時点で CheckScreen が消費する。
+    // オンボーディングから撮影へ直行しなくなったので、いつ撮っても祝福が出るようこの時点で立てておく。
+    if (!localStorage.getItem("zero_pain_first_check_done")) {
+      localStorage.setItem("zero_pain_first_check_pending", "1");
+    }
   };
 
   const handleNext = () => {
     if (slide < slides.length - 1) {
       setSlide(slide + 1);
     } else {
-      // 完了 → 最初の姿勢チェックへ
+      // 完了 → チャットへ。カメラはここでは起動しない。
       completeOnboarding();
-      // 初回姿勢チェックのフラグを立てる（CheckScreen で祝福演出のため）
-      localStorage.setItem("zero_pain_first_check_pending", "1");
-      onNavigate("check");
+      onNavigate("ai-counsel");
     }
   };
 
@@ -650,14 +677,15 @@ function OnboardingScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   };
 
   const current = slides[slide];
+  const isLast = slide === slides.length - 1;
 
   return (
-    <main className="fixed inset-0 bg-gradient-to-b from-gray-950 via-indigo-950/30 to-gray-950 text-white flex flex-col">
+    <main className="fixed inset-0 bg-gradient-to-b from-gray-950 via-indigo-950/30 to-gray-950 text-white flex flex-col overflow-y-auto">
       {/* スキップボタン */}
-      <div className="flex justify-end px-4 pt-4">
+      <div className="flex justify-end px-4 pt-4 flex-shrink-0">
         <button
           onClick={handleSkip}
-          className="text-xs text-gray-500 hover:text-gray-300 px-3 py-1.5"
+          className="text-xs text-gray-400 hover:text-gray-200 px-3 py-1.5"
         >
           スキップ →
         </button>
@@ -665,32 +693,71 @@ function OnboardingScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
 
       {/* メインコンテンツ */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 pb-8">
-        {/* キャラクターイラスト */}
-        <div className="relative mb-6">
-          {/* グロー効果 */}
-          <div className="absolute inset-0 blur-3xl bg-indigo-500/30 rounded-full scale-125" />
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={current.image}
-            alt="ガイコツ先生"
-            className="relative w-40 h-40 object-contain drop-shadow-[0_0_40px_rgba(99,102,241,0.6)]"
-          />
-        </div>
+        {current.kind === "steps" ? (
+          <div className="w-full max-w-sm">
+            <p className="text-4xl mb-2 text-center">{current.emoji}</p>
+            <h1 className="text-2xl font-extrabold text-center leading-tight mb-1">
+              {current.title}
+            </h1>
+            <p className="text-sm text-indigo-300 font-bold mb-6 text-center">
+              {current.subtitle}
+            </p>
 
-        {/* タイトル */}
-        <p className="text-4xl mb-2">{current.emoji}</p>
-        <h1 className="text-2xl font-extrabold text-white text-center leading-tight mb-1">
-          {current.title}
-        </h1>
-        <p className="text-sm text-indigo-300 font-bold mb-5">{current.subtitle}</p>
+            {/* 無音の図解。読み込み待ちも音声も無いので、どこで開いても同じように伝わる */}
+            <ol className="space-y-3">
+              {ONBOARDING_STEPS.map((s, i) => {
+                const StepIcon = s.icon;
+                return (
+                  <li
+                    key={s.title}
+                    className="flex items-start gap-3 rounded-2xl bg-white/5 border border-white/10 px-4 py-3.5"
+                  >
+                    <span className="relative flex-shrink-0">
+                      <span className="w-11 h-11 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center">
+                        <StepIcon size={22} strokeWidth={2.2} className="text-indigo-300" />
+                      </span>
+                      <span className="absolute -top-1.5 -left-1.5 w-5 h-5 rounded-full bg-indigo-500 text-[11px] font-extrabold flex items-center justify-center">
+                        {i + 1}
+                      </span>
+                    </span>
+                    <div className="min-w-0 pt-0.5">
+                      <p className="text-sm font-bold leading-snug">{s.title}</p>
+                      <p className="text-xs text-gray-400 mt-1 leading-relaxed">{s.body}</p>
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
+        ) : (
+          <>
+            {/* キャラクターイラスト */}
+            <div className="relative mb-6">
+              {/* グロー効果 */}
+              <div className="absolute inset-0 blur-3xl bg-indigo-500/30 rounded-full scale-125" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={current.image}
+                alt="ガイコツ先生"
+                className="relative w-40 h-40 object-contain drop-shadow-[0_0_40px_rgba(99,102,241,0.6)]"
+              />
+            </div>
 
-        {/* 説明 */}
-        <p className="text-sm text-gray-300 text-center leading-relaxed max-w-sm mb-8">
-          {current.description}
-        </p>
+            <p className="text-4xl mb-2">{current.emoji}</p>
+            <h1 className="text-2xl font-extrabold text-white text-center leading-tight mb-1">
+              {current.title}
+            </h1>
+            <p className="text-sm text-indigo-300 font-bold mb-5 text-center">
+              {current.subtitle}
+            </p>
+            <p className="text-sm text-gray-300 text-center leading-relaxed max-w-sm">
+              {current.description}
+            </p>
+          </>
+        )}
 
         {/* 進捗ドット */}
-        <div className="flex gap-2 mb-6">
+        <div className="flex gap-2 mt-8 mb-6">
           {slides.map((_, i) => (
             <div
               key={i}
@@ -710,13 +777,12 @@ function OnboardingScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
           onClick={handleNext}
           className="w-full max-w-sm py-3.5 bg-gradient-to-r from-indigo-500 to-purple-600 hover:brightness-110 rounded-2xl font-extrabold text-white shadow-[0_8px_24px_rgba(99,102,241,0.5)] active:scale-[0.98] transition"
         >
-          {slide < slides.length - 1 ? "次へ →" : "📷 さっそく始める"}
+          {isLast ? "ガイコツ先生に話しかけてみる" : "次へ →"}
         </button>
 
-        {/* 最終ページでの追加テキスト */}
-        {slide === slides.length - 1 && (
-          <p className="text-[11px] text-gray-500 mt-4 text-center">
-            最初の姿勢チェックで「Before写真」が保存されます
+        {isLast && (
+          <p className="text-[11px] text-gray-500 mt-4 text-center leading-relaxed">
+            むずかしい操作はありません。文字を打つだけです。
           </p>
         )}
       </div>
@@ -3300,7 +3366,14 @@ function ModernCardGrid({
 
 // ==================== 音声ガイド ====================
 // テキストのキーワードに対応する音声ファイル
+// 案内文と音声ファイルの対応表。
+// ここに載らない案内文は「無音」になる。2026-09-13 時点で、カメラを向けた最初の瞬間に出る
+// 「人物が見つかりません」と、正面撮影で体が横を向いている時の「体を正面に向けてください」が
+// どちらも無音のまま落ちていた。いちばん迷う場面で喋らないので、近い意味の既存音声に割り当てた。
+// 専用の音声を録れたら、この2行を差し替えること。
 const VOICE_KEYWORDS: { keyword: string; file: string }[] = [
+  { keyword: "人物が見つかりません", file: "/voice-stand.mp3" },
+  { keyword: "体を正面に向けて", file: "/voice-stand.mp3" },
   { keyword: "側面の写真撮影", file: "/voice-side-guide.mp3" },
   { keyword: "横向きのままカメラの前", file: "/voice-side-stand.mp3" },
   { keyword: "横向きでストップ", file: "/voice-side-stop.mp3" },
@@ -3453,6 +3526,9 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   const [guideMode, setGuideMode] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [guideBorderColor, setGuideBorderColor] = useState("border-gray-700");
+  // 撮影前の準備画面。いきなりカメラ権限を求めず、何が起きるかを先に伝える。
+  // 音声案内はマナーモードだと鳴らないため、その旨もここで知らせる。
+  const [showPrep, setShowPrep] = useState(true);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const poseLandmarkerRef = useRef<any>(null);
   const mpModulesRef = useRef<MediaPipeModules | null>(null);
@@ -3522,8 +3598,9 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
     return () => { cancelled = true; };
   }, []);
 
-  // カメラ起動
+  // カメラ起動（準備画面を読み終えてから。権限ダイアログを不意に出さないため）
   useEffect(() => {
+    if (showPrep) return;
     async function startCamera() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -3544,7 +3621,7 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
       if (guideLoopRef.current) cancelAnimationFrame(guideLoopRef.current);
       if (countdownRef.current) clearInterval(countdownRef.current);
     };
-  }, []);
+  }, [showPrep]);
 
   // AIガイドモード開始（正面・横向き共通）
   const startGuideForStep = useRef<"front" | "side">("front");
@@ -3829,6 +3906,8 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
       const pending = localStorage.getItem("zero_pain_first_check_pending");
       if (pending === "1") {
         localStorage.removeItem("zero_pain_first_check_pending");
+        // 祝福済みの印。オンボーディングを再度通っても二重に出さないため。
+        localStorage.setItem("zero_pain_first_check_done", "1");
         setShowFirstCheckCelebration(true);
       }
     }
@@ -3872,6 +3951,82 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   const levelBg = (l: string) => l === "good" ? "bg-green-900/50 border-green-500" : l === "caution" ? "bg-yellow-900/50 border-yellow-500" : "bg-red-900/50 border-red-500";
   const levelEmoji = (l: string) => l === "good" ? "○" : l === "caution" ? "△" : "✕";
 
+  // ===== 撮影前の準備画面 =====
+  // すべての Hook を呼び終えたあとに置くこと（早期 return が Hook より前に来ると規約違反になる）
+  if (showPrep) {
+    return (
+      <main className="fixed inset-0 bg-gray-950 overflow-y-auto text-white flex flex-col items-center p-4 pb-24">
+        <div className="flex items-center gap-3 mb-4 w-full max-w-md">
+          <button
+            onClick={() => onNavigate("home")}
+            className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm"
+          >
+            ← 戻る
+          </button>
+          <h1 className="text-lg font-bold">撮影の準備</h1>
+        </div>
+
+        <div className="w-full max-w-md space-y-3">
+          <div className="rounded-2xl bg-indigo-500/10 border border-indigo-400/30 px-4 py-3.5">
+            <p className="text-sm font-bold text-indigo-200">全身の写真を2枚撮ります</p>
+            <p className="text-xs text-gray-300 mt-1 leading-relaxed">
+              正面と横向きを1枚ずつ。かかる時間は2分ほどです。
+            </p>
+          </div>
+
+          {[
+            {
+              icon: IconScan,
+              title: "スマホを立てかけて、3歩ほど下がる",
+              body: "頭からつま先まで画面に入る位置まで離れてください。床に置くより、棚や台に立てかけるほうがうまく撮れます。",
+            },
+            {
+              icon: IconCamera,
+              title: "シャッターは押さなくて大丈夫",
+              body: "位置が合うと5秒のカウントダウンが始まり、自動で撮影します。ポーズはとらず、いつも通り楽に立ってください。",
+            },
+            {
+              icon: IconBell,
+              title: "音が出ないときは画面の文字を見る",
+              body: "声で案内しますが、マナーモードや音量ゼロでは鳴りません。同じ案内が画面の上にも大きく出ます。",
+            },
+            {
+              icon: IconUsers,
+              title: "体の線が分かる服で",
+              body: "厚手の上着は脱いでください。薄手の服のほうが、肩や骨盤の傾きを正確に測れます。",
+            },
+          ].map((item) => {
+            const PrepIcon = item.icon;
+            return (
+              <div
+                key={item.title}
+                className="flex items-start gap-3 rounded-2xl bg-white/5 border border-white/10 px-4 py-3.5"
+              >
+                <span className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
+                  <PrepIcon size={20} strokeWidth={2.2} className="text-gray-200" />
+                </span>
+                <div className="min-w-0 pt-0.5">
+                  <p className="text-sm font-bold leading-snug">{item.title}</p>
+                  <p className="text-xs text-gray-400 mt-1 leading-relaxed">{item.body}</p>
+                </div>
+              </div>
+            );
+          })}
+
+          <button
+            onClick={() => setShowPrep(false)}
+            className="btn-primary w-full px-5 py-4 text-base font-bold mt-2"
+          >
+            準備ができました
+          </button>
+          <p className="text-[11px] text-gray-500 text-center leading-relaxed">
+            次の画面でカメラの使用を許可してください。写真はあなたの記録用にだけ使われます。
+          </p>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="fixed inset-0 bg-gray-950 overflow-y-auto text-white flex flex-col items-center p-4 pb-20">
       <div className="flex items-center gap-3 mb-2 w-full max-w-md">
@@ -3896,9 +4051,10 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
       {!captured && cameraReady && (
         <div className={`w-full max-w-md mb-3 px-4 py-3 rounded-lg border-2 ${guideBorderColor} bg-gray-900 text-center`}>
           {countdown !== null ? (
-            <p className="text-4xl font-bold text-green-400">{countdown}</p>
+            <p className="text-5xl font-bold text-green-400">{countdown}</p>
           ) : (
-            <p className="text-base font-semibold">{guideText}</p>
+            // 音が鳴らない端末ではこの文字だけが頼りになるので、離れた位置からも読める大きさにする
+            <p className="text-xl font-bold leading-snug">{guideText}</p>
           )}
         </div>
       )}
