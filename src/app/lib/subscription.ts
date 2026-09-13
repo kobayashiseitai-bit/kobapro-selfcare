@@ -7,36 +7,57 @@ import { SupabaseClient } from "@supabase/supabase-js";
 
 // ========== プラン・機能制限の設定 ==========
 
-export const FREE_LIMITS = {
+/**
+ * 2026-09-13 より前に登録した既存ユーザー向けの無料枠。
+ * 仕様変更前から使ってくれている方をロックアウトしないため、この枠は残す。
+ */
+export const LEGACY_FREE_LIMITS = {
   posture: 3, // 月3回まで
   chat: 5, // 月5回まで
   meal: 3, // 月3回まで
 } as const;
 
+/**
+ * 新規ユーザーの無料枠。3日間の無料体験が終わったら AI 機能は使えない。
+ * ※ 履歴・過去の写真・ストレッチなど「本人のデータと静的コンテンツ」は
+ *    引き続き閲覧できる（AI を呼ぶ機能だけを止める）。
+ */
+export const FREE_LIMITS = {
+  posture: 0,
+  chat: 0,
+  meal: 0,
+} as const;
+
+/**
+ * この日時より前に登録したユーザーは LEGACY_FREE_LIMITS を適用する。
+ * 変更してはいけない: 後ろにずらすと既存ユーザーが突然使えなくなる。
+ */
+export const LEGACY_FREE_TIER_CUTOFF = new Date("2026-09-13T00:00:00Z");
+
 export const PLAN_PRICES = {
   monthly: {
     id: "zero_pain_monthly_1280",
-    price: 1280,
+    price: 880,
     label: "月額プラン",
   },
   yearly: {
     id: "zero_pain_yearly_12800",
-    price: 12800,
-    monthlyEquivalent: 1067, // 12800 ÷ 12
+    price: 8800,
+    monthlyEquivalent: 733, // 8800 ÷ 12
     label: "年額プラン",
     discountLabel: "2ヶ月分お得",
     discountPercent: 17,
   },
   family_monthly: {
     id: "zero_pain_family_1980",
-    price: 1980,
+    price: 1380,
     label: "家族月額プラン",
     descLabel: "1契約で家族4人まで",
   },
   family_yearly: {
     id: "zero_pain_family_19800",
-    price: 19800,
-    monthlyEquivalent: 1650, // 19800 ÷ 12
+    price: 13800,
+    monthlyEquivalent: 1150, // 13800 ÷ 12
     label: "家族年額プラン",
     descLabel: "1契約で家族4人まで",
     discountLabel: "2ヶ月分お得",
@@ -44,7 +65,7 @@ export const PLAN_PRICES = {
   },
 } as const;
 
-export const TRIAL_DAYS = 7;
+export const TRIAL_DAYS = 3; // 2026-09-13: 7→3日に短縮
 
 // ========== 型定義 ==========
 
@@ -69,6 +90,8 @@ export interface SubscriptionState {
   isPaid: boolean; // 有料(trial含む)プランが有効か
   isTrial: boolean;
   isFamily: boolean; // 家族プラン購入者かどうか（家族グループ作成の可否判定に使用）
+  /** 仕様変更(2026-09-13)より前からの利用者か。無料枠の有無がこれで変わる */
+  isLegacyUser: boolean;
   trialEndsAt: string | null;
   currentPeriodEnd: string | null;
   usage: {
@@ -200,6 +223,23 @@ export async function getSubscriptionState(
     }
   }
 
+  // 2-b. 仕様変更前から使っている既存ユーザーかどうか（無料枠を残すため）
+  //      users.created_at が取れない場合は「既存扱い」に倒す。
+  //      判定に失敗して現役ユーザーを締め出すより、少し甘い方が害が小さい。
+  let isLegacyUser = true;
+  try {
+    const { data: u } = await supabase
+      .from("users")
+      .select("created_at")
+      .eq("id", userId)
+      .maybeSingle();
+    if (u?.created_at) {
+      isLegacyUser = new Date(u.created_at) < LEGACY_FREE_TIER_CUTOFF;
+    }
+  } catch {
+    // 取得できなければ既存扱いのまま
+  }
+
   // 個人サブスクが無料/期限切れなら、家族オーナーがプレミアムかチェック
   let isPaid = isPaidStatus(status);
   if (!isPaid) {
@@ -229,11 +269,18 @@ export async function getSubscriptionState(
     isPaid,
     isTrial: status === "trial",
     isFamily: !!sub.is_family,
+    isLegacyUser,
     trialEndsAt: sub.trial_ends_at,
     currentPeriodEnd: sub.current_period_end,
     usage,
     limits: isPaid
       ? { posture: "unlimited", chat: "unlimited", meal: "unlimited" }
+      : isLegacyUser
+      ? {
+          posture: LEGACY_FREE_LIMITS.posture,
+          chat: LEGACY_FREE_LIMITS.chat,
+          meal: LEGACY_FREE_LIMITS.meal,
+        }
       : {
           posture: FREE_LIMITS.posture,
           chat: FREE_LIMITS.chat,

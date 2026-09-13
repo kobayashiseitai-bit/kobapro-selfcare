@@ -170,8 +170,8 @@
   .cta .c-desc strong { color: #fff; }
 
   /* 2ストアぶんのブロックを横に並べる */
-  .stores { display: flex; gap: 3mm; flex-shrink: 0; }
-  .store { width: 18mm; text-align: center; }
+  .stores { display: flex; gap: 4mm; flex-shrink: 0; }
+  .store { width: 21mm; text-align: center; }
   /* 機種の見出し。ここが患者さんの目印になる */
   .store .who {
     font-size: 7pt; font-weight: 900; color: #0f172a;
@@ -183,24 +183,24 @@
   /* 公式バッジ。Google のガイドラインで Google Play バッジは
      他ストアのバッジと同じか、それ以上の大きさにする必要がある */
   .store .badge {
-    height: 6mm; display: flex; align-items: center; justify-content: center;
-    margin-bottom: 1mm;
+    height: 7.8mm; overflow: hidden;
+    /* Google 規定: 余白はバッジ高さの1/4(=1.95mm)以上 */
+    margin-top: 2mm; display: flex; align-items: center; justify-content: center;
+    margin-bottom: 2mm;
   }
-  .store .badge img { height: 100%; width: auto; }
-  /* Google Play 公式バッジを入手できるまでの暫定表示。
-     ロゴ(ロックアップ)は「ダウンロード誘導に使わない」と明記されているため使えない。
-     ここでは店名を地の文字として置くだけに留める（記述的使用）。
-     公式バッジ(GetItOnGooglePlay_Badge_Print_color_Japanese.svg)が手に入ったら
-     .tbd ブロックを <img src="../badges/google-badge-ja.svg"> に差し替えるだけでよい。 */
-  .store .badge .tbd {
-    height: 100%; width: 100%;
-    background: #000; border: 0.25mm solid rgba(255,255,255,0.85);
-    border-radius: 1.2mm;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    line-height: 1.15;
+  .store .badge img {
+    height: 100%; width: auto;
+    max-width: 100%;        /* 列幅を超えて隣に重ならないようにする */
+    object-fit: contain;    /* 比率は保つ（バッジの改変はガイドライン違反） */
   }
-  .store .badge .tbd .s { font-size: 4.6pt; color: #cbd5e1; letter-spacing: 0.02em; }
-  .store .badge .tbd .m { font-size: 7pt; color: #fff; font-weight: 800; letter-spacing: 0.01em; }
+  /* Google Play 公式バッジ（Partner Marketing Hub の日本語版 SVG・2026-06-25 版）。
+     ガイドライン順守のため以下を守る:
+       - 色や要素を一切変更しない（そのまま表示）
+       - 印刷時の最小高さ 0.3inch(7.6mm) 以上
+       - 余白はバッジ高さの 1/4 以上
+       - 他ストアのバッジと並べる時は同じか、それ以上の大きさにする
+         → Apple バッジと同じ .badge の高さに揃えている */
+
   .store .qr {
     width: 18mm; height: 18mm;
     background: #fff; border-radius: 2mm; padding: 1.2mm;
@@ -361,7 +361,7 @@
       </div>
       <div class="store">
         <div class="who">Android の方</div>
-        <div class="badge"><div class="tbd"><span class="s">入手する</span><span class="m">Google Play</span></div></div>
+        <div class="badge"><img src="../badges/google-badge-ja.svg" alt="Google Play で手に入れよう" /></div>
         <div class="qr"><img src="../qr/qr-googleplay.png" alt="Google Play の QR コード" /></div>
       </div>
     </div>

@@ -8177,7 +8177,7 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "操作に失敗しました");
-      if (action === "start_trial") setMessage("✅ 7日間の無料トライアルを開始しました！");
+      if (action === "start_trial") setMessage("✅ 3日間の無料トライアルを開始しました！");
       else if (action === "subscribe") setMessage(`✅ ${plan ? PLAN_LABELS[plan] : ""}プランを開始しました！`);
       else if (action === "cancel") setMessage("次回更新時に解約されます（期限までは引き続き利用可能です）");
       await loadState();
@@ -8277,10 +8277,28 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
                     👑 プレミアムプランで全機能開放
                   </p>
                   <ul className="text-sm text-gray-200 space-y-1.5">
-                    <li>✅ AI姿勢チェック 無制限（無料プランは月3回）</li>
-                    <li>✅ ガイコツ先生AIチャット 無制限（無料プランは月5回）</li>
-                    <li>✅ AI食事分析 無制限（無料プランは月3回）</li>
-                    <li>✅ 7日間無料トライアル付き・いつでも解約OK</li>
+                    {/* 無料枠は既存ユーザー(2026-09-13以前の登録)にのみ残っている。
+                        新規ユーザーに「無料プランは月3回」と書くと事実と異なるため、
+                        サーバーが返す limits の実値で出し分ける。 */}
+                    <li>
+                      ✅ AI姿勢チェック 無制限
+                      {state.limits.posture !== "unlimited" && Number(state.limits.posture) > 0
+                        ? `（無料プランは月${state.limits.posture}回）`
+                        : ""}
+                    </li>
+                    <li>
+                      ✅ ガイコツ先生AIチャット 無制限
+                      {state.limits.chat !== "unlimited" && Number(state.limits.chat) > 0
+                        ? `（無料プランは月${state.limits.chat}回）`
+                        : ""}
+                    </li>
+                    <li>
+                      ✅ AI食事分析 無制限
+                      {state.limits.meal !== "unlimited" && Number(state.limits.meal) > 0
+                        ? `（無料プランは月${state.limits.meal}回）`
+                        : ""}
+                    </li>
+                    <li>✅ 3日間無料トライアル付き・いつでも解約OK</li>
                   </ul>
                 </div>
 
@@ -8310,8 +8328,8 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
                   </div>
                 </div>
 
-                {/* App Store Guideline 3.1.2(c) 対応: 独立した「7日間無料で試す」ボタンを削除し、
-                    各プランボタンに「7日間無料トライアル付き」を統合（自動更新サブスクの認識を明確にするため） */}
+                {/* App Store Guideline 3.1.2(c) 対応: 独立した「3日間無料で試す」ボタンを削除し、
+                    各プランボタンに「3日間無料トライアル付き」を統合（自動更新サブスクの認識を明確にするため） */}
 
                 {/* 月額プラン */}
                 <button
@@ -8321,11 +8339,11 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
                 >
                   <div>
                     <p className="text-sm font-bold text-white">月額プラン</p>
-                    <p className="text-xs text-emerald-300 mt-0.5">7日間無料トライアル付き</p>
+                    <p className="text-xs text-emerald-300 mt-0.5">3日間無料トライアル付き</p>
                     <p className="text-[10px] text-gray-400 mt-0.5">トライアル後は自動で月額課金、いつでも解約可能</p>
                   </div>
                   <p className="text-lg font-extrabold text-white">
-                    ¥1,280<span className="text-xs font-normal text-gray-400">/月</span>
+                    ¥880<span className="text-xs font-normal text-gray-400">/月</span>
                   </p>
                 </button>
 
@@ -8340,11 +8358,11 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
                   </span>
                   <div>
                     <p className="text-sm font-bold text-white">年額プラン ⭐ おすすめ</p>
-                    <p className="text-xs text-emerald-300 mt-0.5">7日間無料トライアル付き</p>
-                    <p className="text-[10px] text-indigo-300 mt-0.5">月額換算 ¥1,067（17%オフ）・トライアル後は自動で年額課金</p>
+                    <p className="text-xs text-emerald-300 mt-0.5">3日間無料トライアル付き</p>
+                    <p className="text-[10px] text-indigo-300 mt-0.5">月額換算 ¥733（17%オフ）・トライアル後は自動で年額課金</p>
                   </div>
                   <p className="text-lg font-extrabold text-white">
-                    ¥12,800<span className="text-xs font-normal text-gray-400">/年</span>
+                    ¥8,800<span className="text-xs font-normal text-gray-400">/年</span>
                   </p>
                 </button>
 
@@ -8363,11 +8381,11 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
                 >
                   <div>
                     <p className="text-sm font-bold text-white">家族月額プラン</p>
-                    <p className="text-xs text-emerald-300 mt-0.5">7日間無料トライアル付き</p>
+                    <p className="text-xs text-emerald-300 mt-0.5">3日間無料トライアル付き</p>
                     <p className="text-[10px] text-emerald-200/80 mt-0.5">最大4人まで使える・トライアル後は自動で月額課金</p>
                   </div>
                   <p className="text-lg font-extrabold text-white">
-                    ¥1,980<span className="text-xs font-normal text-gray-400">/月</span>
+                    ¥1,380<span className="text-xs font-normal text-gray-400">/月</span>
                   </p>
                 </button>
 
@@ -8382,11 +8400,11 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
                   </span>
                   <div>
                     <p className="text-sm font-bold text-white">家族年額プラン</p>
-                    <p className="text-xs text-emerald-300 mt-0.5">7日間無料トライアル付き</p>
-                    <p className="text-[10px] text-emerald-200/80 mt-0.5">月額換算 ¥1,650・最大4人・トライアル後は自動で年額課金</p>
+                    <p className="text-xs text-emerald-300 mt-0.5">3日間無料トライアル付き</p>
+                    <p className="text-[10px] text-emerald-200/80 mt-0.5">月額換算 ¥1,150・最大4人・トライアル後は自動で年額課金</p>
                   </div>
                   <p className="text-lg font-extrabold text-white">
-                    ¥19,800<span className="text-xs font-normal text-gray-400">/年</span>
+                    ¥13,800<span className="text-xs font-normal text-gray-400">/年</span>
                   </p>
                 </button>
               </>
@@ -9430,7 +9448,7 @@ function FamilyScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
               <>
                 <div className="card-base px-4 py-3 text-xs text-amber-300 leading-relaxed border-amber-500/40">
                   💡 家族グループを<span className="font-bold">作成</span>するには
-                  <span className="font-bold text-white">家族プラン（月¥1,980 / 年¥19,800）</span>
+                  <span className="font-bold text-white">家族プラン（月¥1,380 / 年¥13,800）</span>
                   への加入が必要です。
                   招待コードでの<span className="font-bold">参加</span>は購入不要です。
                 </div>
@@ -9441,7 +9459,7 @@ function FamilyScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
                   <span className="text-2xl">👨‍👩‍👧‍👦</span>
                   <div className="text-left">
                     <p className="text-base font-extrabold">家族プランを購入</p>
-                    <p className="text-xs opacity-90">月¥1,980 から・最大4人まで</p>
+                    <p className="text-xs opacity-90">月¥1,380 から・最大4人まで</p>
                   </div>
                 </button>
               </>

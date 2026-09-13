@@ -20,7 +20,7 @@ import {
 export const metadata: Metadata = {
   title: 'ZERO-PAIN | AI姿勢分析・セルフケアで「痛みゼロ」へ',
   description:
-    'AI姿勢分析・AI食事分析・ガイコツ先生のカウンセリング・30日コーチング。あなた専用のAIパーソナルトレーナーで、肩こり・腰痛・姿勢の悩みをセルフケアに。7日間無料で試せる iPhone アプリ。',
+    'AI姿勢分析・AI食事分析・ガイコツ先生のカウンセリング・30日コーチング。あなた専用のAIパーソナルトレーナーで、肩こり・腰痛・姿勢の悩みをセルフケアに。3日間無料で試せる iPhone アプリ。',
   keywords: [
     'ZERO-PAIN',
     'ゼロペイン',
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'ZERO-PAIN | AI姿勢分析で「痛みゼロ」へ',
     description:
-      'あなた専用のAIパーソナルトレーナー。姿勢チェック・セルフケア・痛み予測で体の悩みをゼロに。7日間無料トライアル。',
+      'あなた専用のAIパーソナルトレーナー。姿勢チェック・セルフケア・痛み予測で体の悩みをゼロに。3日間無料トライアル。',
     url: 'https://posture-app-steel.vercel.app/lp',
     siteName: 'ZERO-PAIN',
     images: [
@@ -58,7 +58,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'ZERO-PAIN | AI姿勢分析で「痛みゼロ」へ',
     description:
-      'あなた専用のAIパーソナルトレーナー。7日間無料トライアル。',
+      'あなた専用のAIパーソナルトレーナー。3日間無料トライアル。',
     images: ['https://posture-app-steel.vercel.app/og-image.jpg'],
   },
 };
@@ -190,7 +190,7 @@ export default function LPPage() {
             <div className="flex flex-col sm:flex-row gap-3 sm:items-center justify-center lg:justify-start">
               <AppStoreButton size="lg" />
               <p className="text-xs sm:text-sm text-slate-500">
-                7日間無料 / いつでも解約可
+                3日間無料 / いつでも解約可
               </p>
             </div>
             <div className="flex flex-wrap gap-4 justify-center lg:justify-start pt-2 text-xs sm:text-sm text-slate-500">
@@ -507,10 +507,10 @@ export default function LPPage() {
               料金プラン
             </p>
             <h2 className="text-2xl sm:text-4xl font-black tracking-tight">
-              まずは7日間、無料で。
+              まずは3日間、無料で。
             </h2>
             <p className="mt-3 text-slate-600 text-sm sm:text-base">
-              すべてのプランで7日間無料トライアル。
+              すべてのプランで3日間無料トライアル。
               <br className="sm:hidden" />
               期間中はいつでもキャンセル可能。
             </p>
@@ -519,27 +519,27 @@ export default function LPPage() {
             <AnimateOnScroll animation="fade-up" delay={0}>
               <PricingCard
                 name="月額プラン"
-                price="1,280"
+                price="880"
                 period="月"
                 features={[
                   'AI 姿勢分析 無制限',
                   'AI 食事分析 無制限',
                   'ガイコツ先生カウンセリング 無制限',
                   '30日コーチング',
-                  '7日間無料トライアル付き',
+                  '3日間無料トライアル付き',
                 ]}
               />
             </AnimateOnScroll>
             <AnimateOnScroll animation="fade-up" delay={150}>
               <PricingCard
                 name="年額プラン"
-                price="12,800"
+                price="8,800"
                 period="年"
                 badge="2ヶ月分お得"
                 recommended
                 features={[
                   '月額プランのすべて',
-                  '月換算 1,067 円',
+                  '月換算 733 円',
                   '14日分お得 (¥3,560 OFF)',
                   '長く続ける人におすすめ',
                 ]}
@@ -552,8 +552,8 @@ export default function LPPage() {
                 家族プラン (最大4人) の料金を見る
               </summary>
               <div className="mt-3 px-4 py-3 rounded-xl bg-slate-50 border border-slate-100 text-left">
-                <p>家族月額: <strong className="text-slate-900">¥1,980 / 月</strong> (1人あたり ¥495)</p>
-                <p>家族年額: <strong className="text-slate-900">¥19,800 / 年</strong> (1人あたり 月 ¥412)</p>
+                <p>家族月額: <strong className="text-slate-900">¥1,380 / 月</strong> (1人あたり ¥345)</p>
+                <p>家族年額: <strong className="text-slate-900">¥13,800 / 年</strong> (1人あたり 月 ¥287)</p>
               </div>
             </details>
           </div>
@@ -639,7 +639,7 @@ export default function LPPage() {
             痛みのない毎日を、今日から。
           </h2>
           <p className="text-base sm:text-lg mb-8 leading-relaxed" style={{ color: '#ecfdf5' }}>
-            7日間無料で全機能をお試し。
+            3日間無料で全機能をお試し。
             <br />
             合わなければ、料金は一切かかりません。
           </p>
@@ -832,7 +832,7 @@ function PricingCard({
       </ul>
       <p className="text-xs text-emerald-700 font-semibold pt-2 border-t border-slate-100 flex items-center gap-1.5">
         <SparklesIcon className="w-4 h-4" />
-        7日間無料トライアル付き
+        3日間無料トライアル付き
       </p>
     </div>
   );

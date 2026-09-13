@@ -39,7 +39,8 @@ export async function GET(req: NextRequest) {
         isTrial: false,
         isFamily: false,
         usage: { posture: 0, chat: 0, meal: 0 },
-        limits: { posture: 3, chat: 5, meal: 3 },
+        // 未登録(=これから登録する新規)は無料枠なし。3日間の体験後は課金が必要
+        limits: { posture: 0, chat: 0, meal: 0 },
       });
     }
 
