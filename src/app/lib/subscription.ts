@@ -34,6 +34,31 @@ export const FREE_LIMITS = {
  */
 export const LEGACY_FREE_TIER_CUTOFF = new Date("2026-09-13T00:00:00Z");
 
+/**
+ * App Store / Google Play の審査担当者用アカウント。
+ *
+ * 2026-09-13 に AI 機能を全面課金化したため、審査担当がアプリを開いても
+ * 中身を確認できず、そのまま提出すると却下される。審査用に用意した
+ * ユーザーだけ、課金なしで全機能を開放する。
+ *
+ * - 値は環境変数 REVIEWER_USER_IDS にカンマ区切りで入れる（users.id）。
+ * - サーバー側でのみ判定する。クライアントから偽装できないようにするため、
+ *   NEXT_PUBLIC_ は付けない。
+ * - 審査が終わったら環境変数から外すこと。
+ */
+function getReviewerUserIds(): string[] {
+  const raw = process.env.REVIEWER_USER_IDS || "";
+  return raw
+    .split(",")
+    .map((v) => v.trim())
+    .filter((v) => v.length > 0);
+}
+
+export function isReviewerUser(userId: string): boolean {
+  if (!userId) return false;
+  return getReviewerUserIds().includes(userId);
+}
+
 export const PLAN_PRICES = {
   monthly: {
     id: "zero_pain_monthly_1280",
@@ -180,6 +205,22 @@ export async function getSubscriptionState(
   supabase: SupabaseClient,
   userId: string
 ): Promise<SubscriptionState> {
+  // 0. 審査担当者用アカウントは、課金状態に関係なく全機能を開放する。
+  //    DB は一切書き換えず、この応答だけを差し替える。
+  if (isReviewerUser(userId)) {
+    return {
+      status: "active_monthly",
+      isPaid: true,
+      isTrial: false,
+      isFamily: false,
+      isLegacyUser: false,
+      trialEndsAt: null,
+      currentPeriodEnd: null,
+      usage: { posture: 0, chat: 0, meal: 0 },
+      limits: { posture: "unlimited", chat: "unlimited", meal: "unlimited" },
+    };
+  }
+
   // 1. subscriptions テーブルから取得（なければ作る）
   let { data: sub } = await supabase
     .from("subscriptions")
