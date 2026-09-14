@@ -21,7 +21,13 @@ CREATE TABLE IF NOT EXISTS transfer_codes (
 CREATE INDEX IF NOT EXISTS idx_transfer_codes_user_id ON transfer_codes(user_id);
 CREATE INDEX IF NOT EXISTS idx_transfer_codes_expires_at ON transfer_codes(expires_at);
 
-ALTER TABLE transfer_codes DISABLE ROW LEVEL SECURITY;
+-- 2026-09-14: RLS を有効化。API は service role で叩くため影響なし。
+-- このテーブルはアカウントを引き継げるコードを持つので、anon から読めてはいけない。
+ALTER TABLE transfer_codes ENABLE ROW LEVEL SECURITY;
+
+-- 2026-09-14: 審査担当者用の長期コード向け。TRUE のコードは使っても失効しない。
+-- 通常ユーザーが発行するコードは FALSE のままで、従来どおり1回限り。
+ALTER TABLE transfer_codes ADD COLUMN IF NOT EXISTS reusable BOOLEAN NOT NULL DEFAULT FALSE;
 
 -- 期限切れコードの自動削除関数（cron で定期実行推奨）
 CREATE OR REPLACE FUNCTION cleanup_expired_transfer_codes()

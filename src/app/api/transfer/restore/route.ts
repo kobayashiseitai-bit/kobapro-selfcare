@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     // コード検索
     const { data: rows, error } = await supabase
       .from("transfer_codes")
-      .select("code, user_id, device_id, expires_at, used_at")
+      .select("code, user_id, device_id, expires_at, used_at, reusable")
       .eq("code", code)
       .limit(1);
     if (error) throw error;
@@ -45,11 +45,16 @@ export async function POST(req: NextRequest) {
       return Response.json({ error: "コードの有効期限が切れています" }, { status: 400 });
     }
 
-    // 使用済みマーク
-    await supabase
-      .from("transfer_codes")
-      .update({ used_at: new Date().toISOString() })
-      .eq("code", code);
+    // 使用済みマーク。
+    // reusable のコードは消費しない。審査担当者用に発行した長期コードが
+    // 1回の確認で使えなくなると、再審査のたびに発行し直しになるため。
+    // 通常のユーザーが発行するコードは reusable=false なので従来どおり1回限り。
+    if (!row.reusable) {
+      await supabase
+        .from("transfer_codes")
+        .update({ used_at: new Date().toISOString() })
+        .eq("code", code);
+    }
 
     // 引き継ぐ deviceId を返す
     return Response.json({
