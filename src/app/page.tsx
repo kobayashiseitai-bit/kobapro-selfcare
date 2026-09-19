@@ -8315,11 +8315,26 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
   };
 
   const callAction = async (
-    action: "start_trial" | "subscribe" | "cancel",
+    action: "subscribe" | "cancel",
     plan?: "monthly" | "yearly" | "family_monthly" | "family_yearly"
   ) => {
-    // iOS ネイティブ + サブスク購入の場合は IAP に委譲
-    if (isIOS && iapReady && action === "subscribe" && plan) {
+    setError(null);
+    setMessage(null);
+    // 課金は App Store / Google Play の購入のみ。
+    // サーバー側でも弾いているが、ここで分かりやすい案内に振り分ける。
+    if (action === "subscribe") {
+      if (!isIOS) {
+        setError(
+          "ご購入はアプリからお願いします。ブラウザからはお申し込みいただけません。"
+        );
+        return;
+      }
+      if (!iapReady || !plan) {
+        setError(
+          "お支払いの準備中です。少し待ってからもう一度お試しください。"
+        );
+        return;
+      }
       return buyViaIAP(plan);
     }
     setActing(true);
@@ -8329,13 +8344,11 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
       const res = await fetch("/api/subscription", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, plan, deviceId: getDeviceId() }),
+        body: JSON.stringify({ action, deviceId: getDeviceId() }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "操作に失敗しました");
-      if (action === "start_trial") setMessage("✅ 3日間の無料トライアルを開始しました！");
-      else if (action === "subscribe") setMessage(`✅ ${plan ? PLAN_LABELS[plan] : ""}プランを開始しました！`);
-      else if (action === "cancel") setMessage("次回更新時に解約されます（期限までは引き続き利用可能です）");
+      setMessage("次回更新時に解約されます（期限までは引き続き利用可能です）");
       await loadState();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
