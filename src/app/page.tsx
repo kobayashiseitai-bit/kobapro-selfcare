@@ -39,6 +39,7 @@ import { addRecord, getRecords, deleteRecord, Landmark, PostureRecord } from "./
 import { analyzeFrontPosture, analyzeSidePosture, drawDiagnosisOverlay, drawSideDiagnosisOverlay, addLandmarkFrame, clearLandmarkBuffer } from "./lib/postureAnalysis";
 import { getStretchesBySymptom } from "./lib/stretches";
 import { initIAP, isNativeIAP, nativePlatform as nativePlatformName, getAvailablePackages, purchasePackage, restorePurchases } from "./lib/iap";
+import { TRIAL_DAYS } from "./lib/subscription";
 import type { PurchasesPackage } from "@revenuecat/purchases-capacitor";
 import type { DiagnosisItem } from "./lib/storage";
 // Supabase保存はAPI経由
@@ -8362,6 +8363,15 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
     return new Date(iso).toLocaleDateString("ja-JP");
   };
 
+  // 無料期間の締め切りを「◯月◯日」で具体的に示す。
+  // Apple / Google とも自動更新を止める条件は「終了の24時間前まで」なので、
+  // 解約の締め切りは終了日の前日として案内する(安全側に倒す)。
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const formatMonthDay = (d: Date) => `${d.getMonth() + 1}月${d.getDate()}日`;
+  const trialEndIfStartNow = new Date(Date.now() + TRIAL_DAYS * DAY_MS);
+  const cancelByIfStartNow = new Date(trialEndIfStartNow.getTime() - DAY_MS);
+  const storeName = isAndroid ? "Google Play" : "App Store";
+
   const statusLabel: Record<SubscriptionState["status"], string> = {
     free: "無料プラン",
     trial: "🎁 無料トライアル中",
@@ -8405,9 +8415,17 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
               <p className="text-xs text-gray-400 mb-1 tracking-wide">現在のプラン</p>
               <p className="text-lg font-bold text-white">{statusLabel[state.status]}</p>
               {state.trialEndsAt && state.status === "trial" && (
-                <p className="text-xs text-amber-300 mt-2">
-                  トライアル終了: {formatDate(state.trialEndsAt)}
-                </p>
+                <div className="mt-2 space-y-1">
+                  <p className="text-sm font-bold text-amber-300">
+                    {formatMonthDay(new Date(state.trialEndsAt))}まで無料です
+                  </p>
+                  <p className="text-xs text-gray-300 leading-relaxed">
+                    {formatMonthDay(
+                      new Date(new Date(state.trialEndsAt).getTime() - DAY_MS)
+                    )}
+                    までに解約すれば、料金は一切かかりません。解約は{storeName}の「サブスクリプション」からいつでもできます。
+                  </p>
+                </div>
               )}
               {state.currentPeriodEnd && (state.status === "active_monthly" || state.status === "active_yearly" || state.status === "cancelled") && (
                 <p className="text-xs text-gray-300 mt-2">
@@ -8467,8 +8485,19 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
                         ? `（無料プランは月${state.limits.meal}回）`
                         : ""}
                     </li>
-                    <li>✅ 3日間無料トライアル付き・いつでも解約OK</li>
+                    <li>✅ {TRIAL_DAYS}日間無料トライアル付き・いつでも解約OK</li>
                   </ul>
+                </div>
+
+                {/* 無料期間の締め切りを具体的な日付で示す（不安をいちばん減らせる場所） */}
+                <div className="card-base p-4 space-y-1 border-emerald-500/40">
+                  <p className="text-sm font-bold text-emerald-300">
+                    今日お申し込みなら、{formatMonthDay(trialEndIfStartNow)}まで無料です
+                  </p>
+                  <p className="text-xs text-gray-300 leading-relaxed">
+                    {formatMonthDay(cancelByIfStartNow)}
+                    までに解約すれば、料金は一切かかりません。解約は{storeName}の「サブスクリプション」からいつでもできます。
+                  </p>
                 </div>
 
                 {/* サブスクリプション法的リンク（App Store Guideline 3.1.2(c) 対応） */}
@@ -8508,7 +8537,7 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
                 >
                   <div>
                     <p className="text-sm font-bold text-white">月額プラン</p>
-                    <p className="text-xs text-emerald-300 mt-0.5">3日間無料トライアル付き</p>
+                    <p className="text-xs text-emerald-300 mt-0.5">{TRIAL_DAYS}日間無料トライアル付き</p>
                     <p className="text-[10px] text-gray-400 mt-0.5">トライアル後は自動で月額課金、いつでも解約可能</p>
                   </div>
                   <p className="text-lg font-extrabold text-white">
@@ -8527,7 +8556,7 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
                   </span>
                   <div>
                     <p className="text-sm font-bold text-white">年額プラン ⭐ おすすめ</p>
-                    <p className="text-xs text-emerald-300 mt-0.5">3日間無料トライアル付き</p>
+                    <p className="text-xs text-emerald-300 mt-0.5">{TRIAL_DAYS}日間無料トライアル付き</p>
                     <p className="text-[10px] text-indigo-300 mt-0.5">月額換算 ¥733（17%オフ）・トライアル後は自動で年額課金</p>
                   </div>
                   <p className="text-lg font-extrabold text-white">
@@ -8550,7 +8579,7 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
                 >
                   <div>
                     <p className="text-sm font-bold text-white">家族月額プラン</p>
-                    <p className="text-xs text-emerald-300 mt-0.5">3日間無料トライアル付き</p>
+                    <p className="text-xs text-emerald-300 mt-0.5">{TRIAL_DAYS}日間無料トライアル付き</p>
                     <p className="text-[10px] text-emerald-200/80 mt-0.5">最大4人まで使える・トライアル後は自動で月額課金</p>
                   </div>
                   <p className="text-lg font-extrabold text-white">
@@ -8569,7 +8598,7 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
                   </span>
                   <div>
                     <p className="text-sm font-bold text-white">家族年額プラン</p>
-                    <p className="text-xs text-emerald-300 mt-0.5">3日間無料トライアル付き</p>
+                    <p className="text-xs text-emerald-300 mt-0.5">{TRIAL_DAYS}日間無料トライアル付き</p>
                     <p className="text-[10px] text-emerald-200/80 mt-0.5">月額換算 ¥1,150・最大4人・トライアル後は自動で年額課金</p>
                   </div>
                   <p className="text-lg font-extrabold text-white">
