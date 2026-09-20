@@ -59,7 +59,7 @@ export default function TermsPage() {
           <ol className="space-y-1 pl-5 list-decimal text-gray-300">
             <li>
               本アプリには無料トライアルと有料プラン（プレミアムプラン）があります。初回ご登録時に
-              <strong className="text-white">3日間の無料トライアル</strong>が付与され、
+              <strong className="text-white">7日間の無料トライアル</strong>が付与され、
               期間終了後にAI機能（姿勢チェック・AIチャット・食事分析）をご利用いただくには
               プレミアムプランへのご登録が必要です。トライアル終了後も、ご自身の記録・お写真・
               ストレッチ等のコンテンツは引き続きご覧いただけます。
@@ -74,7 +74,7 @@ export default function TermsPage() {
               <ul className="pl-4 list-disc mt-1 space-y-0.5">
                 <li>月額プラン: 1ヶ月あたり 880円（税込）</li>
                 <li>年額プラン: 1年あたり 8,800円（税込、月換算733円）</li>
-                <li>初回登録時に3日間の無料トライアルが付与されます</li>
+                <li>初回登録時に7日間の無料トライアルが付与されます</li>
               </ul>
             </li>
             <li>

@@ -20,7 +20,7 @@ import {
 export const metadata: Metadata = {
   title: 'ZERO-PAIN | AI姿勢分析・セルフケアで「痛みゼロ」へ',
   description:
-    'AI姿勢分析・AI食事分析・ガイコツ先生のカウンセリング・30日コーチング。あなた専用のAIパーソナルトレーナーで、肩こり・腰痛・姿勢の悩みをセルフケアに。3日間無料で試せる iPhone アプリ。',
+    'AI姿勢分析・AI食事分析・ガイコツ先生のカウンセリング・30日コーチング。あなた専用のAIパーソナルトレーナーで、肩こり・腰痛・姿勢の悩みをセルフケアに。7日間無料で試せる iPhone アプリ。',
   keywords: [
     'ZERO-PAIN',
     'ゼロペイン',
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'ZERO-PAIN | AI姿勢分析で「痛みゼロ」へ',
     description:
-      'あなた専用のAIパーソナルトレーナー。姿勢チェック・セルフケア・痛み予測で体の悩みをゼロに。3日間無料トライアル。',
+      'あなた専用のAIパーソナルトレーナー。姿勢チェック・セルフケア・痛み予測で体の悩みをゼロに。7日間無料トライアル。',
     url: 'https://posture-app-steel.vercel.app/lp',
     siteName: 'ZERO-PAIN',
     images: [
@@ -58,7 +58,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'ZERO-PAIN | AI姿勢分析で「痛みゼロ」へ',
     description:
-      'あなた専用のAIパーソナルトレーナー。3日間無料トライアル。',
+      'あなた専用のAIパーソナルトレーナー。7日間無料トライアル。',
     images: ['https://posture-app-steel.vercel.app/og-image.jpg'],
   },
 };
@@ -190,7 +190,7 @@ export default function LPPage() {
             <div className="flex flex-col sm:flex-row gap-3 sm:items-center justify-center lg:justify-start">
               <AppStoreButton size="lg" />
               <p className="text-xs sm:text-sm text-slate-500">
-                3日間無料 / いつでも解約可
+                7日間無料 / いつでも解約可
               </p>
             </div>
             <div className="flex flex-wrap gap-4 justify-center lg:justify-start pt-2 text-xs sm:text-sm text-slate-500">
@@ -507,10 +507,10 @@ export default function LPPage() {
               料金プラン
             </p>
             <h2 className="text-2xl sm:text-4xl font-black tracking-tight">
-              まずは3日間、無料で。
+              まずは7日間、無料で。
             </h2>
             <p className="mt-3 text-slate-600 text-sm sm:text-base">
-              すべてのプランで3日間無料トライアル。
+              すべてのプランで7日間無料トライアル。
               <br className="sm:hidden" />
               期間中はいつでもキャンセル可能。
             </p>
@@ -526,7 +526,7 @@ export default function LPPage() {
                   'AI 食事分析 無制限',
                   'ガイコツ先生カウンセリング 無制限',
                   '30日コーチング',
-                  '3日間無料トライアル付き',
+                  '7日間無料トライアル付き',
                 ]}
               />
             </AnimateOnScroll>
@@ -639,7 +639,7 @@ export default function LPPage() {
             痛みのない毎日を、今日から。
           </h2>
           <p className="text-base sm:text-lg mb-8 leading-relaxed" style={{ color: '#ecfdf5' }}>
-            3日間無料で全機能をお試し。
+            7日間無料で全機能をお試し。
             <br />
             合わなければ、料金は一切かかりません。
           </p>
@@ -832,7 +832,7 @@ function PricingCard({
       </ul>
       <p className="text-xs text-emerald-700 font-semibold pt-2 border-t border-slate-100 flex items-center gap-1.5">
         <SparklesIcon className="w-4 h-4" />
-        3日間無料トライアル付き
+        7日間無料トライアル付き
       </p>
     </div>
   );

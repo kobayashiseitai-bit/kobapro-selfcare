@@ -8526,8 +8526,8 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
                   </div>
                 </div>
 
-                {/* App Store Guideline 3.1.2(c) 対応: 独立した「3日間無料で試す」ボタンを削除し、
-                    各プランボタンに「3日間無料トライアル付き」を統合（自動更新サブスクの認識を明確にするため） */}
+                {/* App Store Guideline 3.1.2(c) 対応: 独立した「7日間無料で試す」ボタンを削除し、
+                    各プランボタンに「7日間無料トライアル付き」を統合（自動更新サブスクの認識を明確にするため） */}
 
                 {/* 月額プラン */}
                 <button
