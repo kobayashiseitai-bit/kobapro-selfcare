@@ -8669,10 +8669,12 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
               </div>
             </div>
 
-            {/* 開発中の注意書き (Web/PWAのみ表示) */}
+            {/* ブラウザで開いている方への案内。
+                以前は「Web版ではテスト用のサブスク管理を行っています」と書いていたが、
+                ブラウザからの申し込みは廃止したため実態と合わなくなった（2026-09-21）。 */}
             {!isIOS && (
               <div className="card-base px-4 py-3 text-[11px] text-gray-500 leading-relaxed">
-                ℹ️ Web版ではテスト用のサブスク管理を行っています。アプリ版では App Store / Google Play 経由の正式な課金になります。
+                ℹ️ お申し込みはアプリ（App Store / Google Play）からのみ承っています。ブラウザからはご利用状況の確認のみ行えます。
               </div>
             )}
           </>
