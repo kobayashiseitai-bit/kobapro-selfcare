@@ -54,65 +54,17 @@ export async function GET(req: NextRequest) {
   }
 }
 
-/**
- * POST /api/subscription
- * { action: 'cancel', deviceId }
+/*
+ * POST は置いていない。
  *
- * 課金状態を「有効にする」経路はここには無い。
- * 有料化は App Store / Google Play の購入 → RevenueCat Webhook
- * (/api/revenuecat/webhook, 共有シークレットで認証) のみが行う。
+ * かつて subscribe / start_trial / cancel を受けていたが、
+ * deviceId さえ判れば誰でも叩けるうえ、実態と合っていなかった。
+ *   - subscribe / start_trial … ストアの購入を確認せずに有料化できてしまった（2026-09-20 削除）
+ *   - cancel … このDBだけ「解約済み」にしても、ストアの請求は止まらない（2026-09-21 削除）
  *
- * かつてここに 'subscribe' と 'start_trial' があったが、deviceId さえ判れば
- * ブラウザから支払いなしで有料プランにできてしまうため 2026-09-20 に削除した。
- * 課金まわりを触ったときは、アプリだけでなくブラウザからも叩いて確認すること。
+ * 課金状態を動かすのは RevenueCat Webhook（/api/revenuecat/webhook・
+ * 共有シークレットで認証）だけ。解約は App Store / Google Play の管理画面で行う。
+ *
+ * Capacitor の server.url で全端末がこの本番Webを読み込むため、
+ * 古いアプリがここを叩くことはない。
  */
-export async function POST(req: NextRequest) {
-  try {
-    const { action, deviceId } = await req.json();
-    if (!deviceId || !action) {
-      return NextResponse.json(
-        { error: "deviceId and action required" },
-        { status: 400 }
-      );
-    }
-
-    const supabase = getSupabase();
-    const userId = await getUserIdByDeviceId(supabase, deviceId);
-    if (!userId) {
-      return NextResponse.json({ error: "user not found" }, { status: 404 });
-    }
-
-    const now = new Date();
-
-    if (action === "subscribe" || action === "start_trial") {
-      // ストアの購入を確認する手段がないため、ここでは決して有効化しない。
-      // 正規の反映経路は RevenueCat Webhook。
-      return NextResponse.json(
-        {
-          error:
-            "ご購入はアプリからお願いします。ブラウザからはお申し込みいただけません。",
-        },
-        { status: 403 }
-      );
-    }
-
-    if (action === "cancel") {
-      await supabase
-        .from("subscriptions")
-        .update({
-          status: "cancelled",
-          updated_at: now.toISOString(),
-        })
-        .eq("user_id", userId);
-      return NextResponse.json({ ok: true, status: "cancelled" });
-    }
-
-    return NextResponse.json({ error: "invalid action" }, { status: 400 });
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    return NextResponse.json(
-      { error: "subscription update failed", detail: msg },
-      { status: 500 }
-    );
-  }
-}

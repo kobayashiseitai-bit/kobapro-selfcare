@@ -8315,47 +8315,27 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
     }
   };
 
+  // 課金の開始も解約も、行えるのは App Store / Google Play だけ。
+  // このアプリのサーバーに解約を書き込んでも請求は止まらないため、
+  // 解約はストアの管理画面への案内に変えてある（下の「解約について」）。
   const callAction = async (
-    action: "subscribe" | "cancel",
+    action: "subscribe",
     plan?: "monthly" | "yearly" | "family_monthly" | "family_yearly"
   ) => {
+    void action;
     setError(null);
     setMessage(null);
-    // 課金は App Store / Google Play の購入のみ。
-    // サーバー側でも弾いているが、ここで分かりやすい案内に振り分ける。
-    if (action === "subscribe") {
-      if (!isIOS) {
-        setError(
-          "ご購入はアプリからお願いします。ブラウザからはお申し込みいただけません。"
-        );
-        return;
-      }
-      if (!iapReady || !plan) {
-        setError(
-          "お支払いの準備中です。少し待ってからもう一度お試しください。"
-        );
-        return;
-      }
-      return buyViaIAP(plan);
+    if (!isIOS) {
+      setError(
+        "ご購入はアプリからお願いします。ブラウザからはお申し込みいただけません。"
+      );
+      return;
     }
-    setActing(true);
-    setError(null);
-    setMessage(null);
-    try {
-      const res = await fetch("/api/subscription", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, deviceId: getDeviceId() }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "操作に失敗しました");
-      setMessage("次回更新時に解約されます（期限までは引き続き利用可能です）");
-      await loadState();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setActing(false);
+    if (!iapReady || !plan) {
+      setError("お支払いの準備中です。少し待ってからもう一度お試しください。");
+      return;
     }
+    return buyViaIAP(plan);
   };
 
   const formatDate = (iso: string | null) => {
@@ -8371,6 +8351,8 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
   const trialEndIfStartNow = new Date(Date.now() + TRIAL_DAYS * DAY_MS);
   const cancelByIfStartNow = new Date(trialEndIfStartNow.getTime() - DAY_MS);
   const storeName = isAndroid ? "Google Play" : "App Store";
+  // ストア課金が使える環境か（ブラウザで開いている場合は false）
+  const isNativeStore = isIOS;
 
   const statusLabel: Record<SubscriptionState["status"], string> = {
     free: "無料プラン",
@@ -8608,19 +8590,40 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
               </>
             )}
 
-            {/* 有料プラン時の解約ボタン */}
-            {state.isPaid && state.status !== "cancelled" && state.status !== "trial" && (
-              <button
-                onClick={() => {
-                  if (confirm("本当に解約しますか？期限までは引き続き利用できます。")) {
-                    callAction("cancel");
-                  }
-                }}
-                disabled={acting}
-                className="btn-neutral w-full px-4 py-3 text-sm text-gray-400"
-              >
-                解約する
-              </button>
+            {/* 解約の案内。
+                以前はここに「解約する」ボタンがあり、このアプリのデータベースだけを
+                「解約済み」に書き換えていた。ストアの定期購入は止まらないため、
+                解約したつもりで請求が続く状態だった（2026-09-21 に修正）。
+                実際に請求を止められるのはストアの管理画面だけなので、そこへ案内する。 */}
+            {state.isPaid && (
+              <div className="card-base p-4 space-y-2">
+                <p className="text-sm font-bold text-gray-200">解約について</p>
+                <p className="text-xs text-gray-300 leading-relaxed">
+                  解約は{isNativeStore ? storeName : "ご購入いただいたストア"}の「サブスクリプション」から行ってください。このアプリからは解約できません。解約しても、期限までは引き続きご利用いただけます。
+                </p>
+                <div className="flex flex-wrap gap-x-3 gap-y-1 pt-1">
+                  {(!isNativeStore || !isAndroid) && (
+                    <a
+                      href="https://apps.apple.com/account/subscriptions"
+                      target="_blank"
+                      rel="noopener"
+                      className="text-emerald-300 underline text-xs font-bold"
+                    >
+                      App Store の管理画面を開く
+                    </a>
+                  )}
+                  {(!isNativeStore || isAndroid) && (
+                    <a
+                      href="https://play.google.com/store/account/subscriptions"
+                      target="_blank"
+                      rel="noopener"
+                      className="text-emerald-300 underline text-xs font-bold"
+                    >
+                      Google Play の管理画面を開く
+                    </a>
+                  )}
+                </div>
+              </div>
             )}
 
             {/* iOS ネイティブのみ: 購入の復元ボタン (App Store 必須) */}
