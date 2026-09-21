@@ -1,15 +1,12 @@
 import { NextRequest } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createServiceSupabase } from "../../../lib/supabase-server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-    process.env.SUPABASE_SERVICE_ROLE_KEY || ""
-  );
-}
+// 読み取りがキャッシュされて古い値が返るのを防ぐため、
+// no-store を指定した共通クライアントを使う（supabase-server.ts に経緯あり）
+const getSupabase = createServiceSupabase;
 
 export async function POST(req: NextRequest) {
   try {

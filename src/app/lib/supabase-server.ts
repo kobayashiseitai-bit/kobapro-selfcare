@@ -31,3 +31,22 @@ export function createServerSupabase(): SupabaseClient {
     },
   });
 }
+
+/**
+ * サービスロールキーだけを使う版。
+ * 引き継ぎコードと RevenueCat Webhook は anon にフォールバックさせない
+ * （キーが無いときは動かないのが正しい）。キャッシュ無効化は同じ。
+ */
+export function createServiceSupabase(): SupabaseClient {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || "",
+    process.env.SUPABASE_SERVICE_ROLE_KEY || "",
+    {
+      auth: { persistSession: false },
+      global: {
+        fetch: (input: RequestInfo | URL, init?: RequestInit) =>
+          fetch(input, { ...init, cache: "no-store" }),
+      },
+    }
+  );
+}

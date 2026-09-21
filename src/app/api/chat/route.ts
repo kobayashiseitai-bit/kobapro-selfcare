@@ -1,5 +1,4 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { createClient } from "@supabase/supabase-js";
 import { NextRequest } from "next/server";
 import { STRETCH_DATA } from "../../lib/stretches";
 import { buildAvailableImagesForPrompt } from "../../lib/chat-images";
@@ -24,12 +23,11 @@ function getClient() {
   return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 }
 
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
-  );
-}
+// 読み取りがキャッシュされて古い値が返るのを防ぐため、
+// no-store を指定した共通クライアントを使う（supabase-server.ts に経緯あり）
+const getSupabase = createServerSupabase;
+
+import { createServerSupabase } from "../../lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

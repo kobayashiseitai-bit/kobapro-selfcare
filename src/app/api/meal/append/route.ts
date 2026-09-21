@@ -14,10 +14,11 @@
  */
 
 import Anthropic from "@anthropic-ai/sdk";
-import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 import { getSignedImageUrl } from "../../../lib/supabase-storage";
 import { SAFE_LANGUAGE_RULES } from "../../../lib/safe-language";
+
+import { createServerSupabase } from "../../../lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -68,12 +69,9 @@ function getAnthropic() {
   return new Anthropic({ apiKey });
 }
 
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
-  );
-}
+// 読み取りがキャッシュされて古い値が返るのを防ぐため、
+// no-store を指定した共通クライアントを使う（supabase-server.ts に経緯あり）
+const getSupabase = createServerSupabase;
 
 interface DishAnalysis {
   menu_name?: string;
