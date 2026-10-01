@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { createServerSupabase } from "../../lib/supabase-server";
+import { getSubscriptionState, isReviewerUser } from "../../lib/subscription";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -189,6 +190,25 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      // 家族グループを作れるのは、本人の契約が家族プラン（有料扱いの期間中）の人だけ（2026-10-02）。
+      // 以前はサーバーで確かめておらず、画面の出し分けだけに頼っていた。
+      // 判定は画面（家族画面の「家族グループを作成」）と同じ getSubscriptionState の isFamily。
+      // 審査担当者用アカウントは、家族の画面を確かめられるように作成だけ許す
+      // （メンバーが有料になるかはオーナーの実際の契約で決まるので、ここで許しても有料にはならない）
+      if (!isReviewerUser(userId)) {
+        const subState = await getSubscriptionState(supabase, userId);
+        if (!subState.isFamily) {
+          return NextResponse.json(
+            {
+              error: "not_family_plan",
+              message:
+                "家族グループを作れるのは、家族プランをご契約中の方です。料金プランの画面から家族プランをお選びください。",
+            },
+            { status: 403, headers: NO_CACHE_HEADERS }
+          );
+        }
+      }
+
       // 招待コード生成（衝突したら再生成）
       let inviteCode = "";
       for (let attempt = 0; attempt < 5; attempt++) {
@@ -281,8 +301,13 @@ export async function POST(req: NextRequest) {
         .maybeSingle();
 
       if (!family) {
+        // 2026-10-01: 画面では家族プランのコードを「家族コード」と呼ぶ（友達紹介の「招待コード」と取り違えやすいため）
         return NextResponse.json(
-          { error: "invalid_code", message: "招待コードが見つかりません" },
+          {
+            error: "invalid_code",
+            message:
+              "家族コードが見つかりません。家族のオーナーから受け取った8文字の家族コードを入力してください（友達紹介の招待コードでは参加できません）。",
+          },
           { status: 404, headers: NO_CACHE_HEADERS }
         );
       }

@@ -133,6 +133,14 @@ img, video, canvas {
   border-radius: 1rem;
 }
 
+/* シート・ダイアログの面（後ろの画面に重ねて出すもの。透けない背景）
+   bg-gray-950 は明るい表示で透明になる（画面全体の背景にミントを見せるための指定）ので、
+   メニューのシートのように後ろの画面へ重ねるものには bg-gray-950 ではなくこちらを使う。
+   明るい表示の色は下の .theme-mint .sheet-surface */
+.sheet-surface {
+  background: #030712; /* gray-950 */
+}
+
 /* アクセントカード（エメラルド系・食事健康） */
 .card-accent-emerald {
   background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(17, 24, 39, 0.8));
@@ -406,7 +414,10 @@ html.theme-mint body {
 .theme-mint .text-amber-200 { color: #92400e !important; }
 
 /* 背景: 白 + 淡いエメラルドの彩り */
+/* bg-gray-950 は画面全体の背景（main）専用。透明にして html のミントを見せる。
+   後ろの画面に重ねるシート・ダイアログに使うと透けて文字が重なるので、そちらは .sheet-surface を使う（2026-10-01） */
 .theme-mint .bg-gray-950 { background: transparent !important; }
+.theme-mint .sheet-surface { background: #f8fafc !important; }
 .theme-mint .bg-gray-900 {
   background: #ffffff !important;
   border: 1px solid rgba(16, 185, 129, 0.12) !important;

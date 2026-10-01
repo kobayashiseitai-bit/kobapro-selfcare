@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
 import { SAFE_LANGUAGE_RULES } from "../../lib/safe-language";
+import { getSubscriptionState } from "../../lib/subscription";
 
 import { createServerSupabase } from "../../lib/supabase-server";
 
@@ -179,6 +180,23 @@ export async function GET(req: NextRequest) {
       })),
       goal: goalRes.data,
     };
+
+    // AI の振り返り文を作るのは、有料・トライアル中の方と、2026-09-13より前に登録した旧ユーザーだけ。
+    // 2026-10-01 に新規の方も姿勢チェックを月1回保存できるようにしたため、記録が1件あるだけでここまで来る。
+    // 課金の確認なしに AI を呼ぶと、開くたび・週/月を切り替えるたびに費用がかかり、
+    // /api/save が自動で作る未登録の deviceId からも、いくらでも呼べてしまう。
+    // 新規の未課金の方には、AI を呼ばずに数字の集計だけを返す（画面は aiLocked で案内の1行を出す）。
+    const subState = await getSubscriptionState(supabase, userId);
+    if (!subState.isPaid && !subState.isLegacyUser) {
+      return NextResponse.json({
+        period,
+        hasData: true,
+        stats,
+        report: null,
+        aiLocked: true,
+        generatedAt: new Date().toISOString(),
+      });
+    }
 
     // Claude AI で自然言語レポートを生成
     const analysisPrompt = `あなたはZERO-PAINセルフケアアプリ専属のAIカイロプラクター『ガイコツ先生』です。

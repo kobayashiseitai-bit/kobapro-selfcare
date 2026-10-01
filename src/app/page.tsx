@@ -9,7 +9,7 @@ import {
   Menu as IconMenu,
   Target as IconTarget,
   Users as IconUsers,
-  Gift as IconGift,
+  Share2 as IconShare,
   BarChart3 as IconBarChart,
   Images as IconImages,
   Activity as IconActivity,
@@ -38,8 +38,8 @@ import { CHARACTERS } from "./lib/sensei-characters";
 import { addRecord, getRecords, deleteRecord, Landmark, PostureRecord } from "./lib/storage";
 import { analyzeFrontPosture, analyzeSidePosture, drawDiagnosisOverlay, drawSideDiagnosisOverlay, addLandmarkFrame, clearLandmarkBuffer } from "./lib/postureAnalysis";
 import { getStretchesBySymptom } from "./lib/stretches";
-import { initIAP, isNativeIAP, nativePlatform as nativePlatformName, getAvailablePackages, purchasePackage, restorePurchases } from "./lib/iap";
-import { TRIAL_DAYS } from "./lib/subscription";
+import { initIAP, isNativeIAP, nativePlatform as nativePlatformName, getAvailablePackages, getTrialEligibility, purchasePackage, restorePurchases, baseProductId } from "./lib/iap";
+import { TRIAL_DAYS, FREE_LIMITS, CHAT_LOCKED_GREETING, buildLimitReachedMessage, type LimitGuideFeature } from "./lib/subscription";
 import type { PurchasesPackage } from "@revenuecat/purchases-capacitor";
 import type { DiagnosisItem } from "./lib/storage";
 // Supabase保存はAPI経由
@@ -78,6 +78,84 @@ function saveToDb(data: Record<string, unknown>) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ...data, deviceId }),
   }).catch(() => {});
+}
+
+/**
+ * 姿勢チェックの記録を保存し、サーバーの返事を返す（saveToDb と違い、失敗を捨てない）。
+ * 「保存しました」やお祝いは、この結果が "ok" のときだけ出す。
+ * - "limit_reached": 未課金で今月の無料分を使い切った（402）。limit はその人の今月の無料枠
+ * - "error": 通信の失敗・サーバーのエラー。記録が入っていないか、入ったのに返事だけが届かなかった。
+ *   やり直しは同じ imageUrl で送ること（サーバーは同じ人・同じ写真URLの記録があれば、数えずに ok を返す）
+ */
+type PostureSaveResult =
+  | { status: "ok" }
+  | { status: "limit_reached"; limit: number }
+  | { status: "error" };
+async function savePostureToDb(data: {
+  landmarks: Landmark[];
+  diagnosis: DiagnosisItem[];
+  imageUrl: string;
+}): Promise<PostureSaveResult> {
+  const deviceId = getDeviceId();
+  if (!deviceId) return { status: "error" };
+  try {
+    const res = await fetch("/api/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "posture", ...data, deviceId }),
+    });
+    const body = (await res.json().catch(() => null)) as { ok?: boolean; error?: string; limit?: unknown } | null;
+    if (res.status === 402 || body?.error === "limit_reached") {
+      return { status: "limit_reached", limit: typeof body?.limit === "number" ? body.limit : 0 };
+    }
+    return res.ok && body?.ok ? { status: "ok" } : { status: "error" };
+  } catch {
+    return { status: "error" };
+  }
+}
+
+/**
+ * 効果測定の記録（/api/event → public.app_events）。2026-10-01 追加。
+ * 送りっぱなしで、失敗しても何もしない（お客様の画面には何も出さない）。
+ * 記録するのは次の5つだけ（サーバーも同じ5つ以外は 400 で断る）:
+ * - register_view: 登録画面を開いた / register_done: 登録を終えた
+ * - upgrade_card_view: 料金プランの案内カードを見た（props.feature = chat / meal / posture / before_after）
+ * - subscription_view: 料金プラン画面を開いた
+ * - purchase_start: 購入ボタンを押して、ストアの購入画面へ進んだ（props.plan）
+ */
+type AppEventName =
+  | "register_view"
+  | "register_done"
+  | "upgrade_card_view"
+  | "subscription_view"
+  | "purchase_start";
+function trackEvent(event: AppEventName, props?: Record<string, string>) {
+  try {
+    const deviceId = getDeviceId();
+    if (!deviceId) return;
+    fetch("/api/event", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ deviceId, event, ...(props ? { props } : {}) }),
+      // 購入でストアの画面へ移るときなど、アプリが裏に回っても届くように
+      keepalive: true,
+    }).catch(() => {});
+  } catch {
+    // localStorage が使えない環境など。記録できなくてもアプリは止めない
+  }
+}
+
+// 案内カードの表示（upgrade_card_view）は、1画面表示につき機能ごとに1回だけ記録する。
+// 撮り直しや再送信でカードが出し直されても数が増えないようにするため。
+// screenViewSeq は Home が画面を切り替えるたびに1つ進める。
+let screenViewSeq = 0;
+const upgradeCardViewSentAt: Record<string, number> = {};
+function trackUpgradeCardView(feature: LimitGuideFeature) {
+  // Before/After 比較は記録上 before_after と呼ぶ（回数は chat を使う）
+  const name = feature === "compare" ? "before_after" : feature;
+  if (upgradeCardViewSentAt[name] === screenViewSeq) return;
+  upgradeCardViewSentAt[name] = screenViewSeq;
+  trackEvent("upgrade_card_view", { feature: name });
 }
 
 const SELF_ID = "self";
@@ -228,6 +306,14 @@ export default function Home() {
   const [chatConsultMeal, setChatConsultMeal] = useState(false);
   const [showAppMenu, setShowAppMenu] = useState(false);
 
+  // 効果測定: 画面が変わったら表示の番号を進める（案内カードの記録を1画面表示につき1回にするため）。
+  // 新しい画面の useEffect（カードの記録）より先に進める必要があるので、描画の中で比べる
+  const viewedScreenRef = useRef<Screen>(screen);
+  if (viewedScreenRef.current !== screen) {
+    viewedScreenRef.current = screen;
+    screenViewSeq += 1;
+  }
+
   const goToMealWithMode = (mode: "home" | "goal" | "calendar") => {
     setMealInitialMode(mode);
     setScreen("meal");
@@ -296,6 +382,9 @@ export default function Home() {
       } catch (e) {
         console.error("[notif-cleanup] failed:", e);
       }
+      // 夜8時半・朝の通知の旧形式の予約（番号2・3）も、端末ごとに一度だけ取り消す。
+      // 新しい形式での予約し直しは、ホームの StreakCard / 朝の通知設定がこのあと行う
+      await clearLegacyDailyNotifsOnce();
     })();
   }, []);
 
@@ -471,13 +560,15 @@ function AppMenuSheet({
   }> = [
     { label: "30日コーチング", desc: "AIがあなた専用プランを生成", Icon: IconTarget, iconColor: "text-emerald-400", target: "coaching", accent: "emerald" },
     { label: "家族プラン", desc: "1契約で家族4人まで使える", Icon: IconUsers, iconColor: "text-emerald-400", target: "family", accent: "emerald" },
-    { label: "友達を招待", desc: "招待成立で1ヶ月無料!", Icon: IconGift, iconColor: "text-amber-400", target: "invite", accent: "amber" },
+    // 2026-10-01: 「友達を招待／招待成立で1ヶ月無料!」から変更。特典は実際には付与されていなかったため、紹介するという事実だけにする
+    { label: "ZERO-PAINを紹介する", desc: "友達に紹介文と招待コードを送る", Icon: IconShare, iconColor: "text-amber-400", target: "invite", accent: "amber" },
     { label: "ガイコツ先生のレポート", desc: "週次・月次の振り返り", Icon: IconBarChart, iconColor: "text-indigo-400", target: "report", accent: "indigo" },
     { label: "Before / After", desc: "姿勢の変化を比較", Icon: IconImages, iconColor: "text-indigo-400", target: "before-after", accent: "indigo" },
     { label: "ガイコツ先生プロフィール", desc: "キャラクターの詳細", Icon: null, isCharacter: true, target: "sensei-profile", accent: "neutral" },
     { label: "セルフケア", desc: "30種類のストレッチ", Icon: IconActivity, iconColor: "text-emerald-300", target: "selfcare", accent: "neutral" },
     { label: "履歴", desc: "過去の記録を見る", Icon: IconCalendar, iconColor: "text-gray-300", target: "history", accent: "neutral" },
-    { label: "プラン管理", desc: "サブスク状態・利用回数", Icon: IconCrown, iconColor: "text-amber-400", target: "subscription", accent: "neutral" },
+    // 2026-10-01: 「プラン管理／サブスク状態・利用回数」から改名。無料体験の入口だと分かる名前にする
+    { label: `料金プラン・${TRIAL_DAYS}日間無料体験`, desc: "はじめての方は無料体験つき・利用回数", Icon: IconCrown, iconColor: "text-amber-400", target: "subscription", accent: "neutral" },
     { label: "設定", desc: "アカウント・データ管理", Icon: IconSettings, iconColor: "text-gray-300", href: "/settings", accent: "neutral" },
     { label: "サポート", desc: "FAQ・お問い合わせ", Icon: IconMessage, iconColor: "text-gray-300", href: "/support", accent: "neutral" },
   ];
@@ -497,12 +588,14 @@ function AppMenuSheet({
       aria-modal="true"
       aria-label="メニュー"
     >
+      {/* シートと見出しは sheet-surface（透けない背景）。bg-gray-950 は明るい表示で透明になり、
+          後ろのホームの文字が重なって見えていた（2026-10-01 修正） */}
       <div
-        className="w-full sm:max-w-md bg-gray-950 border-t border-white/10 sm:border sm:rounded-2xl rounded-t-2xl max-h-[85vh] overflow-y-auto"
+        className="w-full sm:max-w-md sheet-surface border-t border-white/10 sm:border sm:rounded-2xl rounded-t-2xl max-h-[85vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* ヘッダー(戻るボタンを左に明示) */}
-        <div className="sticky top-0 z-10 bg-gray-950 border-b border-white/10 px-4 py-3 flex items-center gap-3">
+        <div className="sticky top-0 z-10 sheet-surface border-b border-white/10 px-4 py-3 flex items-center gap-3">
           <button
             onClick={onClose}
             className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm font-bold text-white active:scale-95 transition flex items-center gap-1.5"
@@ -563,6 +656,118 @@ function AppMenuSheet({
   );
 }
 
+// ==================== 共通 料金プランの案内カード ====================
+// 上限に当たった人（新規で無料枠0回・旧ユーザーが今月分を使い切った）に出す。
+// チャット・Before/After比較・食事・姿勢チェックで同じものを使う。
+const APP_STORE_URL = "https://apps.apple.com/app/zero-pain/id6768903915";
+const GOOGLE_PLAY_URL = "https://play.google.com/store/apps/details?id=com.topbank.zeropain";
+
+/**
+ * /api/subscription の利用状況から「今この機能が使えないか」を判定する。
+ * - 使えない（未課金で 今月の回数 >= 上限。新規は上限0なので常にここ）: { limit, usage } を返す
+ * - 使える／有料・トライアル中（isPaid=true）／読み込み失敗: null を返す（＝案内を出さない）
+ * 失敗時に案内を出さないのは、有料の人に誤ってカードを見せないため。
+ * その場合も、送信後に 402 が返れば同じカードを出す。
+ */
+async function checkPlanLimitReached(
+  feature: "posture" | "chat" | "meal"
+): Promise<{ limit: number; usage: number } | null> {
+  try {
+    const deviceId = getDeviceId();
+    const res = await fetch(
+      `/api/subscription?deviceId=${encodeURIComponent(deviceId || "")}&t=${Date.now()}`,
+      { cache: "no-store" }
+    );
+    if (!res.ok) return null;
+    const s = (await res.json()) as Partial<SubscriptionState>;
+    if (s.isPaid) return null;
+    const limit = s.limits?.[feature];
+    const usage = s.usage?.[feature] ?? 0;
+    if (typeof limit !== "number") return null;
+    return usage >= limit ? { limit, usage } : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 料金プランの案内カード。
+ * - 出すのは未課金の人だけ。有料・トライアル中（isPaid=true）の人には出さない（判定は呼ぶ側で checkPlanLimitReached を使う）
+ * - App Store 3.1.2 のため、カードの中に購入ボタンや独立した「無料で試す」ボタンは置かない。
+ *   価格・期間・自動更新・解約方法が揃っている料金プラン画面（screen "subscription"）へ移すだけにする。
+ * - ブラウザ（isNativeIAP()=false）では購入できないので、App Store / Google Play へのリンクを添える。
+ */
+function PlanGuideCard({
+  feature,
+  limit,
+  onNavigate,
+  message,
+  note,
+  className = "",
+}: {
+  /** どの機能で上限に当たったか（文面が変わる）。compare は chat の回数を使う */
+  feature: LimitGuideFeature;
+  /** その機能の今月の無料枠（新規=0、旧ユーザー=3や5など）。0 なら「有料プランの機能」、1以上なら「今月分を使い切った」 */
+  limit: number;
+  onNavigate: (s: Screen) => void;
+  /** 文を差し替えたいときだけ渡す（省略時は buildLimitReachedMessage で作る） */
+  message?: string;
+  /** 補足の小さな文（例: 打った文を残してあること） */
+  note?: string;
+  className?: string;
+}) {
+  // 初期値 true: ネイティブアプリでストアのリンクが一瞬見えてしまうのを防ぐ
+  const [isNativeApp, setIsNativeApp] = useState(true);
+  useEffect(() => {
+    setIsNativeApp(isNativeIAP());
+  }, []);
+
+  // 効果測定: このカードを見た（1画面表示につき機能ごとに1回。重複の判定は trackUpgradeCardView）
+  useEffect(() => {
+    trackUpgradeCardView(feature);
+  }, [feature]);
+
+  return (
+    <div className={`bg-gradient-to-br from-amber-500/20 to-yellow-600/10 border border-amber-500/40 rounded-2xl px-4 py-4 space-y-3 ${className}`}>
+      <p className="text-sm text-amber-200 leading-relaxed">
+        {message ?? buildLimitReachedMessage(feature, limit)}
+      </p>
+      {note && <p className="text-xs text-gray-400 leading-relaxed">{note}</p>}
+      <button
+        onClick={() => onNavigate("subscription")}
+        className="w-full px-4 py-3 bg-gradient-to-r from-amber-500 to-yellow-600 rounded-xl text-sm font-bold active:scale-[0.98] transition"
+      >
+        料金プランを見る
+      </button>
+      {!isNativeApp && (
+        <div className="space-y-2">
+          <p className="text-xs text-gray-400 leading-relaxed">
+            お申し込みはアプリから行えます（ブラウザからはお申し込みいただけません）。
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <a
+              href={APP_STORE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-2.5 bg-gray-800 rounded-xl text-xs font-bold text-center"
+            >
+              App Store
+            </a>
+            <a
+              href={GOOGLE_PLAY_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-2.5 bg-gray-800 rounded-xl text-xs font-bold text-center"
+            >
+              Google Play
+            </a>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ==================== 初回登録画面 ====================
 const PAIN_AREAS = [
   { id: "neck", label: "首" },
@@ -578,25 +783,31 @@ const PAIN_AREAS = [
 // ==================== 🌟 オンボーディング（初回体験） ====================
 // 2026-09-13 変更: 登録直後にいきなりカメラを起動するのをやめ、チャット先行にした。
 // 背景: 登録89人のうち62人が姿勢チェックを一度も完了しておらず、撮影が最初の関門になっていた。
-// ホーム画面は既にチャットを Step 1 にしてあるので、初回導線もそれに揃える。
+// 2026-10-01 変更（社長決定）: 最後のボタンの行き先を、チャットからホームの体調チェックへ変えた。
+// 新規の方はチャットが有料（上限0回）なので、「話しかけてみる」で誘ってから断る形になっていた。
+// 体調チェックは回数の上限が無く、新規の方でも先生の返事が届くので、最初の一歩をそちらにする。
 // 使い方の説明は、マナーモードや音量ゼロでも読めるよう、音声も動画も使わない図解にしている。
 const ONBOARDING_STEPS: { icon: LucideIcon; title: string; body: string }[] = [
   {
-    icon: IconMessage,
-    title: "気になることを話しかける",
-    body: "「肩が痛い」「よく眠れない」など、ふだんの言葉で大丈夫です。",
-  },
-  {
-    icon: IconSparkles,
-    title: "その場でアドバイスが届く",
-    body: "あなたに合った体操を、ガイコツ先生が選んで教えてくれます。",
+    icon: IconSun,
+    title: "毎日、体の調子を1タップで伝える",
+    body: "ホームの「今日のコンディションチェック」で、今の気分を押すだけ。ガイコツ先生がひとこと返して、今日のおすすめケアを選びます。",
   },
   {
     icon: IconScan,
     title: "ときどき姿勢を記録する",
     body: "月に1回、全身を2枚撮るだけ。体の変化がグラフで分かります。",
   },
+  {
+    icon: IconMessage,
+    title: "じっくり相談したい日は、先生とチャット",
+    body: `「肩が痛い」「よく眠れない」など、ふだんの言葉で相談できます。チャットは有料プランの機能です（はじめての方は${TRIAL_DAYS}日間無料体験つき）。`,
+  },
 ];
+
+// 登録直後の案内から体調チェックへ来たことを、ホームの MorningCheckinCard に伝える印。
+// カードはこれを見つけたら、見える位置までスクロールして数秒だけ枠を光らせる。
+const CHECKIN_FOCUS_KEY = "zero_pain_focus_checkin";
 
 function OnboardingScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   const [slide, setSlide] = useState(0);
@@ -646,7 +857,7 @@ function OnboardingScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
         title: "写真は、あとからで大丈夫",
         subtitle: "健康診断と同じ、月1回が目安です",
         description:
-          "姿勢の記録は急ぎません。まずはガイコツ先生と話してみてください。撮りたくなったら、ホームの「Step 2」からいつでも始められます。",
+          "姿勢の記録は急ぎません。まずは今日の体の調子を、ガイコツ先生に伝えてみてください。撮りたくなったら、ホームの「姿勢の記録」からいつでも始められます。",
         image: "/icon-skeleton-sensei-face.png",
       },
     ],
@@ -666,9 +877,13 @@ function OnboardingScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
     if (slide < slides.length - 1) {
       setSlide(slide + 1);
     } else {
-      // 完了 → チャットへ。カメラはここでは起動しない。
+      // 完了 → ホームの体調チェックへ（2026-10-01 社長決定）。カメラはここでは起動しない。
+      // チャットは新規の方には有料なので、上限の無い体調チェックを最初の一歩にする。
       completeOnboarding();
-      onNavigate("ai-counsel");
+      try {
+        sessionStorage.setItem(CHECKIN_FOCUS_KEY, "1");
+      } catch { /* 保存できない環境では、スクロールと枠の強調だけが無くなる */ }
+      onNavigate("home");
     }
   };
 
@@ -680,8 +895,13 @@ function OnboardingScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   const current = slides[slide];
   const isLast = slide === slides.length - 1;
 
+  // 背景: 明るい表示ではホームと同じミント、黒い表示では今までどおりの紺のグラデーション（2026-10-01）。
+  // bg-gray-950 は明るい表示で背景ごと透明になる（globals.css の .theme-mint .bg-gray-950）ので、
+  // グラデーションも消えて、後ろの html のミントが見える。以前はグラデーションだけで、明るい表示でも黒いままだった。
+  // 白い文字（text-white）は明るい表示で濃紺に置き換わるので、紫のボタンなど色の上の文字は !text-white で白に固定する。
+  // 説明文と注記は 14px（text-sm）の text-gray-300（明るい表示では濃い灰色 #475569 に置き換わる）。
   return (
-    <main className="fixed inset-0 bg-gradient-to-b from-gray-950 via-indigo-950/30 to-gray-950 text-white flex flex-col overflow-y-auto">
+    <main className="fixed inset-0 bg-gray-950 bg-gradient-to-b from-gray-950 via-indigo-950/30 to-gray-950 text-white flex flex-col overflow-y-auto">
       {/* スキップボタン */}
       <div className="flex justify-end px-4 pt-4 flex-shrink-0">
         <button
@@ -717,13 +937,13 @@ function OnboardingScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
                       <span className="w-11 h-11 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center">
                         <StepIcon size={22} strokeWidth={2.2} className="text-indigo-300" />
                       </span>
-                      <span className="absolute -top-1.5 -left-1.5 w-5 h-5 rounded-full bg-indigo-500 text-[11px] font-extrabold flex items-center justify-center">
+                      <span className="absolute -top-1.5 -left-1.5 w-5 h-5 rounded-full bg-indigo-500 !text-white text-[11px] font-extrabold flex items-center justify-center">
                         {i + 1}
                       </span>
                     </span>
                     <div className="min-w-0 pt-0.5">
                       <p className="text-sm font-bold leading-snug">{s.title}</p>
-                      <p className="text-xs text-gray-400 mt-1 leading-relaxed">{s.body}</p>
+                      <p className="text-sm text-gray-300 mt-1 leading-relaxed">{s.body}</p>
                     </div>
                   </li>
                 );
@@ -773,17 +993,17 @@ function OnboardingScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
           ))}
         </div>
 
-        {/* ボタン */}
+        {/* ボタン（文字は白に固定。白い文字が十分読めるよう、左端の色を indigo-500 から indigo-600 に濃くした） */}
         <button
           onClick={handleNext}
-          className="w-full max-w-sm py-3.5 bg-gradient-to-r from-indigo-500 to-purple-600 hover:brightness-110 rounded-2xl font-extrabold text-white shadow-[0_8px_24px_rgba(99,102,241,0.5)] active:scale-[0.98] transition"
+          className="w-full max-w-sm py-3.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:brightness-110 rounded-2xl font-extrabold !text-white shadow-[0_8px_24px_rgba(99,102,241,0.5)] active:scale-[0.98] transition"
         >
-          {isLast ? "ガイコツ先生に話しかけてみる" : "次へ →"}
+          {isLast ? "今日の体の調子を先生に伝える" : "次へ →"}
         </button>
 
         {isLast && (
-          <p className="text-[11px] text-gray-500 mt-4 text-center leading-relaxed">
-            むずかしい操作はありません。文字を打つだけです。
+          <p className="text-sm text-gray-300 mt-4 text-center leading-relaxed">
+            むずかしい操作はありません。今の気分を1つ押すだけです。
           </p>
         )}
       </div>
@@ -805,6 +1025,11 @@ function RegisterScreen({ onComplete }: { onComplete: () => void }) {
   const [error, setError] = useState("");
   const [showInviteInput, setShowInviteInput] = useState(false);
   const [inviteCode, setInviteCode] = useState("");
+
+  // 効果測定: 登録画面を開いた（登録完了 register_done との差で、ここでの離脱を測る）
+  useEffect(() => {
+    trackEvent("register_view");
+  }, []);
 
   // URLパラメータから招待コードを自動取得（共有URL経由の登録）
   useEffect(() => {
@@ -847,6 +1072,8 @@ function RegisterScreen({ onComplete }: { onComplete: () => void }) {
       });
       const data = await res.json();
       if (data.ok) {
+        // 効果測定: 登録を終えた
+        trackEvent("register_done");
         // 招待コードがあれば適用
         if (inviteCode.trim()) {
           try {
@@ -863,7 +1090,8 @@ function RegisterScreen({ onComplete }: { onComplete: () => void }) {
               // 招待失敗は警告だけで登録は成功扱い
               alert(`招待コードは適用されませんでした: ${inviteData.error || ""}`);
             } else {
-              alert(inviteData.message || "🎁 招待コードを適用しました！");
+              // 2026-10-01: 特典（延長など）は付けていないので、登録できたことだけを伝える
+              alert(inviteData.message || "招待コードを登録しました。");
             }
           } catch {
             // エラー時も登録自体は成功
@@ -972,20 +1200,22 @@ function RegisterScreen({ onComplete }: { onComplete: () => void }) {
               />
             </div>
 
-            {/* 招待コード入力欄（折りたたみ式） */}
+            {/* 招待コード入力欄（折りたたみ式）
+                2026-10-01: 「7日→14日に延長」の案内を削除。延長は実際には付与されていなかった（ストアのお試しは7日固定）。
+                家族プランのコード（家族コード）も同じ8文字で、ここに入れると「無効です」になってしまうため、入れる場所も案内する */}
             {!showInviteInput ? (
               <button
                 type="button"
                 onClick={() => setShowInviteInput(true)}
                 className="w-full py-2.5 text-xs text-amber-400 hover:text-amber-300 flex items-center justify-center gap-1"
               >
-                🎁 招待コードをお持ちですか？
+                招待コードをお持ちですか？
               </button>
             ) : (
               <div className="card-accent-amber p-3 space-y-2">
                 <div className="flex items-center justify-between">
                   <p className="text-xs font-bold text-amber-300">
-                    🎁 招待コード（お持ちの方）
+                    招待コード（お持ちの方）
                   </p>
                   <button
                     type="button"
@@ -1011,8 +1241,9 @@ function RegisterScreen({ onComplete }: { onComplete: () => void }) {
                   className="w-full px-4 py-2.5 bg-gray-800 border border-amber-500/30 rounded-lg text-white focus:outline-none focus:border-amber-500 text-sm font-mono tracking-wider text-center uppercase"
                   style={{ textTransform: "uppercase" }}
                 />
-                <p className="text-[10px] text-gray-400 leading-relaxed">
-                  招待コードを入力すると、無料トライアルが<strong className="text-amber-300">7日→14日に延長</strong>されます ✨
+                <p className="text-xs text-gray-400 leading-relaxed">
+                  ZERO-PAINを紹介してくれた方から受け取ったコードです（入力しなくても登録できます）。
+                  家族プランの「家族コード」はここではなく、登録のあとに メニュー →「家族プラン」→「家族コードで参加する」から入力してください。
                 </p>
               </div>
             )}
@@ -1145,6 +1376,117 @@ function RegisterScreen({ onComplete }: { onComplete: () => void }) {
 }
 
 
+// ==================== 毎日の通知（夜8時半の連続記録・朝の体調チェック） ====================
+// 予約は食事の通知（lib/meal-reminders.ts）と同じ「毎日○時○分」（schedule.on: { hour, minute }）で行う。
+// 旧版は「次の○時○分」（at）＋ repeats:true で予約していた。通知部品（@capacitor/local-notifications）は
+// この組み合わせのとき every を無視し、「予約した時点から○時○分までの時間」の間隔で繰り返す
+// （例: 夜8時20分にホームを開くと、10分おきに一晩中鳴る）。
+const STREAK_NOTIF_ID = 2; // 夜8時半の連続記録の通知
+const MORNING_NOTIF_ID = 3; // 朝の体調チェックの通知
+// 旧形式の予約（番号2・3）を取り消し済みかの印。取り消しは端末ごとに一度だけ行う
+const DAILY_NOTIF_MIGRATED_KEY = "zero_pain_daily_notif_on_v1";
+// 体調チェックのあとに通知が許可されたときの合図（夜8時半の通知を、次にホームを開くのを待たずに予約するため）
+const NOTIF_PERMISSION_GRANTED_EVENT = "zero-pain:notif-permission-granted";
+
+let legacyDailyNotifCleanup: Promise<void> | null = null;
+
+/**
+ * 旧形式（at＋repeats）で入っている番号2・3の予約を、端末ごとに一度だけ取り消す。
+ * 起動時に呼ぶほか、毎日の通知を予約する前にも必ずこれを待つ
+ * （取り消しが予約のあとに走って、新しい予約まで消してしまわないように）。
+ */
+function clearLegacyDailyNotifsOnce(): Promise<void> {
+  if (legacyDailyNotifCleanup) return legacyDailyNotifCleanup;
+  legacyDailyNotifCleanup = (async () => {
+    if (nativePlatformName() === null) return;
+    try {
+      if (localStorage.getItem(DAILY_NOTIF_MIGRATED_KEY) === "1") return;
+    } catch { /* 読めないときは取り消しに進む（取り消しは何度行っても害はない） */ }
+    try {
+      const { LocalNotifications } = await import("@capacitor/local-notifications");
+      await LocalNotifications.cancel({
+        notifications: [{ id: STREAK_NOTIF_ID }, { id: MORNING_NOTIF_ID }],
+      });
+      try { localStorage.setItem(DAILY_NOTIF_MIGRATED_KEY, "1"); } catch { /* 次回もう一度取り消すだけ */ }
+      console.log("[notif-cleanup] cleared legacy daily notifications (id 2, 3)");
+    } catch (e) {
+      console.error("[notif-cleanup] legacy daily cancel failed:", e);
+    }
+  })();
+  return legacyDailyNotifCleanup;
+}
+
+type DailyNotifResult = "scheduled" | "denied" | "not-native" | "error";
+
+/**
+ * 毎日○時○分に1回だけ鳴る通知を予約する（同じ番号の予約は消してから入れ直すので、何度呼んでも1件だけ）。
+ * - askPermission=false（既定）: 許可の確認ダイアログは出さない。まだ許可されていなければ予約しない。
+ *   ホームを開いたときの予約し直しはこちら（説明なしでOSのダイアログを出さないため）。
+ * - askPermission=true: まだ決めていない人には、OSの許可ダイアログを出す。
+ *   体調チェックのあとの「明日も忘れないように」など、説明してからお客様が押したときだけ使う。
+ */
+async function scheduleDailyLocalNotification({
+  id,
+  title,
+  body,
+  hour,
+  minute,
+  askPermission = false,
+}: {
+  id: number;
+  title: string;
+  body: string;
+  hour: number;
+  minute: number;
+  askPermission?: boolean;
+}): Promise<DailyNotifResult> {
+  if (nativePlatformName() === null) return "not-native";
+  try {
+    await clearLegacyDailyNotifsOnce();
+    const { LocalNotifications } = await import("@capacitor/local-notifications");
+    await LocalNotifications.cancel({ notifications: [{ id }] });
+
+    let granted = (await LocalNotifications.checkPermissions()).display === "granted";
+    if (!granted && askPermission) {
+      granted = (await LocalNotifications.requestPermissions()).display === "granted";
+      if (granted) window.dispatchEvent(new Event(NOTIF_PERMISSION_GRANTED_EVENT));
+    }
+    if (!granted) return "denied";
+
+    await LocalNotifications.schedule({
+      notifications: [
+        {
+          id,
+          title,
+          body,
+          schedule: {
+            on: { hour, minute },
+            repeats: true,
+            allowWhileIdle: true,
+          },
+          sound: "default",
+        },
+      ],
+    });
+    return "scheduled";
+  } catch (e) {
+    console.error(`[daily-notif] schedule failed (id ${id}):`, e);
+    return "error";
+  }
+}
+
+/**
+ * スマホ側で通知が許可されていないときに、許可する手順を示す文（iPhone と Android で場所が違う）。
+ * 「〜をオンにしたあと」で終わるので、呼ぶ側はその後ろに続きの文をつなぐ。
+ * iPhone は iOS 18 から各アプリの設定が「設定」→「アプリ」の中に移ったため、
+ * iOS 16〜26 のどれでも同じ手順になる「設定」→「通知」→ アプリ名 の道筋で案内する。
+ */
+function notifAllowSteps(): string {
+  return nativePlatformName() === "android"
+    ? "スマホの「設定」→「アプリ」→「ZERO-PAIN」→「通知」で通知をオンにしたあと"
+    : "iPhoneの「設定」→「通知」→「ZERO-PAIN」で「通知を許可」をオンにしたあと";
+}
+
 // ==================== ホーム画面 ====================
 function HomeScreen({
   onNavigate,
@@ -1163,24 +1505,57 @@ function HomeScreen({
   const [reminderAlert, setReminderAlert] = useState<string | null>(null);
   const [showReminderSetting, setShowReminderSetting] = useState(false);
   const [profileComplete, setProfileComplete] = useState<boolean | null>(null);
-  const [showMenu, setShowMenu] = useState(false);
   // 朝のチェックイン通知設定
   const [morningNotifEnabled, setMorningNotifEnabled] = useState(false);
   const [morningNotifHour, setMorningNotifHour] = useState(8); // 0-23
   const [morningNotifMinute, setMorningNotifMinute] = useState(0); // 0-59
+  // オンにしようとしたが、スマホ側で通知が許可されていなかった（設定アプリでの許可を案内する）
+  const [morningNotifDenied, setMorningNotifDenied] = useState(false);
 
   // 痛み予測を取得 + プロフィール完成度チェック
   useEffect(() => {
     const deviceId = getDeviceId();
     if (!deviceId) return;
-    fetch("/api/predict", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ deviceId }),
-    })
-      .then((r) => r.json())
-      .then((d) => { if (d.prediction) setPrediction(d); })
-      .catch(() => {});
+    // 今日の予測は、日本時間の日付ごとにこの端末へ控え、同じ日は /api/predict を呼び直さない。
+    // ホームは別画面から戻るたび・起動するたびに作り直されるので、控えがないと
+    // 開くたびに AI（有料・旧ユーザーの方）の費用がかかる。
+    // 控えるのは記録をもとにした答え（basedOnRecords）だけ。記録がまだ無い時の文は控えない。
+    const PREDICTION_CACHE_KEY = "zero_pain_prediction_daily";
+    const todayJst = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    let hasTodayCache = false;
+    try {
+      const raw = localStorage.getItem(PREDICTION_CACHE_KEY);
+      const cached = raw ? JSON.parse(raw) : null;
+      if (cached?.date === todayJst && cached?.deviceId === deviceId && cached?.data?.prediction) {
+        setPrediction(cached.data);
+        hasTodayCache = true;
+      }
+    } catch {
+      // 読めなければ下で取りに行く
+    }
+    if (!hasTodayCache) {
+      fetch("/api/predict", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deviceId }),
+      })
+        .then((r) => r.json())
+        .then((d) => {
+          if (!d.prediction) return;
+          setPrediction(d);
+          if (d.basedOnRecords === true) {
+            try {
+              localStorage.setItem(
+                PREDICTION_CACHE_KEY,
+                JSON.stringify({ date: todayJst, deviceId, data: d })
+              );
+            } catch {
+              // 控えられなくても表示はできる
+            }
+          }
+        })
+        .catch(() => {});
+    }
 
     fetch("/api/user-profile", {
       method: "POST",
@@ -1263,72 +1638,45 @@ function HomeScreen({
     }
   };
 
-  // ☀️ 朝のコンディションチェック通知をスケジュール（ID=3、毎日指定時刻）
-  const scheduleMorningCheckinNotification = async (hour: number, minute: number = 0) => {
+  // ☀️ 朝のコンディションチェック通知を予約（ID=3、毎日指定時刻に1回。予約の書き方は scheduleDailyLocalNotification を参照）
+  // askPermission: お客様が通知をオンにしたとき（説明を読んで押したとき）だけ true。起動時の予約し直しでは許可を求めない
+  const scheduleMorningCheckinNotification = async (
+    hour: number,
+    minute: number = 0,
+    askPermission: boolean = false
+  ): Promise<DailyNotifResult> => {
     if (!isNativePlatform()) {
-      // Web環境: ブラウザ通知許可だけ求める
-      if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "default") {
+      // Web環境: 予約はできない。お客様がオンにしたときだけ、ブラウザ通知の許可を求める
+      if (askPermission && typeof window !== "undefined" && "Notification" in window && Notification.permission === "default") {
         await Notification.requestPermission();
       }
-      return;
+      return "not-native";
     }
-    try {
-      const { LocalNotifications } = await import("@capacitor/local-notifications");
-      // 既存の朝通知をキャンセル
-      await LocalNotifications.cancel({ notifications: [{ id: 3 }] });
-      // 権限取得
-      const perm = await LocalNotifications.requestPermissions();
-      if (perm.display !== "granted") return;
 
-      // 次回の発火時刻（今日 or 明日の指定時刻）
-      const now = new Date();
-      const target = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate(),
-        hour,
-        minute,
-        0
-      );
-      // すでに過ぎていたら翌日に
-      if (target.getTime() <= now.getTime()) {
-        target.setDate(target.getDate() + 1);
-      }
+    // メッセージはランダムに選ぶ（マンネリ防止。次にホームを開いて予約し直すまでは、同じ文が毎朝届く）
+    const titles = [
+      "☀️ おはようございます！",
+      "🦴 ガイコツ先生がお待ちです",
+      "☕ 今日のコンディションは？",
+      "🌅 今日も一緒にコツコツ",
+    ];
+    const bodies = [
+      "30秒で完了！今日の体調をチェックしましょう",
+      "今日のコンディションを教えてくださいね",
+      "朝のチェックインで今日のケアが決まります",
+      "ガイコツ先生から今日のアドバイスが届きます",
+    ];
+    const title = titles[Math.floor(Math.random() * titles.length)];
+    const body = bodies[Math.floor(Math.random() * bodies.length)];
 
-      // メッセージはランダムに選ぶ（マンネリ防止）
-      const titles = [
-        "☀️ おはようございます！",
-        "🦴 ガイコツ先生がお待ちです",
-        "☕ 今日のコンディションは？",
-        "🌅 今日も一緒にコツコツ",
-      ];
-      const bodies = [
-        "30秒で完了！今日の体調をチェックしましょう",
-        "今日のコンディションを教えてくださいね",
-        "朝のチェックインで今日のケアが決まります",
-        "ガイコツ先生から今日のアドバイスが届きます",
-      ];
-      const title = titles[Math.floor(Math.random() * titles.length)];
-      const body = bodies[Math.floor(Math.random() * bodies.length)];
-
-      await LocalNotifications.schedule({
-        notifications: [
-          {
-            id: 3,
-            title,
-            body,
-            schedule: {
-              at: target,
-              repeats: true,
-              every: "day",
-            },
-            sound: "default",
-          },
-        ],
-      });
-    } catch (e) {
-      console.error("Morning checkin notification error:", e);
-    }
+    return scheduleDailyLocalNotification({
+      id: MORNING_NOTIF_ID,
+      title,
+      body,
+      hour,
+      minute,
+      askPermission,
+    });
   };
 
   // 朝通知キャンセル
@@ -1336,7 +1684,7 @@ function HomeScreen({
     if (!isNativePlatform()) return;
     try {
       const { LocalNotifications } = await import("@capacitor/local-notifications");
-      await LocalNotifications.cancel({ notifications: [{ id: 3 }] });
+      await LocalNotifications.cancel({ notifications: [{ id: MORNING_NOTIF_ID }] });
     } catch (e) {
       console.error("Morning notification cancel error:", e);
     }
@@ -1350,30 +1698,41 @@ function HomeScreen({
     setMorningNotifEnabled(enabled);
     setMorningNotifHour(hour);
     setMorningNotifMinute(minute);
-    // 有効なら再スケジュール（起動のたびに最新状態に）
+    // 有効なら毎日の形式で予約し直す（起動のたびに最新状態に）。ここでは許可のダイアログは出さない
     if (enabled) {
       scheduleMorningCheckinNotification(hour, minute);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 朝通知の設定を保存＆適用
+  // 朝通知の設定を保存＆適用（お客様が押したときだけ呼ぶ。まだ決めていない人には、ここで初めて許可を求める）。
+  // 通知を届けられる状態になれば true を返す
   const saveMorningNotifSettings = async (
     enabled: boolean,
     hour: number,
     minute: number
-  ) => {
+  ): Promise<boolean> => {
     setMorningNotifEnabled(enabled);
     setMorningNotifHour(hour);
     setMorningNotifMinute(minute);
+    setMorningNotifDenied(false);
     localStorage.setItem("zero_pain_morning_notif", enabled ? "1" : "0");
     localStorage.setItem("zero_pain_morning_hour", String(hour));
     localStorage.setItem("zero_pain_morning_minute", String(minute));
-    if (enabled) {
-      await scheduleMorningCheckinNotification(hour, minute);
-    } else {
+    if (!enabled) {
       await cancelMorningCheckinNotification();
+      return false;
     }
+    const result = await scheduleMorningCheckinNotification(hour, minute, true);
+    if (result === "denied") {
+      // スマホ側で通知が許可されていない（iPhoneは一度「許可しない」を選ぶと、ダイアログは二度と出ない）。
+      // オンのまま見せても届かないので、オフに戻して、設定アプリで許可する方法を案内する
+      setMorningNotifEnabled(false);
+      localStorage.setItem("zero_pain_morning_notif", "0");
+      setMorningNotifDenied(true);
+      return false;
+    }
+    return true;
   };
 
   // リマインダーチェック
@@ -1410,10 +1769,7 @@ function HomeScreen({
       }
     }
 
-    // ブラウザ通知許可を要求（初回のみ）
-    if ("Notification" in window && Notification.permission === "default") {
-      Notification.requestPermission();
-    }
+    // ブラウザ通知の許可は、ホームを開いた瞬間には求めない（間隔のボタンを押したとき＝saveReminder で求める）
 
     // アプリ内タイマー（開いている間）
     const timerId = setInterval(() => {
@@ -1439,6 +1795,10 @@ function HomeScreen({
     setReminderAlert(null);
     // ネイティブ環境ではローカル通知を再スケジュール
     scheduleNativeNotification(hours);
+    // Web環境: お客様が間隔を選んだこのときに、ブラウザ通知の許可を求める（ホームを開いた瞬間には求めない）
+    if (!isNativePlatform() && "Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
   };
 
   const riskColors: Record<string, string> = {
@@ -1450,147 +1810,11 @@ function HomeScreen({
 
   return (
     <main className="fixed inset-0 bg-gray-950 text-white flex flex-col overflow-y-auto has-tabbar">
-      {/* ヘッダー(タブバー導入によりハンバーガーは廃止・ロゴ中央配置に統一) */}
+      {/* ヘッダー(タブバー導入によりハンバーガーは廃止・ロゴ中央配置に統一)
+          2026-10-01: 表示されていなかった旧ハンバーガーメニューのコードを削除。メニューの項目は AppMenuSheet の1か所だけで管理する */}
       <header className="sticky top-0 z-10 bg-gray-950/90 backdrop-blur-xl border-b border-white/5 px-4 py-3 flex items-center justify-center">
         <h1 className="text-lg font-extrabold brand-logo tracking-[0.2em]">ZERO-PAIN</h1>
       </header>
-
-      {/* ハンバーガーメニュー展開シート */}
-      {showMenu && (
-        <div
-          className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm flex items-start justify-end"
-          onClick={() => setShowMenu(false)}
-        >
-          <div
-            className="w-72 max-w-full h-full bg-gray-950 border-l border-white/10 p-4 space-y-2 overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-base font-bold">メニュー</p>
-              <button
-                onClick={() => setShowMenu(false)}
-                className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5"
-                aria-label="閉じる"
-              >
-                ✕
-              </button>
-            </div>
-
-            <button
-              onClick={() => { setShowMenu(false); onNavigate("coaching"); }}
-              className="card-accent-emerald w-full text-left p-3 flex items-center gap-3 active:scale-[0.98] transition"
-            >
-              <span className="text-2xl">🎯</span>
-              <div className="flex-1">
-                <p className="text-sm font-bold text-white">30日コーチング</p>
-                <p className="text-[11px] text-emerald-200">AIがあなた専用プランを生成</p>
-              </div>
-              <span className="text-emerald-300">›</span>
-            </button>
-
-            <button
-              onClick={() => { setShowMenu(false); onNavigate("family"); }}
-              className="card-accent-emerald w-full text-left p-3 flex items-center gap-3 active:scale-[0.98] transition"
-            >
-              <span className="text-2xl">👨‍👩‍👧</span>
-              <div className="flex-1">
-                <p className="text-sm font-bold text-white">家族プラン</p>
-                <p className="text-[11px] text-emerald-200">1契約で家族4人まで使える</p>
-              </div>
-              <span className="text-emerald-300">›</span>
-            </button>
-
-            <button
-              onClick={() => { setShowMenu(false); onNavigate("invite"); }}
-              className="card-accent-amber w-full text-left p-3 flex items-center gap-3 active:scale-[0.98] transition"
-            >
-              <span className="text-2xl">🎁</span>
-              <div className="flex-1">
-                <p className="text-sm font-bold text-white">友達を招待</p>
-                <p className="text-[11px] text-amber-200">招待成立で1ヶ月無料！</p>
-              </div>
-              <span className="text-amber-300">›</span>
-            </button>
-
-            <button
-              onClick={() => { setShowMenu(false); onNavigate("report"); }}
-              className="card-accent-indigo w-full text-left p-3 flex items-center gap-3 active:scale-[0.98] transition"
-            >
-              <span className="text-2xl">📊</span>
-              <div className="flex-1">
-                <p className="text-sm font-bold text-white">ガイコツ先生のレポート</p>
-                <p className="text-[11px] text-indigo-200">週次・月次の振り返り</p>
-              </div>
-              <span className="text-indigo-300">›</span>
-            </button>
-
-            <button
-              onClick={() => { setShowMenu(false); onNavigate("subscription"); }}
-              className="card-base w-full text-left p-3 flex items-center gap-3 active:scale-[0.98] transition"
-            >
-              <span className="text-2xl">👑</span>
-              <div className="flex-1">
-                <p className="text-sm font-bold text-white">プラン管理</p>
-                <p className="text-[11px] text-gray-400">サブスク状態・利用回数</p>
-              </div>
-              <span className="text-gray-500">›</span>
-            </button>
-
-            <a
-              href="/settings"
-              className="card-base w-full text-left p-3 flex items-center gap-3 active:scale-[0.98] transition"
-            >
-              <span className="text-2xl">⚙️</span>
-              <div className="flex-1">
-                <p className="text-sm font-bold text-white">設定</p>
-                <p className="text-[11px] text-gray-400">アカウント・データ管理</p>
-              </div>
-              <span className="text-gray-500">›</span>
-            </a>
-
-            <a
-              href="/support"
-              className="card-base w-full text-left p-3 flex items-center gap-3 active:scale-[0.98] transition"
-            >
-              <span className="text-2xl">💬</span>
-              <div className="flex-1">
-                <p className="text-sm font-bold text-white">サポート</p>
-                <p className="text-[11px] text-gray-400">FAQ・お問い合わせ</p>
-              </div>
-              <span className="text-gray-500">›</span>
-            </a>
-
-            <a
-              href="/privacy"
-              className="card-base w-full text-left p-3 flex items-center gap-3 active:scale-[0.98] transition"
-            >
-              <span className="text-2xl">🔒</span>
-              <div className="flex-1">
-                <p className="text-sm font-bold text-white">プライバシーポリシー</p>
-                <p className="text-[11px] text-gray-400">データ取扱いについて</p>
-              </div>
-              <span className="text-gray-500">›</span>
-            </a>
-
-            <a
-              href="/terms"
-              className="card-base w-full text-left p-3 flex items-center gap-3 active:scale-[0.98] transition"
-            >
-              <span className="text-2xl">📄</span>
-              <div className="flex-1">
-                <p className="text-sm font-bold text-white">利用規約</p>
-                <p className="text-[11px] text-gray-400">本アプリの利用条件</p>
-              </div>
-              <span className="text-gray-500">›</span>
-            </a>
-
-            <div className="pt-4 text-center">
-              <p className="text-[11px] text-gray-500">ZERO-PAIN</p>
-              <p className="text-[11px] text-gray-600">© 2026 TOPBANK.INC</p>
-            </div>
-          </div>
-        </div>
-      )}
 
       <div className="flex-1 px-4 py-5 space-y-5 max-w-md w-full mx-auto">
         {/* リマインダーアラート */}
@@ -1671,8 +1895,10 @@ function HomeScreen({
           onSelectSymptom={onSelectSymptom}
           morningNotifEnabled={morningNotifEnabled}
           onEnableMorningNotif={async () => {
-            await saveMorningNotifSettings(true, 8, 0);
-            setShowReminderSetting(true);
+            const ok = await saveMorningNotifSettings(true, 8, 0);
+            // 許可されたときだけ、時刻を変えられる通知設定を開く（許可されなかったときの案内はカードの中で出す）
+            if (ok) setShowReminderSetting(true);
+            return ok;
           }}
         />
 
@@ -1732,6 +1958,11 @@ function HomeScreen({
                   />
                 </button>
               </div>
+              {morningNotifDenied && !morningNotifEnabled && (
+                <p className="text-xs text-amber-400 leading-relaxed" role="alert">
+                  通知が許可されていないため、お知らせを届けられません。{notifAllowSteps()}、もう一度ここでオンにしてください。
+                </p>
+              )}
               {morningNotifEnabled && (
                 <div className="flex items-center gap-2 pt-1">
                   <p className="text-xs text-gray-400">通知時刻:</p>
@@ -2293,6 +2524,32 @@ const MessageBubble = memo(function MessageBubble({ msg }: { msg: ChatMessage })
   );
 });
 
+// 相談を使えない人（新規で上限0回・今月分を使い切った人）に出す、決まった文のあいさつ（CHAT_LOCKED_GREETING）は
+// lib/subscription.ts に置いている。/api/chat もあいさつの依頼が来たときに同じ文を返すため。
+
+// 上限で断られたときに、打った文を残しておく場所（料金プラン画面から戻ったときに入力欄へ戻す）
+const CHAT_DRAFT_KEY = "zero_pain_chat_draft";
+function saveChatDraft(text: string) {
+  try {
+    if (text.trim()) sessionStorage.setItem(CHAT_DRAFT_KEY, text);
+  } catch { /* 保存できない環境では、画面上の入力欄にだけ残す */ }
+}
+function takeChatDraft(): string | null {
+  try {
+    const d = sessionStorage.getItem(CHAT_DRAFT_KEY);
+    if (d) sessionStorage.removeItem(CHAT_DRAFT_KEY);
+    return d;
+  } catch {
+    return null;
+  }
+}
+
+/** streamChat が投げたエラーが 402 / limit_reached なら、その機能の上限回数を返す（それ以外は null） */
+function limitReachedOf(err: unknown): number | null {
+  const v = (err as { limitReached?: unknown } | null)?.limitReached;
+  return typeof v === "number" ? v : null;
+}
+
 function AiCounselScreen({
   onNavigate,
   onSelectSymptom,
@@ -2313,6 +2570,11 @@ function AiCounselScreen({
   const [attachedPhotoUrl, setAttachedPhotoUrl] = useState<string | null>(null);
   const [photoViewingBadge, setPhotoViewingBadge] = useState<string | null>(null);
   const [compareRequested, setCompareRequested] = useState(false);
+  // 上限に当たったときの料金プラン案内（null = 案内なし）。有料・トライアル中の人は常に null。
+  //  where "open"   : 開いた時点で使えない → 入力欄の代わりにカード（AIのあいさつは呼ばない）
+  //  where "send"   : 送信して 402 が返った → 先生の吹き出しとしてカード（打った文は入力欄に戻す）
+  //  where "compare": Before/After 比較で 402 が返った → 同上
+  const [chatLimit, setChatLimit] = useState<{ limit: number; where: "open" | "send" | "compare" } | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -2409,14 +2671,21 @@ function AiCounselScreen({
         }),
       });
 
-      // HTTP エラー(402 = クレジット不足、500等)を明示的に処理
+      // HTTP エラー(402 = 無料枠の上限、500等)を明示的に処理
       if (!res.ok) {
         let errMsg = `通信エラー (${res.status})`;
+        let limitReached: number | null = null;
         try {
           const errBody = await res.json();
           errMsg = errBody.error || errMsg;
+          // 402 / limit_reached はエラー文ではなく料金プランの案内カードを出すため、印を付けて投げる
+          if (res.status === 402 && errBody.error === "limit_reached") {
+            limitReached = typeof errBody.limit === "number" ? errBody.limit : 0;
+          }
         } catch { /* ignore */ }
-        throw new Error(errMsg);
+        const httpErr = new Error(errMsg) as Error & { limitReached?: number };
+        if (limitReached !== null) httpErr.limitReached = limitReached;
+        throw httpErr;
       }
       if (!res.body) throw new Error("レスポンスがありません");
 
@@ -2493,6 +2762,9 @@ function AiCounselScreen({
   // 初期ロード：過去のチャット履歴を復元 or 初回メッセージ送信
   useEffect(() => {
     async function initChat() {
+      // 0. 利用状況を確かめる（下の写真の確認と並行）。使えない人にはAIのあいさつを呼ばない
+      const limitPromise = checkPlanLimitReached("chat");
+
       // 食事相談モードの場合、履歴を読まずに食事写真付きで開始
       // 姿勢写真が存在するかを先に取得して、バッジ表示の判定に使う
       try {
@@ -2532,8 +2804,22 @@ function AiCounselScreen({
         /* ignore */
       }
 
+      const reached = await limitPromise;
+      if (reached) {
+        setChatLimit({ limit: reached.limit, where: "open" });
+      } else {
+        // 前に上限で断られたときの文が残っていれば、入力欄に戻す
+        const draft = takeChatDraft();
+        if (draft) setInput(draft);
+      }
+
       if (consultMeal) {
         onMealConsumed?.();
+        if (reached) {
+          setMessages([{ role: "assistant", content: CHAT_LOCKED_GREETING }]);
+          setHistoryLoaded(true);
+          return;
+        }
         setLoading(true);
         setMessages([{ role: "assistant", content: "" }]);
         setPhotoViewingBadge("食事写真");
@@ -2579,7 +2865,8 @@ function AiCounselScreen({
           setMessages(restored);
 
           // 前回から時間が経っている場合、さりげなく「お久しぶり」的な軽い挨拶を足す
-          if (data.resumeMode === "previous" && data.daysSinceLast > 0) {
+          // （使えない人＝reached には、答えられない問いかけになるので足さない。入力欄の代わりに案内カードを出す）
+          if (!reached && data.resumeMode === "previous" && data.daysSinceLast > 0) {
             const welcomeBack =
               data.daysSinceLast === 1
                 ? "おかえりなさい！昨日以来ですね。その後お体の調子はいかがですか？"
@@ -2588,7 +2875,7 @@ function AiCounselScreen({
               ...restored,
               { role: "assistant" as const, content: welcomeBack },
             ]);
-          } else if (data.resumeMode === "same_day" && data.hoursSinceLast >= 1) {
+          } else if (!reached && data.resumeMode === "same_day" && data.hoursSinceLast >= 1) {
             const welcomeBack = `先ほどに続きですね。お体の調子はいかがですか？`;
             setMessages([
               ...restored,
@@ -2604,6 +2891,12 @@ function AiCounselScreen({
       }
 
       // 2. 履歴がない or 失敗：初回メッセージをAIに生成させる
+      //    使えない人には、AIを呼ばずに決まった文のあいさつを出す（費用がかかるだけで先に進めないため）
+      if (reached) {
+        setMessages([{ role: "assistant", content: CHAT_LOCKED_GREETING }]);
+        setHistoryLoaded(true);
+        return;
+      }
       setLoading(true);
       setMessages([{ role: "assistant", content: "" }]);
       const streamedRef = { current: "" };
@@ -2701,6 +2994,17 @@ function AiCounselScreen({
 
       if (result.recommendedSymptomId) setRecommendedId(result.recommendedSymptomId);
     } catch (err) {
+      const reachedLimit = limitReachedOf(err);
+      if (reachedLimit !== null) {
+        // 上限: エラー文ではなく、先生の吹き出しで料金プランの案内カードを出す。
+        // 送ったことにはしない（比較の依頼と空の吹き出しを取り除く）
+        setMessages(newMessages.slice(0, -1));
+        setCompareRequested(false);
+        setPhotoViewingBadge(null);
+        setChatLimit({ limit: reachedLimit, where: "compare" });
+        setLoading(false);
+        return;
+      }
       const errMsg = err instanceof Error ? err.message : String(err);
       console.error("[chat compare] error:", errMsg, err);
       setMessages([
@@ -2725,6 +3029,8 @@ function AiCounselScreen({
     };
     const newMessages = [...messages, userMsg];
     setMessages([...newMessages, { role: "assistant", content: "" }]);
+    // 上限で断られたときに入力欄へ戻すため、打った文をそのまま控えておく
+    const typedText = input;
     setInput("");
     setLoading(true);
 
@@ -2756,7 +3062,22 @@ function AiCounselScreen({
       if (photoForThisSend) {
         setPhotoViewingBadge(null);
       }
+      // 送れたので、前に断られたときの控えと案内は片付ける
+      takeChatDraft();
+      setChatLimit(null);
     } catch (err) {
+      const reachedLimit = limitReachedOf(err);
+      if (reachedLimit !== null) {
+        // 上限: エラー文ではなく、先生の吹き出しで料金プランの案内カードを出す。
+        // 打った文（と添付した写真）は入力欄に戻し、料金プラン画面から戻ったときのためにも控えておく
+        setMessages(newMessages.slice(0, -1));
+        setInput(typedText);
+        setAttachedPhotoUrl(photoForThisSend);
+        saveChatDraft(typedText);
+        setChatLimit({ limit: reachedLimit, where: "send" });
+        setLoading(false);
+        return;
+      }
       const errMsg = err instanceof Error ? err.message : String(err);
       console.error("[chat] error:", errMsg, err);
       setMessages([
@@ -2825,6 +3146,25 @@ function AiCounselScreen({
             </div>
           </div>
         )}
+        {/* 送信して上限に当たったとき: エラー文の代わりに、先生の吹き出しで料金プランの案内 */}
+        {chatLimit && chatLimit.where !== "open" && (
+          <div className="flex justify-start">
+            <div className="max-w-[85%] w-full">
+              <p className="text-xs text-gray-400 mb-1 pl-1">💀 ガイコツ先生</p>
+              <PlanGuideCard
+                feature={chatLimit.where === "compare" ? "compare" : "chat"}
+                limit={chatLimit.limit}
+                onNavigate={onNavigate}
+                note={
+                  chatLimit.where === "send" && (input.trim() || attachedPhotoUrl)
+                    ? "入力した内容は、下の入力欄に残してあります。"
+                    : undefined
+                }
+                className="rounded-bl-md"
+              />
+            </div>
+          </div>
+        )}
         <div ref={chatEndRef} />
       </div>
 
@@ -2884,8 +3224,8 @@ function AiCounselScreen({
           </div>
         )}
 
-        {/* Before/After比較ボタン（まだ比較してない場合のみ表示） */}
-        {!compareRequested && !attachedPhotoUrl && messages.length >= 1 && (
+        {/* Before/After比較ボタン（まだ比較してない場合のみ表示。上限に当たっている間は出さない） */}
+        {!chatLimit && !compareRequested && !attachedPhotoUrl && messages.length >= 1 && (
           <div className="px-4 pt-2">
             <button
               onClick={requestCompare}
@@ -2898,39 +3238,46 @@ function AiCounselScreen({
           </div>
         )}
 
-        <div className="px-4 py-3 flex gap-2 items-end">
-          {/* カメラボタン */}
-          <button
-            onClick={() => cameraInputRef.current?.click()}
-            disabled={loading || uploadingPhoto}
-            aria-label="カメラで撮影"
-            className="w-11 h-11 flex-shrink-0 bg-gradient-to-br from-indigo-500 to-purple-600 hover:brightness-110 disabled:opacity-50 rounded-xl flex items-center justify-center active:scale-95 transition"
-          >
-            <span className="text-xl">{uploadingPhoto ? "⏳" : "📷"}</span>
-          </button>
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (
-                e.key === "Enter" &&
-                !("isComposing" in e.nativeEvent && e.nativeEvent.isComposing)
-              )
-                sendMessage();
-            }}
-            placeholder={attachedPhotoUrl ? "写真について質問（任意）..." : "お悩みを入力..."}
-            className="flex-1 px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-blue-500 text-sm"
-            disabled={loading}
-          />
-          <button
-            onClick={sendMessage}
-            disabled={loading || (!input.trim() && !attachedPhotoUrl)}
-            className="px-4 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 rounded-xl font-semibold text-sm"
-          >
-            送信
-          </button>
-        </div>
+        {chatLimit?.where === "open" ? (
+          // 開いた時点で使えない人: 入力欄の代わりに料金プランの案内カード（料金プラン画面へ移すだけ）
+          <div className="px-4 py-3">
+            <PlanGuideCard feature="chat" limit={chatLimit.limit} onNavigate={onNavigate} />
+          </div>
+        ) : (
+          <div className="px-4 py-3 flex gap-2 items-end">
+            {/* カメラボタン */}
+            <button
+              onClick={() => cameraInputRef.current?.click()}
+              disabled={loading || uploadingPhoto}
+              aria-label="カメラで撮影"
+              className="w-11 h-11 flex-shrink-0 bg-gradient-to-br from-indigo-500 to-purple-600 hover:brightness-110 disabled:opacity-50 rounded-xl flex items-center justify-center active:scale-95 transition"
+            >
+              <span className="text-xl">{uploadingPhoto ? "⏳" : "📷"}</span>
+            </button>
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (
+                  e.key === "Enter" &&
+                  !("isComposing" in e.nativeEvent && e.nativeEvent.isComposing)
+                )
+                  sendMessage();
+              }}
+              placeholder={attachedPhotoUrl ? "写真について質問（任意）..." : "お悩みを入力..."}
+              className="flex-1 px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-blue-500 text-sm"
+              disabled={loading}
+            />
+            <button
+              onClick={sendMessage}
+              disabled={loading || (!input.trim() && !attachedPhotoUrl)}
+              className="px-4 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 rounded-xl font-semibold text-sm"
+            >
+              送信
+            </button>
+          </div>
+        )}
       </div>
     </main>
   );
@@ -3517,7 +3864,19 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   const [landmarks, setLandmarks] = useState<Landmark[]>([]);
   const [saved, setSaved] = useState(false);
   const [photoSaved, setPhotoSaved] = useState(false);
+  // iPhone / Android アプリでは <a download> の保存が効かない（data: URL を受け取る仕組みが無い）。
+  // 押しても何も残らないのに「保存済み」と出てしまうので、アプリでは「写真に保存」を出さない。
+  // この画面は "loading" → "check" と移ってから描かれる（サーバーでは描かれない）ので、ここで判定してよい
+  const isNativeApp = nativePlatformName() !== null;
   const [showFirstCheckCelebration, setShowFirstCheckCelebration] = useState(false);
+  // 「アプリに保存」の結果待ち・失敗。保存の返事を待ってから「保存しました」とお祝いを出すため
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  // やり直しのときに同じ写真を二重にアップロードしないよう、アップロード済みのURLを覚えておく
+  const uploadedImageUrlRef = useRef("");
+  // 未課金で今月の無料分を使い切った人の、今月の無料枠（新規=1回・旧ユーザー=3回）。null なら保存できる（または未確認）
+  const [postureLimit, setPostureLimit] = useState<number | null>(null);
   const [captureStep, setCaptureStep] = useState<"front" | "side" | "done">("front");
   const captureStepRef = useRef<"front" | "side" | "done">("front");
   const [frontDiagnosis, setFrontDiagnosis] = useState<DiagnosisItem[]>([]);
@@ -3538,6 +3897,16 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   const countdownRef = useRef<number | null>(null);
   const lastSpokenRef = useRef("");
   const readyCountRef = useRef(0);
+
+  // 開いた時点で、今月まだ記録できるかを確かめる（2分かけて撮ったあとで断らず、準備画面で先に伝えるため）。
+  // 有料・トライアル中・読み込み失敗のときは null のまま（案内は出さない）
+  useEffect(() => {
+    let cancelled = false;
+    checkPlanLimitReached("posture").then((r) => {
+      if (!cancelled && r) setPostureLimit(r.limit);
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   // MediaPipe初期化 (VIDEO mode)
   useEffect(() => {
@@ -3881,36 +4250,84 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
     setLoading(false);
   }, []);
 
+  // 「アプリに保存」: サーバーの返事を待ってから「保存しました」とお祝いを出す。
+  // 以前は保存を送りっぱなしにしていたため、402（無料分の使い切り）で記録が入らなくても
+  // お祝いが出て、Before写真を開くと「記録がありません」になっていた。
   const handleSave = useCallback(async () => {
     const canvas = canvasRef.current;
-    if (!canvas || landmarks.length === 0) return;
-    const imageData = canvas.toDataURL("image/jpeg", 0.7);
-    addRecord(SELF_ID, landmarks, diagnosis, imageData);
-
-    // Supabase Storageに画像をアップロード
-    let imageUrl = "";
+    if (!canvas || landmarks.length === 0 || savingRef.current) return;
+    // 二度押しで2回分数えられる（新規は2回目が断られる）のを防ぐ
+    savingRef.current = true;
+    setSaving(true);
+    setSaveError(null);
+    const SAVE_FAILED = "保存できませんでした。通信の状態を確かめて、もう一度「アプリに保存」を押してください。";
     try {
-      const uploadRes = await fetch("/api/upload", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageData, deviceId: getDeviceId() }),
-      });
-      const uploadData = await uploadRes.json();
-      if (uploadData.url) imageUrl = uploadData.url;
-    } catch { /* アップロード失敗時は空文字で続行 */ }
-
-    saveToDb({ type: "posture", landmarks, diagnosis, imageUrl });
-    setSaved(true);
-
-    // 🎉 初回の姿勢チェックなら祝福演出を表示
-    if (typeof window !== "undefined") {
-      const pending = localStorage.getItem("zero_pain_first_check_pending");
-      if (pending === "1") {
-        localStorage.removeItem("zero_pain_first_check_pending");
-        // 祝福済みの印。オンボーディングを再度通っても二重に出さないため。
-        localStorage.setItem("zero_pain_first_check_done", "1");
-        setShowFirstCheckCelebration(true);
+      // 1. 先に今月まだ記録できるかを確かめる。断られる人の写真はアップロードしない
+      //    ただし、前回の保存を送ったあとのやり直し（アップロード済みの写真URLがある）では確かめない。
+      //    前回の保存がサーバーに届いて回数だけ数えられていると、ここで「使い切り」と判定され、
+      //    記録できているのに案内カードが出てしまう（新規の方は月1回なので必ずこうなる）。
+      //    やり直しは同じ写真URLで送るので、サーバーは同じ記録なら数えずに ok を返し、
+      //    本当に使い切っていれば 402 を返す（下の limit_reached で案内カードに切り替わる）。
+      if (!uploadedImageUrlRef.current) {
+        const reached = await checkPlanLimitReached("posture");
+        if (reached) {
+          setPostureLimit(reached.limit);
+          return;
+        }
       }
+
+      // 2. Supabase Storageに画像をアップロード（やり直しのときは、前にアップロードできた写真を使う）
+      const imageData = canvas.toDataURL("image/jpeg", 0.7);
+      let imageUrl = uploadedImageUrlRef.current;
+      if (!imageUrl) {
+        try {
+          const uploadRes = await fetch("/api/upload", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ imageData, deviceId: getDeviceId() }),
+          });
+          const uploadData = await uploadRes.json();
+          if (uploadData.url) imageUrl = uploadData.url;
+        } catch { /* 下で失敗として扱う */ }
+        // 写真なしの記録は Before/After に出ない（before-after は image_url のある記録だけを読む）。
+        // 今月の無料分を写真なしで使ってしまわないよう、ここで止めてやり直してもらう
+        if (!imageUrl) {
+          setSaveError(SAVE_FAILED);
+          return;
+        }
+        uploadedImageUrlRef.current = imageUrl;
+      }
+
+      // 3. 記録を保存し、返事を待つ
+      const result = await savePostureToDb({ landmarks, diagnosis, imageUrl });
+      if (result.status === "limit_reached") {
+        // お祝いは出さず、案内カードに切り替える（初回のお祝いの印も残しておき、次に保存できたときに出す）
+        setPostureLimit(result.limit);
+        return;
+      }
+      if (result.status === "error") {
+        setSaveError(SAVE_FAILED);
+        return;
+      }
+
+      // 4. サーバーに保存できたときだけ、このスマホにも記録して「保存しました」を出す
+      //    （履歴の件数と Before/After が食い違わないように）
+      addRecord(SELF_ID, landmarks, diagnosis, imageData);
+      setSaved(true);
+
+      // 🎉 初回の姿勢チェックなら祝福演出を表示
+      if (typeof window !== "undefined") {
+        const pending = localStorage.getItem("zero_pain_first_check_pending");
+        if (pending === "1") {
+          localStorage.removeItem("zero_pain_first_check_pending");
+          // 祝福済みの印。オンボーディングを再度通っても二重に出さないため。
+          localStorage.setItem("zero_pain_first_check_done", "1");
+          setShowFirstCheckCelebration(true);
+        }
+      }
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
     }
   }, [landmarks, diagnosis]);
 
@@ -3930,6 +4347,8 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
     setLandmarks([]);
     setError(null);
     setSaved(false);
+    setSaveError(null);
+    uploadedImageUrlRef.current = "";
     setPhotoSaved(false);
     setGuideMode(false);
     setCountdown(null);
@@ -4014,6 +4433,16 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
             );
           })}
 
+          {/* 今月の無料分を使い切った未課金の人にだけ、撮る前に伝える（有料・トライアル中の人には出ない） */}
+          {postureLimit !== null && (
+            <PlanGuideCard
+              feature="posture"
+              limit={postureLimit}
+              onNavigate={onNavigate}
+              note="撮影して、その場で結果を見ることはできます（アプリへの記録はできません）。"
+            />
+          )}
+
           <button
             onClick={() => setShowPrep(false)}
             className="btn-primary w-full px-5 py-4 text-base font-bold mt-2"
@@ -4091,11 +4520,15 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
           </>
         ) : (
           <>
-            <button onClick={reset} className="flex-1 px-4 py-3 bg-gray-600 hover:bg-gray-700 rounded-lg font-semibold text-sm">もう一度</button>
-            {diagnosis.length > 0 && !saved && (
-              <button onClick={handleSave} className="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 rounded-lg font-semibold text-sm">アプリに保存</button>
+            {/* 保存の返事を待っている間は押せない（やり直した画面に前の保存結果が出ないように） */}
+            <button onClick={reset} disabled={saving} className="flex-1 px-4 py-3 bg-gray-600 hover:bg-gray-700 disabled:opacity-50 rounded-lg font-semibold text-sm">もう一度</button>
+            {/* 今月の無料分を使い切った人には、必ず断られる保存ボタンを出さない（下に案内カードを出す） */}
+            {diagnosis.length > 0 && !saved && postureLimit === null && (
+              <button onClick={handleSave} disabled={saving} className="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 rounded-lg font-semibold text-sm">
+                {saving ? "保存中..." : "アプリに保存"}
+              </button>
             )}
-            {diagnosis.length > 0 && (
+            {diagnosis.length > 0 && !isNativeApp && (
               <button onClick={handleSavePhoto} className="flex-1 px-4 py-3 bg-orange-600 hover:bg-orange-700 rounded-lg font-semibold text-sm">
                 {photoSaved ? "保存済み" : "写真に保存"}
               </button>
@@ -4105,7 +4538,24 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
       </div>
 
       {saved && <p className="text-green-400 mt-2 text-sm">アプリに保存しました</p>}
-      {photoSaved && <p className="text-orange-400 mt-1 text-sm">写真をダウンロードしました</p>}
+      {saveError && !saved && <p className="text-red-400 mt-2 text-sm w-full max-w-md text-center">{saveError}</p>}
+      {photoSaved && !isNativeApp && <p className="text-orange-400 mt-1 text-sm">写真をダウンロードしました</p>}
+
+      {/* 保存が断られた（今月の無料分を使い切った）未課金の人だけに出す。お祝いの代わり */}
+      {diagnosis.length > 0 && !saved && postureLimit !== null && (
+        <PlanGuideCard
+          feature="posture"
+          limit={postureLimit}
+          onNavigate={onNavigate}
+          // 料金プラン画面の「← 戻る」はホームへ行くので、この結果の画面には戻れない。先に伝えておく
+          note={
+            isNativeApp
+              ? "アプリへの記録はできませんが、結果はこの画面の下で確認できます。料金プラン画面へ移ると、この結果の画面は閉じます。残したいときは、先にこの画面のスクリーンショットを撮ってください。"
+              : "アプリへの記録はできませんが、結果はこの画面の下で確認できます。料金プラン画面へ移ると、この結果の画面は閉じます。残したいときは、先に「写真に保存」を押してください。"
+          }
+          className="w-full max-w-md mt-3"
+        />
+      )}
 
       {saved && (
         <button onClick={() => onNavigate("history")} className="mt-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg font-semibold text-sm">
@@ -4180,6 +4630,8 @@ function CheckScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
 }
 
 // ==================== 🎉 初回姿勢チェック祝福モーダル ====================
+// 「Before写真として保存されました」と書くので、出すのは /api/save が ok を返し、
+// 写真つきの記録がサーバーに入ったあとだけ（CheckScreen の handleSave）。402 や失敗では出さない。
 function FirstCheckCelebrationModal({
   onClose,
   onGoHome,
@@ -4576,19 +5028,60 @@ type StreakData = {
   dateMap: Record<string, boolean>;
 };
 
-// ストリーク維持のための夜リマインダー通知をスケジュール（控えめ・1日1回）
+// ストリーク維持のための夜リマインダー通知を予約（控えめ・毎日20:30に1回。ID=2）
+// 予約の書き方は scheduleDailyLocalNotification を参照。ここでは許可のダイアログを出さない
+// （許可は、体調チェックのあとの「明日も忘れないように」で説明してから求める）。
+// Web では予約できないので何もしない（以前はここでブラウザの通知許可を求めていたが、ホームを開いた瞬間に出るのでやめた）。
+/**
+ * 今この人が、姿勢チェックか食事記録のどちらかを記録できるか（夜の通知の文を選ぶため）。
+ * 有料・トライアル中、または未課金でも今月の無料分が残っていれば true。
+ * 読み込みに失敗したときも true（今までどおりの文にする）。
+ */
+async function canRecordPostureOrMealNow(): Promise<boolean> {
+  try {
+    const deviceId = getDeviceId();
+    const res = await fetch(
+      `/api/subscription?deviceId=${encodeURIComponent(deviceId || "")}&t=${Date.now()}`,
+      { cache: "no-store" }
+    );
+    if (!res.ok) return true;
+    const s = (await res.json()) as Partial<SubscriptionState>;
+    if (s.isPaid) return true;
+    const hasLeft = (f: "posture" | "meal") => {
+      const limit = s.limits?.[f];
+      if (typeof limit !== "number") return true;
+      return (s.usage?.[f] ?? 0) < limit;
+    };
+    return hasLeft("posture") || hasLeft("meal");
+  } catch {
+    return true;
+  }
+}
+
 async function scheduleStreakReminder(data: StreakData) {
   if (typeof window === "undefined") return;
+  // Web では予約できないので、利用状況の読み込みもしない
+  if (nativePlatformName() === null) return;
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const cap = (window as any).Capacitor;
-    const isNative = cap?.isNativePlatform?.() === true;
-
-    // メッセージは状況に応じて変化
+    // メッセージは状況に応じて変化（次にホームを開いて予約し直すまでは、同じ文が毎晩届く）
     let title: string;
     let body: string;
 
-    if (data.currentStreak > 0 && !data.activeToday) {
+    // 誰でも（新規の未課金の方も）使える体調チェックをすすめる文。
+    // 連続記録（/api/streak）は姿勢・食事・相談だけを数え、体調チェックは数えないので、
+    // この文では「連続記録」「食事記録」には触れない（新規の方は食事が有料・姿勢は月1回のため）。
+    const CHECKIN_TITLE = "🌱 ZERO-PAINで健康習慣";
+    const CHECKIN_BODY = "明日の朝は、体調チェックで今の調子をガイコツ先生に伝えてみましょう";
+
+    // 連続記録が続いている人には、続けるための文を出す。ただし今は姿勢チェックも食事記録も
+    // できない人（未課金で今月の無料分を使い切った人。新規の方は姿勢チェック月1回を使ったあと）に
+    // 「今日中に姿勢チェックか食事記録を」と毎晩すすめると、できないことを求め続けるので、体調チェックの文にする
+    const canRecord = data.currentStreak > 0 ? await canRecordPostureOrMealNow() : true;
+
+    if (data.currentStreak > 0 && !canRecord) {
+      title = CHECKIN_TITLE;
+      body = CHECKIN_BODY;
+    } else if (data.currentStreak > 0 && !data.activeToday) {
       // 危機：今日まだ記録なし
       title = `⚠️ ${data.currentStreak}日連続記録が途絶えそう！`;
       body = `今日中に姿勢チェックか食事記録を1つすれば${data.currentStreak + 1}日連続達成です 🔥`;
@@ -4601,59 +5094,20 @@ async function scheduleStreakReminder(data: StreakData) {
           ? `次のバッジ「${data.nextBadge.title}」まであと${daysToNext}日です ${data.nextBadge.emoji}`
           : `素晴らしい継続力です！明日も楽しく記録しましょう ✨`;
     } else {
-      title = "🌱 ZERO-PAINで健康習慣";
-      body = "今日の姿勢チェックや食事記録をして連続記録を始めましょう！";
+      // まだ連続記録が無い人（新規の方の多くはここ）。以前は「今日の姿勢チェックや食事記録をして
+      // 連続記録を始めましょう！」で、新規の方には使えない食事記録をすすめていた
+      title = CHECKIN_TITLE;
+      body = CHECKIN_BODY;
     }
 
-    // 今日の20:30（JST）を計算
-    const now = new Date();
-    const target = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-      20,
-      30,
-      0
-    );
-    // すでに過ぎていたら翌日に
-    if (target.getTime() <= now.getTime()) {
-      target.setDate(target.getDate() + 1);
-    }
-
-    if (isNative) {
-      // Capacitor環境（iOSネイティブ）
-      const { LocalNotifications } = await import(
-        "@capacitor/local-notifications"
-      );
-      // 既存のストリーク通知（ID: 2）をキャンセル
-      await LocalNotifications.cancel({ notifications: [{ id: 2 }] });
-      // 権限チェック
-      const perm = await LocalNotifications.requestPermissions();
-      if (perm.display !== "granted") return;
-      await LocalNotifications.schedule({
-        notifications: [
-          {
-            id: 2,
-            title,
-            body,
-            schedule: {
-              at: target,
-              repeats: true,
-              every: "day",
-            },
-            sound: "default",
-          },
-        ],
-      });
-    } else {
-      // Web環境: Notification API（ページ閉じられていると届かないので簡易版）
-      if (!("Notification" in window)) return;
-      if (Notification.permission === "default") {
-        await Notification.requestPermission();
-      }
-      // Web環境は通知スケジュールできないので、次回訪問時にチェックする方式にする
-      // ここでは権限要求だけ
-    }
+    // 毎日20:30（端末の時刻）に1回。まだ許可されていない人には予約しない（ダイアログも出さない）
+    await scheduleDailyLocalNotification({
+      id: STREAK_NOTIF_ID,
+      title,
+      body,
+      hour: 20,
+      minute: 30,
+    });
   } catch (err) {
     console.warn("[streak] reminder scheduling failed:", err);
   }
@@ -4716,10 +5170,14 @@ function StreakCard() {
     };
   }, [fetchStreak]);
 
-  // ストリーク維持のための夜リマインダー通知（1日1回 20:30）
+  // ストリーク維持のための夜リマインダー通知（1日1回 20:30）。許可済みの人だけ予約される
   useEffect(() => {
     if (!data) return;
     scheduleStreakReminder(data);
+    // 体調チェックのあとの「明日も忘れないように」で通知が許可されたら、その場で夜の通知も予約する
+    const onGranted = () => { scheduleStreakReminder(data); };
+    window.addEventListener(NOTIF_PERMISSION_GRANTED_EVENT, onGranted);
+    return () => window.removeEventListener(NOTIF_PERMISSION_GRANTED_EVENT, onGranted);
   }, [data]);
 
   if (!data) return null;
@@ -5145,7 +5603,8 @@ function MorningCheckinCard({
   onNavigate: (s: Screen) => void;
   onSelectSymptom: (id: SelectableSymptomId) => void;
   morningNotifEnabled: boolean;
-  onEnableMorningNotif: () => Promise<void>;
+  /** 朝の通知をオンにする（ここで初めて通知の許可を求める）。通知を届けられる状態になれば true */
+  onEnableMorningNotif: () => Promise<boolean>;
 }) {
   const [loading, setLoading] = useState(true);
   const [hasToday, setHasToday] = useState(false);
@@ -5155,13 +5614,29 @@ function MorningCheckinCard({
   const [selectedMood, setSelectedMood] = useState<number | null>(null);
   const [bodyNote, setBodyNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  // 二度押しで2回送らないための印（state の反映を待たずに止める）
+  const submittingRef = useRef(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [showNoteInput, setShowNoteInput] = useState(false);
   const [showNudge, setShowNudge] = useState(false);
   const [enablingNotif, setEnablingNotif] = useState(false);
+  // 「朝8時に通知」を押したが、スマホ側で通知が許可されなかった（設定アプリでの許可を案内する）
+  const [notifDenied, setNotifDenied] = useState(false);
+  // 登録直後の案内から来たときに、このカードを見える位置へ出して枠を光らせる
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [spotlight, setSpotlight] = useState(false);
+  // 姿勢の記録がまだ1件も無い人にだけ、返事のあとに「次の一歩」として姿勢チェックを案内する
+  const [hasPostureRecord] = useState(() => getRecords(SELF_ID).length > 0);
 
   // 通知誘導バナーの表示判定（チェックイン後 + 通知未設定 + 7日以内に却下されていない）
+  // 通知の許可は、ホームを開いた瞬間ではなく、ここ（体調チェックを終えたあと）で説明してから求める。
+  // Web（ブラウザ）では毎朝の通知を予約できないので出さない
   useEffect(() => {
     if (!hasToday) return;
+    if (nativePlatformName() === null) {
+      setShowNudge(false);
+      return;
+    }
     if (morningNotifEnabled) {
       setShowNudge(false);
       return;
@@ -5182,9 +5657,16 @@ function MorningCheckinCard({
 
   const enableNotif = async () => {
     setEnablingNotif(true);
+    setNotifDenied(false);
     try {
-      await onEnableMorningNotif();
-      setShowNudge(false);
+      const ok = await onEnableMorningNotif();
+      if (ok) {
+        setShowNudge(false);
+      } else {
+        // 許可されなかった: バナーは残し、中身を「設定アプリで許可する方法」に切り替える
+        setNotifDenied(true);
+        setShowNudge(true);
+      }
     } finally {
       setEnablingNotif(false);
     }
@@ -5214,30 +5696,100 @@ function MorningCheckinCard({
     loadStatus();
   }, [loadStatus]);
 
-  const submit = async () => {
-    if (!selectedMood) return;
+  // 登録直後の案内（OnboardingScreen）から来たときだけ: カードが見える位置までスクロールし、6秒ほど枠を光らせる。
+  // 痛み予測などの上のカードはあとから読み込まれてカードが下へずれることがあるので、少し時間をおいて2回確かめる。
+  // お客様が自分で画面を触ったら、それ以上は動かさない。
+  useEffect(() => {
+    if (loading) return;
+    let wanted = false;
+    try {
+      wanted = sessionStorage.getItem(CHECKIN_FOCUS_KEY) === "1";
+    } catch { /* 読めない環境では何もしない */ }
+    if (!wanted) return;
+
+    let userTouched = false;
+    const markTouched = () => { userTouched = true; };
+    window.addEventListener("touchstart", markTouched, { passive: true });
+    window.addEventListener("wheel", markTouched, { passive: true });
+
+    const bringIntoView = () => {
+      const el = cardRef.current;
+      if (!el || userTouched) return;
+      const r = el.getBoundingClientRect();
+      // 上は固定のヘッダー、下はタブバーに隠れる分を見込む
+      if (r.top < 60 || r.bottom > window.innerHeight - 90) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    };
+    const timers = [
+      window.setTimeout(() => {
+        // 印は実際に使うときに消す（開発時の二重実行で先に消えてしまわないように）
+        try { sessionStorage.removeItem(CHECKIN_FOCUS_KEY); } catch { /* 無視 */ }
+        setSpotlight(true);
+        bringIntoView();
+      }, 50),
+      window.setTimeout(bringIntoView, 900),
+      window.setTimeout(bringIntoView, 2200),
+    ];
+    return () => {
+      timers.forEach((t) => window.clearTimeout(t));
+      window.removeEventListener("touchstart", markTouched);
+      window.removeEventListener("wheel", markTouched);
+    };
+  }, [loading]);
+
+  // 枠の強調は6秒ほどで消す
+  useEffect(() => {
+    if (!spotlight) return;
+    const t = window.setTimeout(() => setSpotlight(false), 6000);
+    return () => window.clearTimeout(t);
+  }, [spotlight]);
+
+  // 気分を押した瞬間に送る（1タップ）。ひとことメモは、先に書いてあれば一緒に送る。
+  const submit = async (moodLevel: number) => {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    setSelectedMood(moodLevel);
+    setSubmitError(null);
     setSubmitting(true);
     try {
       const deviceId = getDeviceId();
+      // サーバーは60文字を超えると断る（400）。iPhone の日本語入力では変換中に maxLength を超えることがあるので、
+      // 送る前に60文字で切っておく（末尾で絵文字の片割れが残らないようにする）
+      let note = bodyNote.trim();
+      if (note.length > 60) note = note.slice(0, 60).replace(/[\uD800-\uDBFF]$/, "");
       const res = await fetch("/api/checkin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           deviceId,
-          moodLevel: selectedMood,
-          bodyNote: bodyNote.trim() || undefined,
+          moodLevel,
+          bodyNote: note || undefined,
         }),
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.detail || err.error || "保存に失敗しました");
+      if (res.status === 409) {
+        // 今日はすでに送ってあった（別の画面や端末など）。今日の返事を読み直して表示する
+        await loadStatus();
+        return;
       }
-      await loadStatus();
+      if (!res.ok) {
+        throw new Error(`checkin failed: ${res.status}`);
+      }
+      const data = await res.json().catch(() => ({}));
+      if (data && data.checkin) {
+        // 返ってきた記録をそのまま表示する（読み直すと読み込み中の表示がはさまり、カードがちらつくため）
+        setCheckin(data.checkin as CheckinData);
+        setHasToday(true);
+      } else {
+        await loadStatus();
+      }
       setBodyNote("");
       setShowNoteInput(false);
-    } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+    } catch {
+      setSelectedMood(null);
+      setSubmitError("送れませんでした。通信の状態を確かめて、もう一度押してください。");
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   };
@@ -5258,13 +5810,16 @@ function MorningCheckinCard({
     }
   }, [userName, daysSinceRegistration]);
 
-  const moodOptions: Array<{ level: number; emoji: string; label: string; color: string }> = [
-    { level: 1, emoji: "😫", label: "つらい", color: "from-red-600/30 to-red-700/20 border-red-500/50" },
-    { level: 2, emoji: "😕", label: "いまいち", color: "from-orange-600/30 to-orange-700/20 border-orange-500/50" },
-    { level: 3, emoji: "😐", label: "普通", color: "from-gray-600/30 to-gray-700/20 border-gray-500/50" },
-    { level: 4, emoji: "🙂", label: "いい", color: "from-emerald-600/30 to-emerald-700/20 border-emerald-500/50" },
-    { level: 5, emoji: "😄", label: "絶好調", color: "from-yellow-500/30 to-amber-600/20 border-yellow-400/60" },
+  // color: 送ったあとのカードの色 ／ tile: 5つのボタンの色（灰色だと押せない部品に見えるので、最初から気分ごとの色を付ける。
+  // 半透明の色なので、明るい表示でも黒い表示でも同じクラスで色が出る）
+  const moodOptions: Array<{ level: number; emoji: string; label: string; color: string; tile: string }> = [
+    { level: 1, emoji: "😫", label: "つらい", color: "from-red-600/30 to-red-700/20 border-red-500/50", tile: "bg-red-500/20 border-red-500/60" },
+    { level: 2, emoji: "😕", label: "いまいち", color: "from-orange-600/30 to-orange-700/20 border-orange-500/50", tile: "bg-orange-500/20 border-orange-500/60" },
+    { level: 3, emoji: "😐", label: "普通", color: "from-gray-600/30 to-gray-700/20 border-gray-500/50", tile: "bg-sky-500/20 border-sky-500/60" },
+    { level: 4, emoji: "🙂", label: "いい", color: "from-emerald-600/30 to-emerald-700/20 border-emerald-500/50", tile: "bg-emerald-500/20 border-emerald-500/60" },
+    { level: 5, emoji: "😄", label: "絶好調", color: "from-yellow-500/30 to-amber-600/20 border-yellow-400/60", tile: "bg-yellow-400/30 border-yellow-500/70" },
   ];
+  const spotlightClass = spotlight ? "ring-4 ring-amber-400 transition-shadow" : "transition-shadow";
 
   if (loading) {
     return (
@@ -5279,7 +5834,7 @@ function MorningCheckinCard({
   if (hasToday && checkin) {
     const moodInfo = moodOptions.find((m) => m.level === checkin.mood_level);
     return (
-      <div className={`relative overflow-hidden rounded-2xl p-4 border bg-gradient-to-br ${moodInfo?.color || "from-gray-800 to-gray-900 border-gray-700"}`}>
+      <div ref={cardRef} className={`relative overflow-hidden rounded-2xl p-4 border bg-gradient-to-br ${moodInfo?.color || "from-gray-800 to-gray-900 border-gray-700"} ${spotlightClass}`}>
         <div className="flex items-start gap-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -5330,15 +5885,49 @@ function MorningCheckinCard({
           </div>
         )}
 
-        {/* 🔔 通知誘導バナー（通知未設定 + 一度だけ表示） */}
-        {showNudge && (
+        {/* 次の一歩: 姿勢の記録がまだ無い人だけ（新規の方も月1回まで記録できる。回数の判定は撮影画面が行う） */}
+        {!hasPostureRecord && (
+          <button
+            onClick={() => onNavigate("check")}
+            className="mt-3 w-full bg-black/30 hover:bg-black/50 border border-white/10 rounded-xl px-3 py-2.5 flex items-center justify-between transition active:scale-[0.98]"
+          >
+            <div className="text-left">
+              <p className="text-xs text-gray-300 font-bold">次の一歩</p>
+              <p className="text-sm font-bold text-white">姿勢を記録してみる</p>
+              <p className="text-xs text-gray-300">全身を2枚撮るだけ。月1回が目安です</p>
+            </div>
+            <span className="text-emerald-400 text-lg">→</span>
+          </button>
+        )}
+
+        {/* 🔔 通知誘導バナー（通知未設定 + 一度だけ表示）。通知の許可は、ここで説明してから求める */}
+        {showNudge && notifDenied && (
+          <div className="mt-3 bg-gradient-to-r from-indigo-600/30 to-purple-600/20 border border-indigo-400/40 rounded-xl p-3 space-y-2" role="alert">
+            <div className="flex items-start gap-2">
+              <span className="text-xl">🔕</span>
+              <div className="flex-1">
+                <p className="text-xs font-bold text-indigo-300">通知が許可されていません</p>
+                <p className="text-xs text-gray-300 mt-0.5 leading-relaxed">
+                  {notifAllowSteps()}、ホームの下にある「通知設定」でオンにしてください。
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={dismissNudge}
+              className="w-full py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-xs text-gray-400"
+            >
+              閉じる
+            </button>
+          </div>
+        )}
+        {showNudge && !notifDenied && (
           <div className="mt-3 bg-gradient-to-r from-indigo-600/30 to-purple-600/20 border border-indigo-400/40 rounded-xl p-3 space-y-2">
             <div className="flex items-start gap-2">
               <span className="text-xl">🔔</span>
               <div className="flex-1">
                 <p className="text-xs font-bold text-indigo-300">明日も忘れないように</p>
-                <p className="text-[11px] text-gray-300 mt-0.5">
-                  朝8時に通知を届けましょう。ガイコツ先生があなたをお待ちします。
+                <p className="text-xs text-gray-300 mt-0.5 leading-relaxed">
+                  毎朝8時に「今日の体調は？」のお知らせを1回お届けします（夜8時半にも、記録のお知らせが1回届きます）。確認の画面が出たら「許可」を押してください。
                 </p>
               </div>
             </div>
@@ -5364,8 +5953,9 @@ function MorningCheckinCard({
   }
 
   // ========= 今日まだチェックインしていない =========
+  // 気分を押した瞬間に送る（1タップ）。ひとことメモを添えたい人は、先にメモ欄を開いて書いてから気分を押す。
   return (
-    <div className="relative overflow-hidden rounded-2xl p-4 border border-amber-500/40 bg-gradient-to-br from-amber-500/15 via-orange-600/10 to-yellow-500/15">
+    <div ref={cardRef} className={`relative overflow-hidden rounded-2xl p-4 border border-amber-500/40 bg-gradient-to-br from-amber-500/15 via-orange-600/10 to-yellow-500/15 ${spotlightClass}`}>
       <div className="flex items-start gap-3 mb-3">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -5378,60 +5968,71 @@ function MorningCheckinCard({
             ☀️ 今日のコンディションチェック
           </p>
           <p className="text-sm text-white leading-tight font-semibold">{greeting}</p>
-          <p className="text-[11px] text-gray-300 mt-1">
-            今日の体調はどうですか？1タップでOK
+          <p className="text-xs text-gray-300 mt-1 leading-snug">
+            今日の体調はどうですか？押すとすぐ、ガイコツ先生に届きます
           </p>
         </div>
       </div>
 
-      {/* 5段階ボタン */}
+      {/* 5段階ボタン（押した瞬間に送る。最初から気分ごとの色を付け、文字は12px） */}
       <div className="grid grid-cols-5 gap-1.5 mb-2">
-        {moodOptions.map((m) => (
-          <button
-            key={m.level}
-            onClick={() => setSelectedMood(m.level)}
-            disabled={submitting}
-            className={`py-2.5 rounded-xl border-2 flex flex-col items-center gap-0.5 transition active:scale-95 ${
-              selectedMood === m.level
-                ? `bg-gradient-to-br ${m.color} shadow-lg`
-                : "bg-gray-900/40 border-gray-700"
-            }`}
-          >
-            <span className="text-xl">{m.emoji}</span>
-            <span className="text-[10px] text-gray-300 font-bold leading-none">{m.label}</span>
-          </button>
-        ))}
+        {moodOptions.map((m) => {
+          const isPicked = selectedMood === m.level;
+          return (
+            <button
+              key={m.level}
+              onClick={() => submit(m.level)}
+              disabled={submitting}
+              aria-label={`今日の体調「${m.label}」を先生に送る`}
+              className={`py-2.5 rounded-xl border-2 flex flex-col items-center gap-1 transition active:scale-95 ${m.tile} ${
+                submitting ? (isPicked ? "shadow-lg scale-105" : "opacity-40") : "shadow-sm"
+              }`}
+            >
+              <span className="text-xl">{m.emoji}</span>
+              <span className="text-xs text-white font-bold leading-none whitespace-nowrap">{m.label}</span>
+            </button>
+          );
+        })}
       </div>
 
-      {/* 一言メモ（オプション） */}
-      {!showNoteInput && selectedMood && (
+      {/* 送っている間の表示（AIの返事を作るので数秒かかる） */}
+      {submitting && (
+        <p className="text-xs text-amber-400 font-bold text-center py-1.5" aria-live="polite">
+          ガイコツ先生が見立て中...（数秒かかります）
+        </p>
+      )}
+      {submitError && !submitting && (
+        <p className="text-xs text-red-400 text-center py-1" role="alert">
+          {submitError}
+        </p>
+      )}
+
+      {/* ひとことメモ（任意）。気分を押すと一緒に送られるので、書くなら先に書いてもらう */}
+      {!submitting && !showNoteInput && (
         <button
           onClick={() => setShowNoteInput(true)}
-          className="w-full text-[11px] text-gray-400 py-1.5 underline"
+          className="w-full text-xs text-gray-400 py-1.5 underline"
         >
-          + 体の部位など一言を追加（任意）
+          + 気になる部位などを一言そえる（任意）
         </button>
       )}
       {showNoteInput && (
-        <input
-          type="text"
-          value={bodyNote}
-          onChange={(e) => setBodyNote(e.target.value)}
-          placeholder="例: 朝から首が痛い / 肩が凝っている"
-          maxLength={60}
-          className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white mb-2 placeholder-gray-600"
-        />
-      )}
-
-      {/* 送信ボタン */}
-      {selectedMood && (
-        <button
-          onClick={submit}
-          disabled={submitting}
-          className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 disabled:opacity-50 rounded-xl text-sm font-bold text-white shadow-lg active:scale-[0.98] transition"
-        >
-          {submitting ? "ガイコツ先生が見立て中..." : "✨ ガイコツ先生に見てもらう"}
-        </button>
+        <div className="mt-1">
+          <input
+            type="text"
+            value={bodyNote}
+            onChange={(e) => setBodyNote(e.target.value)}
+            disabled={submitting}
+            placeholder="例: 朝から首が痛い / 肩が凝っている"
+            maxLength={60}
+            className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white placeholder-gray-600"
+          />
+          {!submitting && (
+            <p className="text-xs text-gray-400 mt-1.5 text-center">
+              書いたら、上の気分を押すと一緒に届きます
+            </p>
+          )}
+        </div>
       )}
     </div>
   );
@@ -6228,6 +6829,18 @@ function MealScreen({
   const [records, setRecords] = useState<MealRecord[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // 食事の写真分析を今使えない人（新規で上限0回・今月分を使い切った人）の上限回数。null = 使える／有料・トライアル中。
+  // 撮ってから断る流れをなくすため、開いた時点で判定して「撮影する」の代わりに案内カードを出す
+  const [mealLimit, setMealLimit] = useState<number | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    checkPlanLimitReached("meal").then((r) => {
+      if (!cancelled && r) setMealLimit(r.limit);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const MAX_TOTAL_DISHES = 6;
   const totalDishCount = 1 + additionalDishes.length;
@@ -6256,7 +6869,11 @@ function MealScreen({
       const data = await res.json();
       if (!res.ok) {
         if (res.status === 402 && data.error === "limit_reached") {
-          throw new Error(`__LIMIT_REACHED__${data.message || "無料プランの上限に達しました"}`);
+          // 開いた時点の判定をすり抜けた場合（判定の読み込み前に撮った等）も、エラーではなく案内カードを出す
+          setMealLimit(typeof data.limit === "number" ? data.limit : 0);
+          setPreviewUrl(null);
+          setMode("home");
+          return;
         }
         const detail = data.detail ? `\n詳細: ${data.detail}` : "";
         throw new Error(`${data.error || "分析に失敗しました"}${detail}`);
@@ -6373,6 +6990,16 @@ function MealScreen({
       setError("メニュー名を入力してから再計算してください");
       return;
     }
+    // サーバーは「自分の食事記録」の再計算だけを受け付ける（直す対象の記録の id を送る）
+    if (!analysisRecordId) {
+      setError("保存対象のレコードがありません。撮影し直してください。");
+      return;
+    }
+    // サーバー（/api/meal/reanalyze）の上限と同じ。超える名前は AI に送らない
+    if (editDraft.menu_name.trim().length > 80) {
+      setError("メニュー名は80文字以内で入力してください");
+      return;
+    }
     setReanalyzing(true);
     setError(null);
     try {
@@ -6380,6 +7007,8 @@ function MealScreen({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          deviceId: getDeviceId(),
+          recordId: analysisRecordId,
           menu_name: editDraft.menu_name,
           meal_type: editDraft.meal_type,
         }),
@@ -6585,22 +7214,9 @@ function MealScreen({
             </p>
           </div>
 
-          {error && !error.startsWith("__LIMIT_REACHED__") && (
+          {error && (
             <div className="bg-red-500/20 border border-red-500/40 rounded-xl px-4 py-3 text-sm text-red-300">
               ⚠️ {error}
-            </div>
-          )}
-          {error && error.startsWith("__LIMIT_REACHED__") && (
-            <div className="bg-gradient-to-br from-amber-500/20 to-yellow-600/10 border border-amber-500/40 rounded-2xl px-4 py-4 space-y-3">
-              <p className="text-sm text-amber-200">
-                🎁 {error.replace("__LIMIT_REACHED__", "")}
-              </p>
-              <button
-                onClick={() => onNavigate("subscription")}
-                className="w-full px-4 py-3 bg-gradient-to-r from-amber-500 to-yellow-600 rounded-xl text-sm font-bold"
-              >
-                👑 プラン画面を開く
-              </button>
             </div>
           )}
 
@@ -6613,41 +7229,48 @@ function MealScreen({
             className="hidden"
           />
 
-          {/* 食事区分の選択（撮影前に必ず選ぶ） */}
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4">
-            <p className="text-xs text-gray-400 mb-2.5">📍 どの食事を記録しますか？</p>
-            <div className="grid grid-cols-4 gap-2">
-              {(
-                [
-                  { type: "朝食", emoji: "🌅", color: "amber" },
-                  { type: "昼食", emoji: "☀️", color: "yellow" },
-                  { type: "夕食", emoji: "🌙", color: "indigo" },
-                  { type: "間食", emoji: "🍩", color: "pink" },
-                ] as const
-              ).map(({ type, emoji }) => (
-                <button
-                  key={type}
-                  onClick={() => setSelectedMealType(type)}
-                  className={`py-2.5 rounded-xl font-bold flex flex-col items-center gap-0.5 border-2 transition ${
-                    selectedMealType === type
-                      ? "bg-emerald-600 border-emerald-400 text-white"
-                      : "bg-gray-800 border-gray-700 text-gray-400"
-                  }`}
-                >
-                  <span className="text-xl">{emoji}</span>
-                  <span className="text-xs">{type}</span>
-                </button>
-              ))}
-            </div>
-          </div>
+          {mealLimit !== null ? (
+            // 今使えない人: 食事区分の選択と「撮影する」の代わりに料金プランの案内カード（料金プラン画面へ移すだけ）
+            <PlanGuideCard feature="meal" limit={mealLimit} onNavigate={onNavigate} />
+          ) : (
+            <>
+              {/* 食事区分の選択（撮影前に必ず選ぶ） */}
+              <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4">
+                <p className="text-xs text-gray-400 mb-2.5">📍 どの食事を記録しますか？</p>
+                <div className="grid grid-cols-4 gap-2">
+                  {(
+                    [
+                      { type: "朝食", emoji: "🌅", color: "amber" },
+                      { type: "昼食", emoji: "☀️", color: "yellow" },
+                      { type: "夕食", emoji: "🌙", color: "indigo" },
+                      { type: "間食", emoji: "🍩", color: "pink" },
+                    ] as const
+                  ).map(({ type, emoji }) => (
+                    <button
+                      key={type}
+                      onClick={() => setSelectedMealType(type)}
+                      className={`py-2.5 rounded-xl font-bold flex flex-col items-center gap-0.5 border-2 transition ${
+                        selectedMealType === type
+                          ? "bg-emerald-600 border-emerald-400 text-white"
+                          : "bg-gray-800 border-gray-700 text-gray-400"
+                      }`}
+                    >
+                      <span className="text-xl">{emoji}</span>
+                      <span className="text-xs">{type}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="btn-primary w-full px-5 py-6 flex items-center justify-center gap-3"
-          >
-            <span className="text-3xl">📷</span>
-            <span className="text-lg font-bold">{selectedMealType}を撮影する</span>
-          </button>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="btn-primary w-full px-5 py-6 flex items-center justify-center gap-3"
+              >
+                <span className="text-3xl">📷</span>
+                <span className="text-lg font-bold">{selectedMealType}を撮影する</span>
+              </button>
+            </>
+          )}
 
           {/* プロフィール & 目標（重要） */}
           <button
@@ -8196,6 +8819,8 @@ type SubscriptionState = {
   status: "free" | "trial" | "active_monthly" | "active_yearly" | "cancelled" | "expired";
   isPaid: boolean;
   isTrial: boolean;
+  /** 2026-09-13 より前に登録した方（無料枠が残る）。/api/subscription が返す */
+  isLegacyUser?: boolean;
   trialEndsAt: string | null;
   currentPeriodEnd: string | null;
   usage: { posture: number; chat: number; meal: number };
@@ -8216,8 +8841,15 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
   // ===== IAP (iOS / Android native のみ) =====
   const [iapReady, setIapReady] = useState(false);
   const [iapPackages, setIapPackages] = useState<PurchasesPackage[]>([]);
+  // 商品ID → 無料体験が付くか（true/false/null=分からない）。false の商品だけボタンから無料の行を外す
+  const [trialEligibility, setTrialEligibility] = useState<Record<string, boolean | null>>({});
   const isIOS = isNativeIAP(); // ストア課金が使えるか(iOS/Android)
   const isAndroid = nativePlatformName() === "android"; // 開示文言の出し分け用
+
+  // 効果測定: 料金プラン画面を開いた
+  useEffect(() => {
+    trackEvent("subscription_view");
+  }, []);
 
   useEffect(() => {
     if (!isIOS) return;
@@ -8227,6 +8859,8 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
       const pkgs = await getAvailablePackages();
       setIapPackages(pkgs);
       setIapReady(true);
+      // ストアのお試しは1回だけ。使ったことがある人のボタンに「無料トライアル付き」を出さないために調べる
+      setTrialEligibility(await getTrialEligibility(pkgs));
     })();
   }, [isIOS]);
 
@@ -8236,7 +8870,12 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
       const deviceId = getDeviceId();
       const res = await fetch(`/api/subscription?deviceId=${encodeURIComponent(deviceId || "")}`);
       const data = await res.json();
-      if (res.ok) setState(data);
+      if (res.ok) {
+        setState(data);
+      } else {
+        // サーバーが読み込みに失敗した（500）ときは、何も出さずに空の画面にしない
+        setError("プラン情報の取得に失敗しました。通信の良いところで、画面を開き直してください。");
+      }
     } catch {
       setError("プラン情報の取得に失敗しました");
     } finally {
@@ -8248,8 +8887,36 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
     loadState();
   }, [loadState]);
 
+  // 購入・復元の直後に呼ぶ。購入の記録（RevenueCat の Webhook）はすぐには届かないため、
+  // サーバーから RevenueCat に直接問い合わせて有料に書き換えてもらい、
+  // それでも無料のままなら数秒おきに読み直す（2026-10-01: 払ったのに「無料プラン」と出るのを防ぐ）
+  const refreshAfterPurchase = async () => {
+    const deviceId = getDeviceId();
+    for (let i = 0; i < 6; i++) {
+      try {
+        const res = await fetch("/api/subscription/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ deviceId, platform: nativePlatformName() }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.isPaid) {
+            setState(data);
+            return;
+          }
+        }
+      } catch {
+        // 通信の失敗は次の回でやり直す
+      }
+      await new Promise((r) => setTimeout(r, 2000));
+    }
+    await loadState();
+  };
+
   // iOS ネイティブ: RevenueCat 経由で購入
-  // planType -> App Store の Product ID マッピング（exact match で誤マッチを防ぐ）
+  // planType -> ストアの Product ID マッピング（exact match で誤マッチを防ぐ。
+  // Android は identifier が「商品ID:ベースプランID」なので baseProductId で「:」より前を取り出してから比べる）
   const IAP_PRODUCT_IDS: Record<
     "monthly" | "yearly" | "family_monthly" | "family_yearly",
     string
@@ -8268,6 +8935,19 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
     family_monthly: "家族月額",
     family_yearly: "家族年額",
   };
+  // そのプランのボタンに無料体験の行を出すか。付かないと分かった人（使ったことがある等）にだけ出さない。
+  // 分からない時（ブラウザ・判定前・判定できない）は「はじめての方は」の条件付きで出す
+  const showTrialFor = (
+    planType: "monthly" | "yearly" | "family_monthly" | "family_yearly"
+  ) => trialEligibility[IAP_PRODUCT_IDS[planType]] !== false;
+  // どれか1つのプランにでも無料体験が付きうるか。全プランで「付かない」と分かった人
+  // （無料体験を使ったことがある等）には、上の緑の枠（◯月◯日まで無料・◯時までに解約すれば…）と
+  // 特典リストの「はじめての方は7日間無料トライアル付き」を出さない。ボタンだけ「お申し込み時から課金」に
+  // なって、同じ画面の上で無料の締め切りを示す食い違いを防ぐ。
+  // 商品を読み込む前・ブラウザ（iapPackages が空）は、分からないので「はじめての方は」の条件付きで出す
+  const anyTrial =
+    iapPackages.length === 0 ||
+    Object.values(IAP_PRODUCT_IDS).some((id) => trialEligibility[id] !== false);
 
   const buyViaIAP = async (
     planType: "monthly" | "yearly" | "family_monthly" | "family_yearly"
@@ -8277,14 +8957,17 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
     setMessage(null);
     try {
       const targetId = IAP_PRODUCT_IDS[planType];
-      const pkg = iapPackages.find((p) => p.product.identifier === targetId);
+      // Android の identifier は「商品ID:ベースプランID」なので、「:」より前で比べる（iOS はそのまま）
+      const pkg = iapPackages.find((p) => baseProductId(p.product.identifier) === targetId);
       if (!pkg) {
         throw new Error("商品が見つかりません。しばらくしてからお試しください。");
       }
+      // 効果測定: ストアの購入画面へ進んだ（このあと購入するかキャンセルするかはストア側で決まる）
+      trackEvent("purchase_start", { plan: planType });
       const result = await purchasePackage(pkg);
       if (result.success) {
         setMessage(`✅ ${PLAN_LABELS[planType]}プランを開始しました！`);
-        await loadState();
+        await refreshAfterPurchase();
       } else if (result.error) {
         setError(result.error);
       }
@@ -8306,7 +8989,7 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
         setError(result.error);
       } else if (result.isPremium) {
         setMessage("✅ プレミアムプランを復元しました");
-        await loadState();
+        await refreshAfterPurchase();
       } else {
         setMessage("過去のご購入は見つかりませんでした");
       }
@@ -8345,14 +9028,31 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
 
   // 無料期間の締め切りを「◯月◯日」で具体的に示す。
   // Apple / Google とも自動更新を止める条件は「終了の24時間前まで」なので、
-  // 解約の締め切りは終了日の前日として案内する(安全側に倒す)。
+  // 解約の締め切りは「終了の24時間前」の日時で案内する。
+  // 日付だけ（「10月7日までに」）だと、締め切りはお申し込みと同じ時刻なのに、その日の夜に解約して
+  // 請求されてしまう。時刻を付け、分は切り捨てて「◯時までに」と出す（実際の締め切りより早め＝安全側）。
   const DAY_MS = 24 * 60 * 60 * 1000;
   const formatMonthDay = (d: Date) => `${d.getMonth() + 1}月${d.getDate()}日`;
+  const formatMonthDayHour = (d: Date) => `${formatMonthDay(d)} ${d.getHours()}時`;
   const trialEndIfStartNow = new Date(Date.now() + TRIAL_DAYS * DAY_MS);
   const cancelByIfStartNow = new Date(trialEndIfStartNow.getTime() - DAY_MS);
-  const storeName = isAndroid ? "Google Play" : "App Store";
   // ストア課金が使える環境か（ブラウザで開いている場合は false）
   const isNativeStore = isIOS;
+  // ブラウザではどちらのストアか分からないので両方を書く（以前は Android の方にも「App Store」と出ていた）
+  const storeName = !isNativeStore ? "App Store / Google Play" : isAndroid ? "Google Play" : "App Store";
+
+  // 上限0回の機能（2026-09-13 以降の新規で、無料枠のない機能）。
+  // 「0 / 0」の赤い棒は「もう使い切った」「壊れている」に見えるので、利用状況には出さず
+  // 「有料プランの機能です」の1行にまとめる。旧ユーザー（月3/5/3回）は今までどおり棒で出す。
+  const usageItems: { label: string; usage: number; limit: number | "unlimited" }[] = state
+    ? [
+        { label: "姿勢チェック", usage: state.usage.posture, limit: state.limits.posture },
+        { label: "AIチャット", usage: state.usage.chat, limit: state.limits.chat },
+        { label: "食事分析", usage: state.usage.meal, limit: state.limits.meal },
+      ]
+    : [];
+  const usageRowsToShow = usageItems.filter((i) => i.limit === "unlimited" || i.limit > 0);
+  const paidOnlyLabels = usageItems.filter((i) => i.limit !== "unlimited" && i.limit <= 0).map((i) => i.label);
 
   const statusLabel: Record<SubscriptionState["status"], string> = {
     free: "無料プラン",
@@ -8372,7 +9072,8 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
         >
           ← 戻る
         </button>
-        <h1 className="text-lg font-bold">👑 プラン管理</h1>
+        {/* メニュー「料金プラン・7日間無料体験」・案内カードの「料金プランを見る」と名前をそろえる */}
+        <h1 className="text-lg font-bold">👑 料金プラン</h1>
       </div>
 
       <div className="w-full max-w-md space-y-4">
@@ -8402,7 +9103,7 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
                     {formatMonthDay(new Date(state.trialEndsAt))}まで無料です
                   </p>
                   <p className="text-xs text-gray-300 leading-relaxed">
-                    {formatMonthDay(
+                    {formatMonthDayHour(
                       new Date(new Date(state.trialEndsAt).getTime() - DAY_MS)
                     )}
                     までに解約すれば、料金は一切かかりません。解約は{storeName}の「サブスクリプション」からいつでもできます。
@@ -8416,25 +9117,31 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
               )}
             </div>
 
-            {/* 今月の利用状況 */}
+            {/* 今月の利用状況（無料枠のある機能だけ棒で出す。上限0回の機能は「有料プランの機能です」の1行） */}
             {!state.isPaid && (
               <div className="card-base p-4">
-                <p className="text-xs text-gray-400 mb-3 font-bold tracking-wide">今月の利用状況</p>
-                <UsageRow
-                  label="姿勢チェック"
-                  usage={state.usage.posture}
-                  limit={state.limits.posture}
-                />
-                <UsageRow
-                  label="AIチャット"
-                  usage={state.usage.chat}
-                  limit={state.limits.chat}
-                />
-                <UsageRow
-                  label="食事分析"
-                  usage={state.usage.meal}
-                  limit={state.limits.meal}
-                />
+                {usageRowsToShow.length > 0 && (
+                  <>
+                    <p className="text-xs text-gray-400 mb-3 font-bold tracking-wide">今月の利用状況</p>
+                    {usageRowsToShow.map((item) => (
+                      <UsageRow
+                        key={item.label}
+                        label={item.label}
+                        usage={item.usage}
+                        limit={item.limit}
+                      />
+                    ))}
+                  </>
+                )}
+                {paidOnlyLabels.length > 0 && (
+                  <p
+                    className={`text-sm text-gray-200 leading-relaxed ${
+                      usageRowsToShow.length > 0 ? "mt-3 pt-3 border-t border-gray-800" : ""
+                    }`}
+                  >
+                    {paidOnlyLabels.join("・")}は、有料プランの機能です{anyTrial ? `（はじめての方は${TRIAL_DAYS}日間無料体験つき）` : ""}。
+                  </p>
+                )}
               </div>
             )}
 
@@ -8467,20 +9174,35 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
                         ? `（無料プランは月${state.limits.meal}回）`
                         : ""}
                     </li>
-                    <li>✅ {TRIAL_DAYS}日間無料トライアル付き・いつでも解約OK</li>
+                    {anyTrial ? (
+                      <li>✅ はじめての方は{TRIAL_DAYS}日間無料トライアル付き・いつでも解約OK</li>
+                    ) : (
+                      <li>✅ いつでも解約OK</li>
+                    )}
                   </ul>
                 </div>
 
-                {/* 無料期間の締め切りを具体的な日付で示す（不安をいちばん減らせる場所） */}
-                <div className="card-base p-4 space-y-1 border-emerald-500/40">
-                  <p className="text-sm font-bold text-emerald-300">
-                    今日お申し込みなら、{formatMonthDay(trialEndIfStartNow)}まで無料です
-                  </p>
-                  <p className="text-xs text-gray-300 leading-relaxed">
-                    {formatMonthDay(cancelByIfStartNow)}
-                    までに解約すれば、料金は一切かかりません。解約は{storeName}の「サブスクリプション」からいつでもできます。
-                  </p>
-                </div>
+                {/* 無料期間の締め切りを具体的な日付で示す（不安をいちばん減らせる場所）。
+                    「無料」だけが目に入って「無料と言われたのに課金された」とならないよう、
+                    無料期間のあとの金額と自動更新もここに書く（App Store 3.1.2: 請求額を購入前に分かる形で）。
+                    ストアのお試しは初回だけなので「はじめての方は」を付ける。
+                    全プランで無料体験が付かないと分かった人（anyTrial=false）には出さない。 */}
+                {anyTrial && (
+                  <div className="card-base p-4 space-y-1 border-emerald-500/40">
+                    <p className="text-sm font-bold text-emerald-300">
+                      はじめての方は、今日お申し込みなら{formatMonthDay(trialEndIfStartNow)}まで無料です
+                    </p>
+                    {/* 同じ日付を「まで無料」と「からは有料」の両方に出すと、その日が無料か有料か読み取れないため、
+                        ここには日付を書かない。日時は次の行の解約の締め切りだけに出す */}
+                    <p className="text-xs text-gray-200 leading-relaxed">
+                      無料期間が終わると自動で有料に切り替わり、月880円（年額なら8,800円）かかります。家族プランは月1,380円（年額なら13,800円）です。
+                    </p>
+                    <p className="text-xs text-gray-300 leading-relaxed">
+                      {formatMonthDayHour(cancelByIfStartNow)}
+                      までに解約すれば、料金はかかりません。解約は{storeName}の「サブスクリプション」からいつでもできます。
+                    </p>
+                  </div>
+                )}
 
                 {/* サブスクリプション法的リンク（App Store Guideline 3.1.2(c) 対応） */}
                 <div className="card-base px-4 py-3 text-[11px] text-gray-300 leading-relaxed space-y-2 border-emerald-500/30">
@@ -8509,7 +9231,9 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
                 </div>
 
                 {/* App Store Guideline 3.1.2(c) 対応: 独立した「7日間無料で試す」ボタンを削除し、
-                    各プランボタンに「7日間無料トライアル付き」を統合（自動更新サブスクの認識を明確にするため） */}
+                    各プランボタンに「7日間無料トライアル付き」を統合（自動更新サブスクの認識を明確にするため）。
+                    ストアのお試しは同じ定期購入グループで1回だけなので「はじめての方は」を付け、
+                    付かないと分かった人（showTrialFor=false）には無料の行を出さず「お申し込み時から課金」と書く */}
 
                 {/* 月額プラン */}
                 <button
@@ -8519,10 +9243,16 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
                 >
                   <div>
                     <p className="text-sm font-bold text-white">月額プラン</p>
-                    <p className="text-xs text-emerald-300 mt-0.5">{TRIAL_DAYS}日間無料トライアル付き</p>
-                    <p className="text-[10px] text-gray-400 mt-0.5">トライアル後は自動で月額課金、いつでも解約可能</p>
+                    {showTrialFor("monthly") && (
+                      <p className="text-xs text-emerald-300 mt-0.5">はじめての方は{TRIAL_DAYS}日間無料トライアル付き</p>
+                    )}
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {showTrialFor("monthly")
+                        ? "（はじめての方は）トライアル後は自動で月額課金、いつでも解約可能"
+                        : "お申し込み時から月額課金・自動更新、いつでも解約可能"}
+                    </p>
                   </div>
-                  <p className="text-lg font-extrabold text-white">
+                  <p className="text-lg font-extrabold text-white whitespace-nowrap shrink-0 ml-3">
                     ¥880<span className="text-xs font-normal text-gray-400">/月</span>
                   </p>
                 </button>
@@ -8538,10 +9268,16 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
                   </span>
                   <div>
                     <p className="text-sm font-bold text-white">年額プラン ⭐ おすすめ</p>
-                    <p className="text-xs text-emerald-300 mt-0.5">{TRIAL_DAYS}日間無料トライアル付き</p>
-                    <p className="text-[10px] text-indigo-300 mt-0.5">月額換算 ¥733（17%オフ）・トライアル後は自動で年額課金</p>
+                    {showTrialFor("yearly") && (
+                      <p className="text-xs text-emerald-300 mt-0.5">はじめての方は{TRIAL_DAYS}日間無料トライアル付き</p>
+                    )}
+                    <p className="text-xs text-indigo-300 mt-0.5">
+                      {showTrialFor("yearly")
+                        ? "月額換算 ¥733（17%オフ）・（はじめての方は）トライアル後は自動で年額課金"
+                        : "月額換算 ¥733（17%オフ）・お申し込み時から年額課金・自動更新"}
+                    </p>
                   </div>
-                  <p className="text-lg font-extrabold text-white">
+                  <p className="text-lg font-extrabold text-white whitespace-nowrap shrink-0 ml-3">
                     ¥8,800<span className="text-xs font-normal text-gray-400">/年</span>
                   </p>
                 </button>
@@ -8561,10 +9297,16 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
                 >
                   <div>
                     <p className="text-sm font-bold text-white">家族月額プラン</p>
-                    <p className="text-xs text-emerald-300 mt-0.5">{TRIAL_DAYS}日間無料トライアル付き</p>
-                    <p className="text-[10px] text-emerald-200/80 mt-0.5">最大4人まで使える・トライアル後は自動で月額課金</p>
+                    {showTrialFor("family_monthly") && (
+                      <p className="text-xs text-emerald-300 mt-0.5">はじめての方は{TRIAL_DAYS}日間無料トライアル付き</p>
+                    )}
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {showTrialFor("family_monthly")
+                        ? "最大4人まで使える・（はじめての方は）トライアル後は自動で月額課金"
+                        : "最大4人まで使える・お申し込み時から月額課金・自動更新"}
+                    </p>
                   </div>
-                  <p className="text-lg font-extrabold text-white">
+                  <p className="text-lg font-extrabold text-white whitespace-nowrap shrink-0 ml-3">
                     ¥1,380<span className="text-xs font-normal text-gray-400">/月</span>
                   </p>
                 </button>
@@ -8580,10 +9322,16 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
                   </span>
                   <div>
                     <p className="text-sm font-bold text-white">家族年額プラン</p>
-                    <p className="text-xs text-emerald-300 mt-0.5">{TRIAL_DAYS}日間無料トライアル付き</p>
-                    <p className="text-[10px] text-emerald-200/80 mt-0.5">月額換算 ¥1,150・最大4人・トライアル後は自動で年額課金</p>
+                    {showTrialFor("family_yearly") && (
+                      <p className="text-xs text-emerald-300 mt-0.5">はじめての方は{TRIAL_DAYS}日間無料トライアル付き</p>
+                    )}
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {showTrialFor("family_yearly")
+                        ? "月額換算 ¥1,150・最大4人・（はじめての方は）トライアル後は自動で年額課金"
+                        : "月額換算 ¥1,150・最大4人・お申し込み時から年額課金・自動更新"}
+                    </p>
                   </div>
-                  <p className="text-lg font-extrabold text-white">
+                  <p className="text-lg font-extrabold text-white whitespace-nowrap shrink-0 ml-3">
                     ¥13,800<span className="text-xs font-normal text-gray-400">/年</span>
                   </p>
                 </button>
@@ -8673,8 +9421,32 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
                 以前は「Web版ではテスト用のサブスク管理を行っています」と書いていたが、
                 ブラウザからの申し込みは廃止したため実態と合わなくなった（2026-09-21）。 */}
             {!isIOS && (
-              <div className="card-base px-4 py-3 text-[11px] text-gray-500 leading-relaxed">
-                ℹ️ お申し込みはアプリ（App Store / Google Play）からのみ承っています。ブラウザからはご利用状況の確認のみ行えます。
+              <div className="card-base px-4 py-3 text-[11px] text-gray-500 leading-relaxed space-y-2">
+                <p>
+                  ℹ️ お申し込みはアプリ（App Store / Google Play）からのみ承っています。ブラウザからはご利用状況の確認のみ行えます。
+                </p>
+                {/* 文字だけだと行き止まりになるので、ストアのアプリページを開くリンクを置く（購入ボタンではない）。
+                    有料・トライアル中の方の表示は変えない。 */}
+                {!state.isPaid && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <a
+                      href={APP_STORE_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-2.5 bg-gray-800 rounded-xl text-xs font-bold text-center"
+                    >
+                      App Storeで入手
+                    </a>
+                    <a
+                      href={GOOGLE_PLAY_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-2.5 bg-gray-800 rounded-xl text-xs font-bold text-center"
+                    >
+                      Google Playで入手
+                    </a>
+                  </div>
+                )}
               </div>
             )}
           </>
@@ -8693,9 +9465,11 @@ function UsageRow({
   usage: number;
   limit: number | "unlimited";
 }) {
-  const max = limit === "unlimited" ? 999 : limit;
-  const pct = limit === "unlimited" ? 0 : Math.min(100, (usage / max) * 100);
-  const isFull = limit !== "unlimited" && usage >= limit;
+  // 上限0のとき 0÷0（NaN）で幅の指定が効かず、棒が端まで赤く伸びていた。
+  // 0以下は割らずに 0% とし、「使い切り」の赤も付けない（上限0の機能は呼ぶ側で出さない）。
+  const pct =
+    limit === "unlimited" || limit <= 0 ? 0 : Math.min(100, (usage / limit) * 100);
+  const isFull = limit !== "unlimited" && limit > 0 && usage >= limit;
   return (
     <div className="mb-2.5 last:mb-0">
       <div className="flex items-center justify-between mb-1">
@@ -8747,6 +9521,8 @@ type ReportData = {
     advice: string;
     nextGoal: string;
   } | null;
+  /** 新規の未課金の方には、サーバーが AI の振り返り文を作らない（数字の集計だけ）。そのときの印 */
+  aiLocked?: boolean;
   generatedAt?: string;
 };
 
@@ -8912,6 +9688,22 @@ function ReportScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
               </div>
             )}
 
+            {/* 新規の未課金の方: 振り返り文（AI）は作らず、数字の集計だけを出す。何が無いのかを1行で伝える
+                （購入ボタンは置かず、料金プラン画面へ移すだけ） */}
+            {!data.report && data.aiLocked && (
+              <div className="card-base p-4 space-y-3">
+                <p className="text-sm text-gray-200 leading-relaxed">
+                  ガイコツ先生の振り返りコメントは、有料プランでご利用いただけます（はじめての方は{TRIAL_DAYS}日間無料体験つき）。下の数字の集計は、このままご覧いただけます。
+                </p>
+                <button
+                  onClick={() => onNavigate("subscription")}
+                  className="w-full px-4 py-3 bg-gradient-to-r from-amber-500 to-yellow-600 rounded-xl text-sm font-bold active:scale-[0.98] transition"
+                >
+                  料金プランを見る
+                </button>
+              </div>
+            )}
+
             {/* 統計サマリー */}
             <div className="card-base p-4 space-y-3">
               <p className="text-[11px] text-gray-400 font-bold tracking-wide">
@@ -9003,13 +9795,13 @@ function StatBlock({
 }
 
 // ==================== 友達招待画面 ====================
+// 2026-10-01: 「獲得無料月数」(bonusFreeMonths) と Web版の共有URL (shareUrl) は使わなくなったので削除。
+// 紹介文のURLはストアのページ（APP_STORE_URL / GOOGLE_PLAY_URL）にする
 type InviteData = {
   code: string;
   useCount: number;
   totalInvited: number;
-  bonusFreeMonths: number;
   createdAt: string;
-  shareUrl: string;
 };
 
 // ==================== 📸 Before/After 比較画面 ====================
@@ -9080,7 +9872,11 @@ function BeforeAfterScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) 
       const delta = data.summary.scoreDelta;
       const days = data.summary.daysBetween;
       const deltaText = delta >= 0 ? `+${delta}点` : `${delta}点`;
-      const shareText = `ZERO-PAINで${days}日間姿勢ケアを続けた結果、姿勢スコアが${data.first.score}点→${data.latest.score}点（${deltaText}）になりました！\n\nカイロプラクター監修の無料AI姿勢チェックアプリ、ZERO-PAINはこちら👇`;
+      // 2026-10-01: 「無料AI姿勢チェックアプリ」をやめる。新規の方の無料は姿勢チェックの月N回だけなので、
+      // 無料と書くときは範囲を付ける（回数は FREE_LIMITS から取り、0回になったら書かない）
+      const freePostureNote =
+        FREE_LIMITS.posture > 0 ? `（姿勢チェックは月${FREE_LIMITS.posture}回まで無料）` : "";
+      const shareText = `ZERO-PAINで${days}日間姿勢ケアを続けた結果、姿勢スコアが${data.first.score}点→${data.latest.score}点（${deltaText}）になりました！\n\nカイロプラクター監修のAI姿勢チェックアプリ、ZERO-PAIN${freePostureNote}はこちら👇`;
 
       // Web Share API
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -9147,15 +9943,18 @@ function BeforeAfterScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) 
                 alt="Before"
                 className="w-full aspect-[3/4] object-cover rounded-xl border-2 border-emerald-500/40"
               />
+              {/* 2026-10-01: 新規の未課金の方は姿勢チェックが月1回までで、この1件で今月分を使い切っている。
+                  「今すぐ姿勢チェックする」を出すと、押した直後に「今月の無料分を使い切りました」と断られるため、
+                  ホームの「次は来月ごろでOK」とそろえて、間をあけてからの記録をすすめ、ボタンはホームへ戻すだけにする */}
               <p className="text-xs text-amber-300 mt-3">
-                💡 もう1回以上、姿勢チェックをすると<br />
-                Before / After の比較が見られるようになります。
+                💡 1か月ほどあけて、もう一度記録すると<br />
+                Before / After を比べられます（月1回が目安です）。
               </p>
               <button
-                onClick={() => onNavigate("check")}
+                onClick={() => onNavigate("home")}
                 className="btn-primary w-full py-3"
               >
-                📷 今すぐ姿勢チェックする
+                ホームに戻る
               </button>
             </>
           ) : (
@@ -9570,7 +10369,9 @@ function FamilyScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   const shareInvite = async () => {
     if (!data?.family) return;
     const code = data.family.inviteCode;
-    const text = `ZERO-PAINの家族プランに招待します！\n招待コード: ${code}\n\n下記URLを開いて、設定 → 家族プラン → 「コードで参加」から入力してください。\nhttps://posture-app-steel.vercel.app`;
+    // 2026-10-01: 手順を実際の画面どおり（メニュー → 家族プラン → 家族コードで参加する）に直し、
+    // URLはWeb版（購入できない）からストアのページにした。友達紹介の「招待コード」と混ざらないよう「家族コード」と呼ぶ
+    const text = `ZERO-PAINの家族プランに招待します！\n家族コード: ${code}\n\n① ZERO-PAINを入れて、登録してください。\niPhone: ${APP_STORE_URL}\nAndroid: ${GOOGLE_PLAY_URL}\n\n② 画面下の「メニュー」→「家族プラン」→「家族コードで参加する」を押して、上の家族コードを入力してください。\n（登録画面の「招待コード」の欄ではありません）`;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const nav = navigator as any;
     if (nav.share) {
@@ -9653,7 +10454,7 @@ function FamilyScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
                   💡 家族グループを<span className="font-bold">作成</span>するには
                   <span className="font-bold text-white">家族プラン（月¥1,380 / 年¥13,800）</span>
                   への加入が必要です。
-                  招待コードでの<span className="font-bold">参加</span>は購入不要です。
+                  家族コードでの<span className="font-bold">参加</span>は購入不要です。
                 </div>
                 <button
                   onClick={() => onNavigate("subscription")}
@@ -9668,19 +10469,21 @@ function FamilyScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
               </>
             )}
 
-            {/* 招待コードで参加 */}
+            {/* 家族コードで参加
+                2026-10-01: 「招待コードで参加する」から改名。友達紹介の「招待コード」（登録画面で入れるもの）と取り違えないよう、
+                家族プランのコードは「家族コード」と呼ぶ。家族への共有文（shareInvite）の手順もこのボタン名に合わせてある */}
             <button
               onClick={() => setShowJoinInput(!showJoinInput)}
               className="btn-neutral w-full py-3.5 flex items-center justify-center gap-2"
             >
               <span className="text-xl">🔑</span>
-              <span className="font-bold">招待コードで参加する</span>
+              <span className="font-bold">家族コードで参加する</span>
             </button>
 
             {showJoinInput && (
               <div className="card-base p-4 space-y-3">
                 <p className="text-xs text-gray-400">
-                  家族のオーナーから受け取った8桁の招待コードを入力
+                  家族のオーナーから受け取った8文字の家族コードを入力
                 </p>
                 <input
                   type="text"
@@ -9726,10 +10529,10 @@ function FamilyScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
               </p>
             </div>
 
-            {/* オーナーのみ: 招待コード表示 */}
+            {/* オーナーのみ: 家族コード表示 */}
             {data.family.isOwner && (
               <div className="card-base p-4 space-y-3">
-                <p className="text-xs text-gray-400 font-bold">🔑 招待コード</p>
+                <p className="text-xs text-gray-400 font-bold">🔑 家族コード</p>
                 <button
                   onClick={() => copy(data.family!.inviteCode, "code")}
                   className="w-full bg-gray-800 border-2 border-emerald-500/40 hover:border-emerald-500 rounded-2xl p-4 transition active:scale-[0.98]"
@@ -9794,7 +10597,7 @@ function FamilyScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
                       key={`empty-${i}`}
                       className="bg-gray-900/30 border-2 border-dashed border-gray-700 rounded-xl p-3 text-center"
                     >
-                      <p className="text-xs text-gray-500">空きスロット（招待コードで参加可能）</p>
+                      <p className="text-xs text-gray-500">空きスロット（家族コードで参加可能）</p>
                     </div>
                   ))}
               </div>
@@ -9937,8 +10740,9 @@ const COACHING_GOALS: Array<{
   label: string;
   desc: string;
 }> = [
-  { id: "posture", emoji: "🧍", label: "姿勢改善", desc: "猫背・反り腰の改善" },
-  { id: "pain", emoji: "💊", label: "痛み軽減", desc: "首・肩・腰のお悩み" },
+  // 2026-10-02: 「改善」「軽減」は効果をうたう言葉なので使わない（薬機法）。id は API の GOAL_LABELS と同じまま
+  { id: "posture", emoji: "🧍", label: "姿勢のケア", desc: "猫背・反り腰が気になる方" },
+  { id: "pain", emoji: "💊", label: "こり・痛みのケア", desc: "首・肩・腰のお悩み" },
   { id: "weight", emoji: "⚖️", label: "体重管理", desc: "理想の体型へ" },
   { id: "fitness", emoji: "💪", label: "体力アップ", desc: "運動習慣をつける" },
   { id: "wellness", emoji: "🌿", label: "全体の健康", desc: "総合的なウェルネス" },
@@ -9967,8 +10771,34 @@ function CoachingScreen({
   const [showAllTasks, setShowAllTasks] = useState(false);
   const [completing, setCompleting] = useState<string | null>(null);
   const [celebrationTask, setCelebrationTask] = useState<CoachingTaskUI | null>(null);
+  // 30日コーチングを始められるのは有料・トライアル中の方だけ（/api/coaching の start も 402 で断る）。
+  // 未課金の方には、ゴール選びと「始める」ボタンの代わりに料金プランの案内カードを出す。
+  // 料金の読み込みに失敗したときは出さない（有料の方に誤って見せないため。押したときに 402 が返れば出す）
+  const [planLocked, setPlanLocked] = useState(false);
 
-  const load = useCallback(async () => {
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/subscription?deviceId=${encodeURIComponent(getDeviceId() || "")}&t=${Date.now()}`,
+          { cache: "no-store" }
+        );
+        if (!res.ok) return;
+        const s = (await res.json()) as Partial<SubscriptionState>;
+        // 9/13 以降の新規で未課金の方だけに案内を出す（旧ユーザーは今までどおり始められる。api/coaching と同じ線引き）
+        if (!cancelled && s.isPaid === false && s.isLegacyUser === false) setPlanLocked(true);
+      } catch {
+        /* 判定できないときは案内を出さない */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // 読み直した結果も返す（始めるのに失敗したように見えたとき、サーバーで作り終えていたかを確かめるため）
+  const load = useCallback(async (): Promise<CoachingData> => {
     setLoading(true);
     try {
       const deviceId = getDeviceId();
@@ -9976,10 +10806,13 @@ function CoachingScreen({
         `/api/coaching?deviceId=${encodeURIComponent(deviceId || "")}&t=${Date.now()}`,
         { cache: "no-store" }
       );
-      const json = await res.json();
+      const json = (await res.json()) as CoachingData;
       setData(json);
+      return json;
     } catch {
-      setData({ hasProgram: false, reason: "error" });
+      const fallback: CoachingData = { hasProgram: false, reason: "error" };
+      setData(fallback);
+      return fallback;
     } finally {
       setLoading(false);
     }
@@ -9989,6 +10822,15 @@ function CoachingScreen({
     load();
   }, [load]);
 
+  const START_FAILED_MESSAGE =
+    "30日プログラムを始められませんでした。通信の状態を確かめて、もう一度お試しください。";
+  /**
+   * 「始める」は AI が 30秒〜1分かけてプログラムを作る。その間にアプリを裏に回すと、iPhone では通信が
+   * 「Load failed」で切れるが、サーバーは作り続けて active で保存し終えることがある（2026-10-02）。
+   * 以前は失敗・409 のときに案内を出すだけで画面を読み直さなかったため、ゴール選択のまま
+   * 「先に今のプログラムを中止してください」と出て、中止ボタンも進行中の画面も見えない行き止まりになっていた。
+   * 失敗・409 のときは必ず画面を読み直し、進行中のプログラムが見つかればそれを出す（案内は出さない）。
+   */
   const startProgram = async () => {
     if (!selectedGoal) return;
     setStarting(true);
@@ -10002,18 +10844,45 @@ function CoachingScreen({
           goalType: selectedGoal,
         }),
       });
-      const json = await res.json();
+      const json = await res.json().catch(() => ({}));
+      if (res.status === 402 && json.error === "limit_reached") {
+        // 未課金（画面を開いた時点の判定に失敗していた場合など）: 案内カードに切り替える
+        setPlanLocked(true);
+        return;
+      }
+      if (res.status === 409) {
+        // 進行中（already_active）か作成中（generating）のプログラムがサーバーにある。
+        // 画面を読み直し、進行中のプログラムが出せればそれでよい（「中止してください」とは出さない）
+        const latest = await load();
+        if (!latest.hasProgram) {
+          alert(
+            json.error === "already_active"
+              ? "進行中のプログラムがあります。いったん前の画面に戻ってから、もう一度開いてください。"
+              : typeof json.message === "string" && json.message
+                ? json.message
+                : START_FAILED_MESSAGE
+          );
+        }
+        return;
+      }
       if (!res.ok) {
-        const detail = json.detail ? `\n\n【詳細】${json.detail}` : "";
-        const hint =
-          json.error === "program_create_failed"
-            ? "\n\n💡 ヒント: SupabaseのTable Editorで coaching_programs と coaching_tasks テーブルの「Enable Row Level Security」を外してください。"
-            : "";
-        throw new Error((json.message || json.error || "開始失敗") + detail + hint);
+        // お客様には技術的な文（エラーの詳細・データベースの設定）は出さず、サーバーの案内文だけを出す
+        alert(
+          typeof json.message === "string" && json.message
+            ? json.message
+            : START_FAILED_MESSAGE
+        );
+        return;
       }
       await load();
-    } catch (e) {
-      alert(e instanceof Error ? e.message : "開始失敗");
+    } catch {
+      // 通信が切れても、サーバーでは作り終えていることがある。読み直して、進行中のプログラムが
+      // 見つかればそれを出す。見つからなければ案内を出す
+      // （「Failed to fetch」「Load failed」などの技術的な文字は出さない）
+      const latest = await load();
+      if (!latest.hasProgram) {
+        alert(START_FAILED_MESSAGE);
+      }
     } finally {
       setStarting(false);
     }
@@ -10099,18 +10968,26 @@ function CoachingScreen({
                   </h2>
                 </div>
               </div>
+              {/* 2026-10-02: 効果をうたう文（体の変化をサポート・実感する方が多い）をやめ、何が手に入るかだけを書く */}
               <p className="text-sm text-gray-300 leading-relaxed">
                 ガイコツ先生が<span className="font-bold text-emerald-300">あなたの体・お悩み・目標</span>から、
-                毎日の課題を組み立てます。1日5〜10分、続けることで体の変化をサポート。
+                毎日の課題を組み立てます。1日5〜10分のセルフケアを、30日続ける手助けをします。
               </p>
               <ul className="space-y-1.5 text-xs text-gray-300">
                 <li>✓ AIが個別の30タスクを自動生成</li>
                 <li>✓ 1日1タスク、5〜10分で完結</li>
                 <li>✓ 達成バッジで継続モチベ</li>
-                <li>✓ 1ヶ月続けると体の変化を実感する方が多い</li>
+                <li>✓ できた日が記録に残り、30日の歩みを振り返れる</li>
               </ul>
             </div>
 
+            {/* 未課金の方: ゴール選びと「始める」ボタンの代わりに料金プランの案内（カードの中に購入ボタンは置かない） */}
+            {planLocked && (
+              <PlanGuideCard feature="coaching" limit={0} onNavigate={onNavigate} />
+            )}
+
+            {!planLocked && (
+            <>
             {/* ゴール選択 */}
             <div className="space-y-2">
               <p className="text-xs font-bold text-gray-400 px-1">
@@ -10163,6 +11040,8 @@ function CoachingScreen({
               <p className="text-[11px] text-gray-400 text-center">
                 30秒〜1分かかります。少々お待ちください。
               </p>
+            )}
+            </>
             )}
           </>
         )}
@@ -10553,25 +11432,29 @@ function InviteScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
     }
   };
 
+  // 2026-10-01: 「7日→14日の無料トライアルに延長」を削除（延長も紹介した人の1ヶ月無料も、実際には付与されていなかった）。
+  // 紹介するという事実だけを書く。URLはWeb版（購入できない）ではなく、ストアのアプリページにする。
+  // X に送るときの文字数（全角は2文字分・URLは23文字分で280まで）に収まる長さにしてある
   const shareText = data
-    ? `ZERO-PAIN（ゼロペイン）を試してみて！
-AI姿勢チェックと食事分析で健康習慣をサポートしてくれるアプリです🦴✨
+    ? `ZERO-PAIN（ゼロペイン）を紹介します。
+AI姿勢チェックと食事分析で、毎日の姿勢ケアをサポートするアプリです🦴
+
+iPhone: ${APP_STORE_URL}
+Android: ${GOOGLE_PLAY_URL}
 
 招待コード: ${data.code}
-${data.shareUrl}
-
-このコードで登録すると7日→14日の無料トライアルに延長されます🎁`
+（登録画面の「招待コードをお持ちですか？」に入力できます）`
     : "";
 
   const shareToNative = async () => {
     if (!data) return;
     // Web Share API（iPhone Safari 対応）
+    // URLは iPhone / Android の2つを本文に入れてあるので、url は渡さない（渡すと本文の後ろに3つ目が付く）
     if (typeof navigator !== "undefined" && "share" in navigator) {
       try {
         await (navigator as Navigator & { share: (d: ShareData) => Promise<void> }).share({
-          title: "ZERO-PAIN に招待します",
+          title: "ZERO-PAINの紹介",
           text: shareText,
-          url: data.shareUrl,
         });
       } catch { /* user cancelled */ }
     } else {
@@ -10601,7 +11484,7 @@ ${data.shareUrl}
         >
           ← 戻る
         </button>
-        <h1 className="text-lg font-bold">🎁 友達を招待</h1>
+        <h1 className="text-lg font-bold">📢 ZERO-PAINを紹介する</h1>
       </div>
 
       <div className="w-full max-w-md space-y-4">
@@ -10634,29 +11517,17 @@ ${data.shareUrl}
           </div>
         ) : (
           <>
-            {/* お得感の訴求 */}
-            <div className="card-accent-amber p-5 space-y-3">
+            {/* 紹介の説明
+                2026-10-01: 「友達招待で両方にお得特典！（1ヶ月分無料・7日→14日に延長）」を削除。
+                どちらも実際には付与されていなかったため、紹介するという事実と、コードの使われ方だけを書く */}
+            <div className="card-accent-amber p-5 space-y-2">
               <p className="text-base font-extrabold text-amber-300">
-                🎁 友達招待で両方にお得特典！
+                ZERO-PAINを友達に紹介できます
               </p>
-              <div className="space-y-2">
-                <div className="bg-white/5 rounded-xl p-3 border border-amber-500/20">
-                  <p className="text-[11px] text-amber-300 font-bold">
-                    あなたへの特典
-                  </p>
-                  <p className="text-sm text-white mt-0.5">
-                    🆓 <strong>1ヶ月分 無料</strong>（1招待成立ごと）
-                  </p>
-                </div>
-                <div className="bg-white/5 rounded-xl p-3 border border-amber-500/20">
-                  <p className="text-[11px] text-amber-300 font-bold">
-                    友達への特典
-                  </p>
-                  <p className="text-sm text-white mt-0.5">
-                    🎊 無料トライアルが <strong>7日→14日</strong> に延長
-                  </p>
-                </div>
-              </div>
+              <p className="text-sm text-gray-200 leading-relaxed">
+                下の紹介文には、アプリのページ（App Store / Google Play）と、あなたの招待コードが入っています。
+                友達が登録のときにこのコードを入力すると、下の「紹介した人数」に数えられます。
+              </p>
             </div>
 
             {/* 招待コード表示 */}
@@ -10717,34 +11588,23 @@ ${data.shareUrl}
               </button>
             </div>
 
-            {/* 実績表示 */}
+            {/* 紹介した人数
+                2026-10-01: 「獲得無料月数」の表示を削除（無料月は実際には付与されていなかった）。人数だけ残す */}
             <div className="card-base p-4 space-y-2">
               <p className="text-[11px] text-gray-400 font-bold tracking-wide">
-                📊 あなたの招待実績
+                📊 紹介した人数
               </p>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="text-center">
-                  <p className="text-[11px] text-gray-400">招待成立数</p>
-                  <p className="text-3xl font-extrabold text-emerald-300 mt-1">
-                    {data.totalInvited}
-                    <span className="text-xs font-normal text-gray-400 ml-1">
-                      人
-                    </span>
-                  </p>
-                </div>
-                <div className="text-center">
-                  <p className="text-[11px] text-gray-400">獲得無料月数</p>
-                  <p className="text-3xl font-extrabold text-amber-300 mt-1">
-                    {data.bonusFreeMonths}
-                    <span className="text-xs font-normal text-gray-400 ml-1">
-                      ヶ月
-                    </span>
-                  </p>
-                </div>
+              <div className="text-center">
+                <p className="text-3xl font-extrabold text-emerald-300 mt-1">
+                  {data.totalInvited}
+                  <span className="text-xs font-normal text-gray-400 ml-1">
+                    人
+                  </span>
+                </p>
               </div>
               {data.totalInvited === 0 && (
                 <p className="text-[11px] text-gray-500 text-center pt-1">
-                  まだ招待成立はありません
+                  まだ、招待コードを使って登録した方はいません
                 </p>
               )}
             </div>
@@ -10755,7 +11615,8 @@ ${data.shareUrl}
                 💬 紹介メッセージのプレビュー
               </p>
               <div className="bg-gray-900/50 rounded-xl p-3 border border-white/5">
-                <p className="text-xs text-gray-300 whitespace-pre-wrap leading-relaxed">
+                {/* ストアのURLは長く空白が無いので、画面の幅で折り返す（break-words） */}
+                <p className="text-xs text-gray-300 whitespace-pre-wrap break-words leading-relaxed">
                   {shareText}
                 </p>
               </div>

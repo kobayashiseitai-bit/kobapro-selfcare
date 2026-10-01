@@ -1,6 +1,9 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
-import { checkAndIncrementUsage } from "../../lib/subscription";
+import {
+  buildLimitReachedMessage,
+  checkAndIncrementUsage,
+} from "../../lib/subscription";
 import { getSignedImageUrl, signImageUrls } from "../../lib/supabase-storage";
 import { SAFE_LANGUAGE_RULES } from "../../lib/safe-language";
 
@@ -201,7 +204,7 @@ export async function POST(req: NextRequest) {
       userId = newUsers[0].id;
     }
 
-    // 1.5 利用制限チェック（無料プランは月3回まで）
+    // 1.5 利用制限チェック（旧ユーザーは月3回まで・2026-09-13 以降の新規は0回）
     const limitCheck = await checkAndIncrementUsage(supabase, userId, "meal");
     if (!limitCheck.allowed) {
       return NextResponse.json(
@@ -210,7 +213,11 @@ export async function POST(req: NextRequest) {
           feature: "meal",
           usage: limitCheck.usage,
           limit: limitCheck.limit,
-          message: `無料プランの食事分析は月${limitCheck.limit}回までです。無制限にするには有料プランにアップグレードしてください。`,
+          // 上限0回（新規）と、今月分を使い切った（旧ユーザー）で文を分ける。画面の案内カードと同じ文
+          message: buildLimitReachedMessage(
+            "meal",
+            typeof limitCheck.limit === "number" ? limitCheck.limit : 0
+          ),
         },
         { status: 402 }
       );

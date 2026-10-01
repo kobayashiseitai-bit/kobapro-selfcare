@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import ThemeKeeper from "./components/ThemeKeeper";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -106,6 +107,8 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        {/* 保険: 画面の食い違いで React が html を作り直しても、テーマと文字サイズを付け直す（2026-10-01） */}
+        <ThemeKeeper />
         {children}
       </body>
     </html>

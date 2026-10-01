@@ -5,8 +5,10 @@ import { buildAvailableImagesForPrompt } from "../../lib/chat-images";
 import { SAFE_LANGUAGE_RULES } from "../../lib/safe-language";
 import { getCharacterById, type SenseiCharacter } from "../../lib/sensei-characters";
 import {
+  CHAT_LOCKED_GREETING,
+  buildLimitReachedMessage,
   checkAndIncrementUsage,
-  getUserIdByDeviceId,
+  getSubscriptionState,
 } from "../../lib/subscription";
 import { getSignedImageUrl } from "../../lib/supabase-storage";
 import {
@@ -562,6 +564,22 @@ BMI: ${rec.bmi}（${rec.bmiCategory}）/ 基礎代謝: ${rec.bmr}kcal / 1日総�
   };
 }
 
+/**
+ * 相談を使えない人への、決まった文のあいさつ（AI を呼ばない）。
+ * 画面（page.tsx の streamChat）が読む SSE と同じ形（text → done）で返す。
+ */
+function lockedGreetingResponse(): Response {
+  const body =
+    `data: ${JSON.stringify({ text: CHAT_LOCKED_GREETING })}\n\n` +
+    `data: ${JSON.stringify({ done: true, recommendedSymptomId: null, cleanText: CHAT_LOCKED_GREETING })}\n\n`;
+  return new Response(new TextEncoder().encode(body), {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache, no-transform",
+    },
+  });
+}
+
 export async function POST(req: NextRequest) {
   try {
     const {
@@ -577,31 +595,58 @@ export async function POST(req: NextRequest) {
     const character = getCharacterById(characterId);
 
     // 利用制限チェック（ユーザーメッセージ=初回以外をカウント）
+    // 2026-10-01: 以前は deviceId が無い・未登録の deviceId・あいさつ（messages が空）のときに
+    // 回数の確認を一切せずに AI を呼んでいた。画面側の判定だけで止めていたので、
+    // API を直接呼べば有料の相談を無制限に使えた。サーバー側でも止める。
+    const supabase = getSupabase();
+    // 1. 登録済みの端末だけが使える（AI を呼ぶ前に断る）。
+    //    同じ deviceId の行が2つあっても締め出さないよう、buildUserContext と同じく先頭の1件を使う
+    const { data: limitUsers } =
+      typeof deviceId === "string" && deviceId
+        ? await supabase.from("users").select("id").eq("device_id", deviceId).limit(1)
+        : { data: null };
+    const userId: string | null = limitUsers && limitUsers.length > 0 ? limitUsers[0].id : null;
+    if (!userId) {
+      return new Response(JSON.stringify({ error: "user not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     const isFirst = !messages || messages.length === 0;
-    if (!isFirst && deviceId) {
-      const supabase = getSupabase();
-      const userId = await getUserIdByDeviceId(supabase, deviceId);
-      if (userId) {
-        const limitCheck = await checkAndIncrementUsage(
-          supabase,
-          userId,
-          "chat"
+    if (isFirst) {
+      // 2. あいさつ（チャットを開いたとき・食事相談の開始）は回数に数えない。
+      //    ただし相談を使えない人（未課金で 今月の回数 >= 上限。新規は上限0回なので常にここ）には
+      //    AI を呼ばずに、画面と同じ決まった文のあいさつを返す（その先に進めないのに費用だけかかるため）
+      const subState = await getSubscriptionState(supabase, userId);
+      const chatLimit = subState.limits.chat;
+      if (!subState.isPaid && typeof chatLimit === "number" && subState.usage.chat >= chatLimit) {
+        return lockedGreetingResponse();
+      }
+    } else {
+      const limitCheck = await checkAndIncrementUsage(
+        supabase,
+        userId,
+        "chat"
+      );
+      if (!limitCheck.allowed) {
+        return new Response(
+          JSON.stringify({
+            error: "limit_reached",
+            feature: "chat",
+            usage: limitCheck.usage,
+            limit: limitCheck.limit,
+            // 上限0回（新規）と、今月分を使い切った（旧ユーザー）で文を分ける。画面の案内カードと同じ文
+            message: buildLimitReachedMessage(
+              compareMode === true ? "compare" : "chat",
+              typeof limitCheck.limit === "number" ? limitCheck.limit : 0
+            ),
+          }),
+          {
+            status: 402,
+            headers: { "Content-Type": "application/json" },
+          }
         );
-        if (!limitCheck.allowed) {
-          return new Response(
-            JSON.stringify({
-              error: "limit_reached",
-              feature: "chat",
-              usage: limitCheck.usage,
-              limit: limitCheck.limit,
-              message: `無料プランのAIチャットは月${limitCheck.limit}回までです。無制限にするには有料プランにアップグレードしてください。`,
-            }),
-            {
-              status: 402,
-              headers: { "Content-Type": "application/json" },
-            }
-          );
-        }
       }
     }
 

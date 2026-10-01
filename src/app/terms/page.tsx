@@ -13,7 +13,7 @@ export default function TermsPage() {
 
       <div className="max-w-2xl mx-auto px-5 py-6 space-y-6 text-sm leading-relaxed text-gray-200">
         <section>
-          <p className="text-xs text-gray-400 mb-2">最終更新日: 2026年4月18日</p>
+          <p className="text-xs text-gray-400 mb-2">最終更新日: 2026年10月1日</p>
           <p>
             この利用規約（以下「本規約」といいます）は、TOPBANK.INC（有限会社トップバンク、以下「当方」といいます）が提供するセルフケア支援アプリ「ZERO-PAIN」（以下「本アプリ」といいます）の利用条件を定めるものです。ユーザーの皆様（以下「ユーザー」といいます）には、本規約に従って本アプリをご利用いただきます。
           </p>
@@ -57,12 +57,16 @@ export default function TermsPage() {
         <section>
           <h2 className="text-base font-bold text-white mb-2">第4条（サブスクリプション・自動更新課金）</h2>
           <ol className="space-y-1 pl-5 list-decimal text-gray-300">
+            {/* 2026-10-01: 実際の仕組みに合わせて改めた。利用登録だけでは無料トライアルは始まらず、
+                ストア（App Store / Google Play）で有料プランを申し込んだ時に付く。
+                新規の方も姿勢チェックの記録は月1回まで無料（lib/subscription.ts の FREE_LIMITS） */}
             <li>
-              本アプリには無料トライアルと有料プラン（プレミアムプラン）があります。初回ご登録時に
-              <strong className="text-white">7日間の無料トライアル</strong>が付与され、
-              期間終了後にAI機能（姿勢チェック・AIチャット・食事分析）をご利用いただくには
-              プレミアムプランへのご登録が必要です。トライアル終了後も、ご自身の記録・お写真・
-              ストレッチ等のコンテンツは引き続きご覧いただけます。
+              本アプリのダウンロードは無料です。2026年9月13日以降にご登録いただいた方が無料でご利用いただけるのは、
+              <strong className="text-white">姿勢チェックの記録 月1回まで</strong>です。
+              月2回目以降の姿勢チェック、AIチャット、食事分析をご利用いただくには、有料プラン（プレミアムプラン）へのご登録が必要です。
+              はじめての方は、有料プランのお申し込み時に<strong className="text-white">7日間の無料トライアル</strong>が付きます。
+              無料トライアルの対象となるかどうかは App Store / Google Play の判定によります（過去に無料トライアルをご利用になった方などは対象外となる場合があります）。
+              有料プランをご利用でない間も、ご自身の記録・お写真・ストレッチ等のコンテンツは引き続きご覧いただけます。
             </li>
             <li>
               <strong className="text-white">既存ユーザーの経過措置</strong>:
@@ -74,11 +78,13 @@ export default function TermsPage() {
               <ul className="pl-4 list-disc mt-1 space-y-0.5">
                 <li>月額プラン: 1ヶ月あたり 880円（税込）</li>
                 <li>年額プラン: 1年あたり 8,800円（税込、月換算733円）</li>
-                <li>初回登録時に7日間の無料トライアルが付与されます</li>
+                <li>家族月額プラン: 1ヶ月あたり 1,380円（税込、最大4人まで利用可）</li>
+                <li>家族年額プラン: 1年あたり 13,800円（税込、月換算1,150円、最大4人まで利用可）</li>
+                <li>はじめての方は、有料プランのお申し込み時に7日間の無料トライアルが付きます（対象かどうかはストアの判定によります）</li>
               </ul>
             </li>
             <li>
-              <strong className="text-white">支払いタイミング</strong>: 購入確定時にユーザーのApple IDアカウントに料金が請求されます。
+              <strong className="text-white">支払いタイミング</strong>: 購入確定時（無料トライアルが付く場合はトライアル終了時）に、ユーザーのApple IDアカウントまたはGoogleアカウントに料金が請求されます。
             </li>
             <li>
               <strong className="text-white">自動更新</strong>:
@@ -87,8 +93,9 @@ export default function TermsPage() {
             </li>
             <li>
               <strong className="text-white">プランの管理・解約</strong>:
-              サブスクリプションの管理および自動更新の停止は、購入後にApple IDのアカウント設定からいつでも行うことができます。
-              （iOSの「設定」アプリ → 自分の名前 → 「サブスクリプション」）
+              サブスクリプションの管理および自動更新の停止は、購入後にApple IDまたはGoogle Playのアカウント設定からいつでも行うことができます。
+              （iOSの「設定」アプリ → 自分の名前 → 「サブスクリプション」、Androidは Google Play ストア → プロフィール → 「お支払いと定期購入」 → 「定期購入」）
+              アプリを削除しただけでは解約になりません。
             </li>
             <li>
               <strong className="text-white">無料トライアルの解約</strong>:

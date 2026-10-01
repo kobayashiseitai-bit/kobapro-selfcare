@@ -42,6 +42,7 @@ import {
   type HealthSnapshot,
 } from "../lib/healthkit";
 import { shareApp } from "../lib/share";
+import { nativePlatform } from "../lib/iap";
 import {
   Heart as IconHeart,
   Activity as IconActivity,
@@ -80,6 +81,17 @@ export default function SettingsPage() {
   const [transferLoading, setTransferLoading] = useState(false);
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
   const [restoreInput, setRestoreInput] = useState("");
+
+  // ===== 記録のファイル保存 =====
+  // iPhone / Android アプリでは、blob URL と <a download> の保存が効かない
+  // （iOS は blob: への移動を外部 URL として捨て、Android は受け取る仕組みが無い）。
+  // 押しても何も残らないのに「保存しました」と出てしまうので、アプリでは押せないようにして案内を出す。
+  // 画面を組み立てる時点で判定すると、サーバーとスマホの表示が食い違うので、表示後に判定する（null = 未判定）。
+  const [isNativeApp, setIsNativeApp] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    setIsNativeApp(nativePlatform() !== null);
+  }, []);
 
   // ===== 食事リマインダー =====
   const [mealRemind, setMealRemind] = useState<MealReminderConfig | null>(null);
@@ -331,6 +343,14 @@ export default function SettingsPage() {
   }, []);
 
   const handleExport = async () => {
+    // アプリでは保存できない（上の isNativeApp の説明）。ボタンは押せないが、念のためここでも止める
+    if (nativePlatform() !== null) {
+      setMessage({
+        type: "error",
+        text: "アプリからはファイルに保存できません。機種変更のときは「引継ぎコードを発行」で記録を新しい端末へ移せます。",
+      });
+      return;
+    }
     setExporting(true);
     setMessage(null);
     try {
@@ -338,7 +358,7 @@ export default function SettingsPage() {
       const res = await fetch(
         `/api/account?action=export&deviceId=${encodeURIComponent(deviceId)}`
       );
-      if (!res.ok) throw new Error("エクスポート失敗");
+      if (!res.ok) throw new Error(`export failed: ${res.status}`);
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -348,11 +368,12 @@ export default function SettingsPage() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      setMessage({ type: "ok", text: "✅ データをダウンロードしました" });
-    } catch (e) {
+      setMessage({ type: "ok", text: "✅ 記録をファイルに保存しました" });
+    } catch {
+      // 「Failed to fetch」などの技術的な文字は出さず、いつも同じ案内にする
       setMessage({
         type: "error",
-        text: e instanceof Error ? e.message : "エクスポート失敗",
+        text: "記録を保存できませんでした。通信の状態を確かめて、もう一度お試しください。",
       });
     } finally {
       setExporting(false);
@@ -427,9 +448,10 @@ export default function SettingsPage() {
           <p className="text-base font-bold text-white">
             {userName ? `${userName} さん` : "未登録"}
           </p>
-          <p className="text-[11px] text-gray-500 mt-1">
-            端末ID: {getDeviceId().slice(0, 8)}...
-          </p>
+          {/* 2026-10-01: 「端末ID: xxxx...」の行を削除。画面を組み立てる時点で localStorage を読んでいたため、
+              サーバーでは空・スマホでは ID になって表示が食い違い（ハイドレーションの失敗）、React が html を作り直して
+              表示テーマ（theme-mint）と文字サイズが外れていた。お客様には不要な情報なので表示自体をやめた。
+              この画面で localStorage を読むのは、useEffect と押したときの処理の中だけにすること。 */}
         </section>
 
         {/* テーマ設定 */}
@@ -834,7 +856,8 @@ export default function SettingsPage() {
           <div className="space-y-2">
             <button
               onClick={handleExport}
-              disabled={exporting}
+              // アプリ（isNativeApp=true）と判定前（null）は押せない。アプリでは保存が効かないため
+              disabled={exporting || isNativeApp !== false}
               className="card-base w-full flex items-center justify-between p-4 disabled:opacity-50 active:scale-[0.99] transition text-left"
             >
               <div className="flex items-center gap-3">
@@ -842,13 +865,17 @@ export default function SettingsPage() {
                   <IconDatabase size={18} className="text-emerald-400" />
                 </span>
                 <div>
-                  <p className="text-sm font-bold text-white">データをエクスポート</p>
+                  <p className="text-sm font-bold text-white">自分の記録をファイルに保存</p>
                   <p className="text-[11px] text-gray-400 mt-0.5">
-                    {exporting ? "準備中..." : "自分の全データをJSONでダウンロード"}
+                    {isNativeApp
+                      ? "アプリからはファイルに保存できません。機種変更のときは、上の「引継ぎコードを発行」で記録を新しい端末へ移せます"
+                      : exporting
+                        ? "準備中..."
+                        : "姿勢・食事・チャットなど、これまでの記録をまとめて保存します"}
                   </p>
                 </div>
               </div>
-              <IconChevronRight size={18} className="text-gray-500 flex-shrink-0" />
+              {!isNativeApp && <IconChevronRight size={18} className="text-gray-500 flex-shrink-0" />}
             </button>
 
             <button

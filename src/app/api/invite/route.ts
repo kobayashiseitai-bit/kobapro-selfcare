@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
     const supabase = getSupabase();
     const { data: users } = await supabase
       .from("users")
-      .select("id, name, bonus_free_months")
+      .select("id, name")
       .eq("device_id", deviceId);
 
     if (!users || users.length === 0) {
@@ -113,13 +113,13 @@ export async function GET(req: NextRequest) {
       .eq("inviter_user_id", user.id)
       .order("redeemed_at", { ascending: false });
 
+    // 2026-10-01: bonusFreeMonths（獲得無料月数）と shareUrl（Web版のURL）は返さない。
+    // 無料月は実際には付与されておらず、画面にも出さなくなった。紹介文のURLは画面側でストアのページを使う
     return NextResponse.json({
       code: existing.code,
       useCount: existing.use_count || 0,
       totalInvited: (redemptions || []).length,
-      bonusFreeMonths: user.bonus_free_months || 0,
       createdAt: existing.created_at,
-      shareUrl: `https://posture-app-steel.vercel.app?invite=${existing.code}`,
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -156,6 +156,22 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
 
     if (!inviteCode) {
+      // 家族プランのコード（家族コード）も同じ8文字なので、登録画面の招待コード欄に入れられることがある。
+      // その場合は、入れる場所を案内する（家族への参加は登録のあとに家族プランの画面で行う）
+      const { data: familyHit } = await supabase
+        .from("families")
+        .select("id")
+        .eq("invite_code", normalizedCode)
+        .limit(1);
+      if (familyHit && familyHit.length > 0) {
+        return NextResponse.json(
+          {
+            error:
+              "これは家族プランの「家族コード」です。登録のあとに、メニュー →「家族プラン」→「家族コードで参加する」から入力してください。",
+          },
+          { status: 400 }
+        );
+      }
       return NextResponse.json(
         { error: "この招待コードは無効です" },
         { status: 400 }
@@ -194,30 +210,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 招待履歴を記録
+    // 招待履歴を記録（紹介した人数の表示に使う）
+    // 2026-10-01: 特典は付与しないので reward_granted は false（列の既定値と同じ）
     await supabase.from("invite_redemptions").insert({
       inviter_user_id: inviteCode.user_id,
       invitee_user_id: inviteeUserId,
       invite_code: normalizedCode,
-      reward_granted: true,
+      reward_granted: false,
     });
 
-    // 招待した人の特典: +1ヶ月無料（手動で更新）
-    try {
-      const { data: inviter } = await supabase
-        .from("users")
-        .select("bonus_free_months")
-        .eq("id", inviteCode.user_id)
-        .maybeSingle();
-      await supabase
-        .from("users")
-        .update({
-          bonus_free_months: (inviter?.bonus_free_months || 0) + 1,
-        })
-        .eq("id", inviteCode.user_id);
-    } catch (err) {
-      console.warn("[invite] bonus update failed:", err);
-    }
+    // 2026-10-01: 招待した人の「+1ヶ月無料」（users.bonus_free_months を+1）の書き込みをやめた。
+    // この数字は課金の判定（lib/subscription.ts・RevenueCat）のどこからも読まれておらず、無料月は実際には付与されていなかった。
+    // 特典を再開するときは、App Store のオファーコード / Google Play のプロモーションコードなど、ストアで実際に渡せる形で作り直すこと。
+    // 列は既存の記録を残すため消していない
 
     // invite_codes の use_count を +1
     const { data: currentCode } = await supabase
@@ -232,15 +237,13 @@ export async function POST(req: NextRequest) {
       })
       .eq("user_id", inviteCode.user_id);
 
-    // 招待された人の特典: トライアル延長 (7日→14日)
-    await supabase
-      .from("users")
-      .update({ extended_trial_days: 14 })
-      .eq("id", inviteeUserId);
+    // 2026-10-01: 招待された人の「無料体験を7日→14日に延長」（users.extended_trial_days=14）の書き込みをやめた。
+    // 無料体験はストアのお試しオファー（7日固定）で、アプリからは延ばせない。この数字もどこからも読まれていなかった。
+    // 列は既存の記録を残すため消していない
 
     return NextResponse.json({
       ok: true,
-      message: "招待コードを適用しました！トライアルが14日間に延長されます 🎁",
+      message: "招待コードを登録しました。",
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

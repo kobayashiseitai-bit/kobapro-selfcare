@@ -96,6 +96,15 @@ export async function initIAP(deviceId: string): Promise<boolean> {
   }
 }
 
+/**
+ * ストアの商品IDから、比べるための「商品ID」部分だけを取り出す。
+ * Android（Google Play）では RevenueCat が返す p.product.identifier が
+ * 「商品ID:ベースプランID」（例: zero_pain_monthly_1280:monthly）の形になるため、
+ * 「zero_pain_monthly_1280」と完全一致で比べると1件も当たらない。
+ * iOS の商品IDには「:」が無いので、そのまま返る。
+ */
+export const baseProductId = (id: string): string => id.split(":")[0];
+
 /** 購入可能なサブスク商品一覧を取得 */
 export async function getAvailablePackages(): Promise<PurchasesPackage[]> {
   if (!isNativeIAP() || !initialized || !purchasesModule) return [];
@@ -106,6 +115,52 @@ export async function getAvailablePackages(): Promise<PurchasesPackage[]> {
   } catch (e) {
     console.error("[IAP] getOfferings failed:", e);
     return [];
+  }
+}
+
+/**
+ * 各商品で、この人に無料体験（ストアのお試し）が付くかを調べる。
+ * ストアのお試しは同じ定期購入グループで1回だけなので、使ったことがある人には付かない。
+ * - iOS: RevenueCat の checkTrialOrIntroductoryPriceEligibility で判定する。
+ * - Android: Google Play はその人が使える特典だけを返すので、既定の特典に無料期間（freePhase）があるかで見る。
+ * 返り値は 商品ID（Android でも「:」より前の部分）→ true（付く）/ false（付かないと分かった）/ null（分からない）。
+ * 画面は false の商品だけ無料の行を外し、null は「はじめての方は」の条件付きの表示のままにする。
+ */
+export async function getTrialEligibility(
+  pkgs: PurchasesPackage[]
+): Promise<Record<string, boolean | null>> {
+  const result: Record<string, boolean | null> = {};
+  const platform = nativePlatform();
+  if (!platform || !initialized || !purchasesModule || pkgs.length === 0) return result;
+  try {
+    if (platform === "android") {
+      for (const p of pkgs) {
+        const opt = p.product.defaultOption;
+        // identifier は「商品ID:ベースプランID」なので、画面が引く「商品ID」をキーにする
+        result[baseProductId(p.product.identifier)] = opt ? !!opt.freePhase : null;
+      }
+      return result;
+    }
+    const { Purchases, INTRO_ELIGIBILITY_STATUS } = purchasesModule;
+    const map = await Purchases.checkTrialOrIntroductoryPriceEligibility({
+      productIdentifiers: pkgs.map((p) => p.product.identifier),
+    });
+    for (const [id, e] of Object.entries(map)) {
+      if (e.status === INTRO_ELIGIBILITY_STATUS.INTRO_ELIGIBILITY_STATUS_ELIGIBLE) {
+        result[id] = true;
+      } else if (
+        e.status === INTRO_ELIGIBILITY_STATUS.INTRO_ELIGIBILITY_STATUS_INELIGIBLE ||
+        e.status === INTRO_ELIGIBILITY_STATUS.INTRO_ELIGIBILITY_STATUS_NO_INTRO_OFFER_EXISTS
+      ) {
+        result[id] = false;
+      } else {
+        result[id] = null;
+      }
+    }
+    return result;
+  } catch (e) {
+    console.error("[IAP] checkTrialEligibility failed:", e);
+    return result;
   }
 }
 

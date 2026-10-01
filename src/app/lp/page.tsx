@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Faq from './Faq';
 import PhoneDemo from './PhoneDemo';
 import AnimateOnScroll from './AnimateOnScroll';
+import HeaderGetButton from './HeaderGetButton';
 import {
   LaptopIcon,
   MoonIcon,
@@ -15,12 +16,15 @@ import {
   LockIcon,
   HeartPulseIcon,
   SparklesIcon,
+  AppleIcon,
+  GooglePlayIcon,
 } from './icons';
 
+// 2026-10-01: 「痛みゼロへ」「iPhone アプリ」をやめ、セルフケア支援の言い方と iPhone・Android 対応に揃えた
 export const metadata: Metadata = {
-  title: 'ZERO-PAIN | AI姿勢分析・セルフケアで「痛みゼロ」へ',
+  title: 'ZERO-PAIN | AI姿勢分析で、毎日のセルフケアを一緒に',
   description:
-    'AI姿勢分析・AI食事分析・ガイコツ先生のカウンセリング・30日コーチング。あなた専用のAIパーソナルトレーナーで、肩こり・腰痛・姿勢の悩みをセルフケアに。7日間無料で試せる iPhone アプリ。',
+    'AI姿勢分析・AI食事分析・ガイコツ先生のカウンセリング・30日コーチング。あなた専用のAIパーソナルトレーナーが、肩こり・腰痛・姿勢が気になる方の毎日のセルフケアをサポートします。iPhone・Android 対応。ダウンロード無料・はじめての方は7日間の無料体験つき。',
   keywords: [
     'ZERO-PAIN',
     'ゼロペイン',
@@ -33,14 +37,15 @@ export const metadata: Metadata = {
     '骨格',
     'ストレッチ',
     'iPhoneアプリ',
+    'Androidアプリ',
   ],
   alternates: {
     canonical: 'https://posture-app-steel.vercel.app/lp',
   },
   openGraph: {
-    title: 'ZERO-PAIN | AI姿勢分析で「痛みゼロ」へ',
+    title: 'ZERO-PAIN | AI姿勢分析で、毎日のセルフケアを一緒に',
     description:
-      'あなた専用のAIパーソナルトレーナー。姿勢チェック・セルフケア・痛み予測で体の悩みをゼロに。7日間無料トライアル。',
+      'あなた専用のAIパーソナルトレーナー。姿勢チェック・ストレッチ・ガイコツ先生への相談で、毎日のセルフケアをサポート。ダウンロード無料・はじめての方は7日間の無料体験つき。',
     url: 'https://posture-app-steel.vercel.app/lp',
     siteName: 'ZERO-PAIN',
     images: [
@@ -56,67 +61,131 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'ZERO-PAIN | AI姿勢分析で「痛みゼロ」へ',
+    title: 'ZERO-PAIN | AI姿勢分析で、毎日のセルフケアを一緒に',
     description:
-      'あなた専用のAIパーソナルトレーナー。7日間無料トライアル。',
+      'あなた専用のAIパーソナルトレーナー。iPhone・Android 対応。はじめての方は7日間の無料体験つき。',
     images: ['https://posture-app-steel.vercel.app/og-image.jpg'],
   },
 };
 
 const APP_STORE_URL = 'https://apps.apple.com/jp/app/zero-pain/id6768903915';
+// 2026-10-01: Android でも公開中なので Google Play を追加（アプリ本体 page.tsx の GOOGLE_PLAY_URL と同じ）
+const GOOGLE_PLAY_URL = 'https://play.google.com/store/apps/details?id=com.topbank.zeropain';
+const LP_URL = 'https://posture-app-steel.vercel.app/lp';
 
 // JSON-LD: SoftwareApplication
+// 2026-10-01: 価格を現行の月額880円に。OS に Android を追加。
+// 画面に出していない評価（aggregateRating 5.0／1件）は外した（検索向けデータの評価は、ページ上にも見えている必要があるため）。
 const jsonLd = {
   '@context': 'https://schema.org',
   '@type': 'SoftwareApplication',
   name: 'ZERO-PAIN',
-  operatingSystem: 'iOS',
+  operatingSystem: 'iOS, Android',
   applicationCategory: 'HealthApplication',
   description:
     'AI姿勢分析・食事分析・カウンセリング・30日コーチングを備えたセルフケアアプリ',
   offers: {
     '@type': 'Offer',
-    price: '1280',
+    price: '880',
     priceCurrency: 'JPY',
   },
-  aggregateRating: {
-    '@type': 'AggregateRating',
-    ratingValue: '5.0',
-    ratingCount: '1',
-  },
-  url: APP_STORE_URL,
+  url: LP_URL,
+  downloadUrl: [APP_STORE_URL, GOOGLE_PLAY_URL],
 };
 
-function AppStoreButton({ size = 'lg' }: { size?: 'lg' | 'md' }) {
-  const sizing =
-    size === 'lg'
-      ? 'px-7 py-4 text-base sm:text-lg'
-      : 'px-5 py-3 text-sm sm:text-base';
+type StoreKind = 'app-store' | 'google-play';
+
+/**
+ * ストアの入手ボタン（2026-10-01: App Store だけだったのを、Google Play と2つ並びにした）
+ * - size 'lg': 2行表示（上に「iPhone をお使いの方」などの小さい案内、下にストア名）。ページ本文用
+ * - size 'md': 1行表示（ストア名だけ）。sm 以上のヘッダー用
+ * - tone 'light': 緑の背景の上に置く白いボタン（最後の案内）
+ */
+function StoreButton({
+  store,
+  size = 'lg',
+  tone = 'dark',
+}: {
+  store: StoreKind;
+  size?: 'lg' | 'md';
+  tone?: 'dark' | 'light';
+}) {
+  const isApple = store === 'app-store';
+  const href = isApple ? APP_STORE_URL : GOOGLE_PLAY_URL;
+  const Icon = isApple ? AppleIcon : GooglePlayIcon;
+  const storeName = isApple ? 'App Store' : 'Google Play';
+  const who = isApple ? 'iPhone をお使いの方' : 'Android をお使いの方';
+  const colors =
+    tone === 'light'
+      ? { background: '#ffffff', color: '#047857' }
+      : { background: '#0f172a', color: '#ffffff' };
+  const base =
+    'inline-flex items-center justify-center rounded-full font-semibold hover:opacity-90 transition-all hover:scale-[1.02] active:scale-[0.98] whitespace-nowrap';
+  const shadow = tone === 'light' ? 'shadow-2xl' : 'shadow-lg shadow-slate-900/20';
+
+  if (size === 'md') {
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={`${storeName} で入手`}
+        className={`${base} ${shadow} gap-2 px-4 py-2.5 text-sm`}
+        style={colors}
+      >
+        <Icon className="w-5 h-5" style={{ color: colors.color }} />
+        <span style={{ color: colors.color }}>{storeName}</span>
+      </a>
+    );
+  }
+
   return (
     <a
-      href={APP_STORE_URL}
+      href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className={`inline-flex items-center justify-center gap-2 ${sizing} rounded-full font-semibold shadow-lg shadow-slate-900/20 hover:opacity-90 transition-all hover:scale-[1.02] active:scale-[0.98] whitespace-nowrap`}
-      style={{ background: '#0f172a', color: '#ffffff' }}
+      className={`${base} ${shadow} w-full max-w-[280px] sm:w-auto sm:max-w-none sm:min-w-[230px] gap-3 px-6 py-3`}
+      style={colors}
     >
-      <svg
-        className="w-5 h-5 sm:w-6 sm:h-6"
-        viewBox="0 0 24 24"
-        fill="currentColor"
-        aria-hidden
-        style={{ color: '#ffffff' }}
-      >
-        <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
-      </svg>
-      <span style={{ color: '#ffffff' }}>App Store でダウンロード</span>
+      <Icon className="w-7 h-7 flex-shrink-0" style={{ color: colors.color }} />
+      <span className="flex flex-col items-start leading-tight text-left">
+        <span className="text-xs font-medium" style={{ color: colors.color, opacity: 0.85 }}>
+          {who}
+        </span>
+        <span className="text-base sm:text-lg font-bold" style={{ color: colors.color }}>
+          {storeName} で入手
+        </span>
+      </span>
     </a>
+  );
+}
+
+/** App Store と Google Play を並べる（スマホは縦、sm 以上は横） */
+function StoreButtons({
+  tone = 'dark',
+  className = '',
+  id,
+}: {
+  tone?: 'dark' | 'light';
+  className?: string;
+  id?: string;
+}) {
+  return (
+    <div
+      id={id}
+      className={`flex flex-col sm:flex-row items-center justify-center gap-3 ${className}`}
+    >
+      <StoreButton store="app-store" tone={tone} />
+      <StoreButton store="google-play" tone={tone} />
+    </div>
   );
 }
 
 export default function LPPage() {
   return (
-    <main className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-emerald-50 text-slate-900">
+    // overflow-x-clip: スクロール前のアニメーション（translate-x-8）がスマホで右にはみ出し、画面が左右にずれるのを止める。
+    // overflow-x-hidden にすると main がスクロールする箱になり、上部ヘッダー（sticky）が固定されなくなるので使わない。
+    <main className="min-h-screen overflow-x-clip bg-gradient-to-b from-emerald-50 via-white to-emerald-50 text-slate-900">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -139,22 +208,12 @@ export default function LPPage() {
               ZERO-PAIN
             </span>
           </div>
-          {/* モバイル: アイコン + 「入手」のコンパクトボタン */}
-          <a
-            href={APP_STORE_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="sm:hidden inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-full font-semibold text-sm shadow-md flex-shrink-0 whitespace-nowrap active:scale-95 transition-transform"
-            style={{ background: '#0f172a', color: '#ffffff' }}
-          >
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden style={{ color: '#ffffff' }}>
-              <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
-            </svg>
-            <span style={{ color: '#ffffff' }}>入手</span>
-          </a>
-          {/* sm 以上: フル表示ボタン */}
-          <div className="hidden sm:block">
-            <AppStoreButton size="md" />
+          {/* モバイル: 「入手」のコンパクトボタン。端末を見分けて App Store / Google Play の合う方を開く */}
+          <HeaderGetButton appStoreUrl={APP_STORE_URL} googlePlayUrl={GOOGLE_PLAY_URL} />
+          {/* sm 以上: App Store / Google Play の2つ並び */}
+          <div className="hidden sm:flex items-center gap-2">
+            <StoreButton store="app-store" size="md" />
+            <StoreButton store="google-play" size="md" />
           </div>
         </div>
       </header>
@@ -167,9 +226,10 @@ export default function LPPage() {
         </div>
         <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-12 pb-16 sm:pt-20 sm:pb-24 grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
           <div className="space-y-6 text-center lg:text-left">
+            {/* 2026-10-01: 「App Store 配信開始」→ Android の方も自分の端末で使えると分かるように */}
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs sm:text-sm font-semibold">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              App Store 配信開始
+              iPhone・Android 対応
             </div>
             <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black leading-tight tracking-tight">
               痛みのある毎日に、
@@ -185,12 +245,16 @@ export default function LPPage() {
               <br className="hidden sm:inline" />
               あなた専用のセルフケアを提案。
               <br />
-              肩こり・腰痛・姿勢の悩みを <strong className="text-slate-900">ゼロ</strong> へ。
+              肩こり・腰痛・姿勢の悩みに、<strong className="inline-block text-slate-900">毎日のセルフケア</strong>で向き合えます。
             </p>
-            <div className="flex flex-col sm:flex-row gap-3 sm:items-center justify-center lg:justify-start">
-              <AppStoreButton size="lg" />
-              <p className="text-xs sm:text-sm text-slate-500">
-                7日間無料 / いつでも解約可
+            {/* 2026-10-01: 院の患者さん向けの安心材料。地名・院名は書かない */}
+            <p className="text-sm sm:text-base text-emerald-800 font-semibold">
+              治療院の先生が、患者さんの毎日のセルフケアのために作ったアプリです。
+            </p>
+            <div className="space-y-3">
+              <StoreButtons id="download" className="scroll-mt-24 lg:justify-start" />
+              <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
+                はじめての方は7日間無料。無料体験が終わる24時間前までに解約すれば料金はかかりません（解約しない場合は自動で有料プランに切り替わります）。
               </p>
             </div>
             <div className="flex flex-wrap gap-4 justify-center lg:justify-start pt-2 text-xs sm:text-sm text-slate-500">
@@ -200,7 +264,7 @@ export default function LPPage() {
               </span>
               <span className="flex items-center gap-1">
                 <svg className="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
-                無料で始められる
+                ダウンロード無料・7日間の無料体験つき
               </span>
               <span className="flex items-center gap-1">
                 <svg className="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
@@ -208,7 +272,9 @@ export default function LPPage() {
               </span>
             </div>
           </div>
-          <div className="relative mx-auto lg:mx-0 max-w-xs sm:max-w-sm mt-8 lg:mt-0">
+          {/* w-full: 幅を決めないと、mx-auto のグリッド要素は中身（画像は absolute で幅を持たない）に合わせて縮み、
+              スマホ・タブレットでデモ画面が 24×24px に潰れていた */}
+          <div className="relative mx-auto lg:mx-0 w-full max-w-[280px] sm:max-w-sm mt-8 lg:mt-0">
             <div className="absolute inset-0 bg-gradient-to-br from-emerald-300 to-indigo-300 rounded-[3rem] blur-2xl opacity-40 scale-105 animate-pulse" />
             <div className="relative lp-float-slow">
               <PhoneDemo />
@@ -261,9 +327,11 @@ export default function LPPage() {
                 こんな悩み、ありませんか？
               </p>
               <h2 className="text-2xl sm:text-4xl font-black tracking-tight">
-                「もう何年も付き合っている痛み」
-                <br className="sm:hidden" />
-                卒業しませんか。
+                {/* 2026-10-01: 「…痛み」卒業しませんか → 痛みが無くなると読めないように、毎日のケアの話にした。
+                    スマホで「痛／み」と途中で折り返さないよう、意味の切れ目ごとに inline-block にする */}
+                <span className="inline-block">「もう何年も</span>
+                <span className="inline-block">付き合っている痛み」に、</span>
+                <span className="inline-block">毎日のケアを。</span>
               </h2>
             </div>
           </AnimateOnScroll>
@@ -273,8 +341,9 @@ export default function LPPage() {
               { Icon: MoonIcon, text: '朝起きると腰が重い。何が原因か分からない' },
               { Icon: PhoneIcon, text: 'スマホ首が気になる。猫背と言われる' },
               { Icon: BoltIcon, text: '運動したいけど、何をすればいいか分からない' },
-              { Icon: PillIcon, text: '湿布や痛み止めに頼りがちで、根本改善したい' },
-              { Icon: BuildingIcon, text: '整体・接骨院に通う時間とお金がかかる' },
+              { Icon: PillIcon, text: '湿布や痛み止めだけに頼らず、自分でできるケアを知りたい' },
+              // 2026-10-01: 「整体・接骨院に通う時間とお金がかかる」は、院の患者さんに「通院は無駄」と読めるため変更
+              { Icon: BuildingIcon, text: '通院の合間に、家で何をすればいいか分からない' },
             ].map((item, idx) => (
               <AnimateOnScroll
                 key={idx}
@@ -307,8 +376,8 @@ export default function LPPage() {
             <div className="relative max-w-md">
               <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl px-6 py-5 shadow-md">
                 <p className="text-base sm:text-lg text-slate-800 leading-relaxed">
-                  全部、AI と一緒に向き合えば<br className="sm:hidden" />
-                  <strong className="text-emerald-700">解決できますよ。</strong>
+                  ひとりで抱えずに、AI と一緒に<br className="sm:hidden" />
+                  <strong className="text-emerald-700">少しずつ続けていきましょう。</strong>
                 </p>
                 <p className="text-xs sm:text-sm text-slate-500 mt-2">
                   — ガイコツ先生（あなた専属AIトレーナー）
@@ -339,8 +408,8 @@ export default function LPPage() {
           <FeatureRow
             badge="01"
             title="AI 姿勢分析"
-            description="正面・側面の全身写真を撮るだけ。AIが頭部・肩・骨盤・膝のランドマークを検出し、骨格バランスを数値化。あなた専用の改善ポイントを提案します。"
-            bullets={['全身ランドマーク検出', '左右差・前傾後傾の数値化', '改善ストレッチを自動提案']}
+            description="正面・側面の全身写真を撮るだけ。AIが頭部・肩・骨盤・膝のランドマークを検出し、骨格バランスを数値化。あなた専用の見直しポイントを提案します。"
+            bullets={['全身ランドマーク検出', '左右差・前傾後傾の数値化', 'あなた向けのストレッチを自動提案']}
             image="/lp/03-result.png"
             imageAlt="姿勢分析の結果画面"
           />
@@ -350,7 +419,7 @@ export default function LPPage() {
             badge="02"
             title="ガイコツ先生のAIカウンセリング"
             description="気になる症状や悩みを、いつでも AI ガイコツ先生に相談できます。あなたの姿勢データを踏まえた、パーソナライズされたアドバイスが返ってきます。"
-            bullets={['24時間いつでも相談OK', 'あなたの姿勢データを反映', '深夜の腰痛も即座に対応']}
+            bullets={['24時間いつでも相談OK', 'あなたの姿勢データを反映', '夜中でも、気になったときに相談できる']}
             image="/lp/04-counsel.png"
             imageAlt="ガイコツ先生カウンセリング画面"
             reverse
@@ -381,7 +450,7 @@ export default function LPPage() {
           <FeatureRow
             badge="05"
             title="家族プラン"
-            description="招待コード1つで、家族最大4人までプレミアム機能を共有。お父さんもお母さんも、お子さんも、みんなで姿勢ケア。"
+            description="家族コード1つで、家族最大4人までプレミアム機能を共有。お父さんもお母さんも、お子さんも、みんなで姿勢ケア。"
             bullets={['1契約で家族4人まで', 'アプリ内で簡単招待', '個別データは家族間でも非公開']}
             image="/lp/08-family.png"
             imageAlt="家族グループ画面"
@@ -407,7 +476,8 @@ export default function LPPage() {
               { src: '/lp/03-result.png', alt: '姿勢分析結果' },
               { src: '/lp/07-streak.png', alt: '連続記録グラフ' },
               { src: '/lp/05-meal.png', alt: '食事記録' },
-              { src: '/lp/09-subscription.png', alt: 'プラン管理' },
+              // 2026-10-01: 旧料金（¥1,280 など）が写った /lp/09-subscription.png は外した（画像ファイルは残してある）
+              { src: '/lp/04-counsel.png', alt: 'ガイコツ先生に相談' },
             ].map((shot, idx) => (
               <AnimateOnScroll
                 key={idx}
@@ -432,7 +502,7 @@ export default function LPPage() {
             ))}
           </div>
           <div className="mt-16 text-center">
-            <AppStoreButton size="lg" />
+            <StoreButtons />
           </div>
         </div>
       </section>
@@ -448,27 +518,36 @@ export default function LPPage() {
               3 ステップで始められます
             </h2>
           </div>
+          {/* 2026-10-01: 無料体験はアプリ内で申し込んでから使う、という手順が抜けていたので2番目に入れた。
+              申し込みの場所はアプリのメニュー名（料金プラン・7日間無料体験）に合わせる */}
           <div className="grid sm:grid-cols-3 gap-6 sm:gap-8">
-            {[
-              {
-                step: '01',
-                title: 'ダウンロード',
-                desc: 'App Store から ZERO-PAIN をインストール。簡単な初期設定で完了。',
-                img: '/lp/10-onboarding.png',
-              },
-              {
-                step: '02',
-                title: '全身写真を撮影',
-                desc: '正面と側面、合計2枚の全身写真を撮影。あとは AI にお任せ。',
-                img: '/lp/02-capture.png',
-              },
-              {
-                step: '03',
-                title: '毎日セルフケア',
-                desc: 'AIが提案するストレッチを毎日5分。30日コーチングで習慣化。',
-                img: '/lp/06-coaching.png',
-              },
-            ].map((s, sIdx) => (
+            {(
+              [
+                {
+                  step: '01',
+                  title: 'ダウンロード',
+                  desc: 'iPhone は App Store、Android は Google Play から ZERO-PAIN をインストール。ダウンロードは無料で、簡単な初期設定で完了。',
+                  img: '/lp/10-onboarding.png',
+                },
+                {
+                  step: '02',
+                  title: '7日間の無料体験に申し込む',
+                  desc: 'アプリの「メニュー」→「料金プラン・7日間無料体験」で、プランを選んで申し込みます（お支払いの登録は App Store / Google Play の画面です）。無料体験が終わる24時間前までに解約すれば料金はかかりません（解約しない場合は自動で有料プランに切り替わります）。',
+                  // 狭い枠で「メニュ／ー」のように語の途中で折り返さないよう、折り返してよい切れ目で分けておく
+                  guide: [
+                    ['画面右下の', '「メニュー」を押す'],
+                    ['「料金プラン・', '7日間無料体験」', 'を押す'],
+                    ['プランを選んで', '申し込む'],
+                  ],
+                },
+                {
+                  step: '03',
+                  title: '撮影して、毎日セルフケア',
+                  desc: '正面と側面の全身写真を撮ると、AI が姿勢をチェック。提案されたストレッチを毎日5分、ガイコツ先生にもいつでも相談できます。',
+                  img: '/lp/02-capture.png',
+                },
+              ] as { step: string; title: string; desc: string; img?: string; guide?: string[][] }[]
+            ).map((s, sIdx) => (
               <AnimateOnScroll
                 key={s.step}
                 animation="fade-up"
@@ -481,13 +560,38 @@ export default function LPPage() {
                   </div>
                   <div className="bg-slate-800 rounded-3xl p-2 shadow-xl">
                     <div className="relative rounded-2xl overflow-hidden aspect-[9/18.2] bg-white">
-                      <Image
-                        src={s.img}
-                        alt={s.title}
-                        fill
-                        sizes="200px"
-                        className="object-cover"
-                      />
+                      {s.img ? (
+                        <Image
+                          src={s.img}
+                          alt={s.title}
+                          fill
+                          sizes="200px"
+                          className="object-cover"
+                        />
+                      ) : (
+                        // 料金プラン画面の写真は使わない（旧料金が写っているため）。押す順番を文字で示す
+                        <div className="absolute inset-0 flex flex-col justify-center gap-1.5 p-2 bg-gradient-to-b from-emerald-50 to-white text-left">
+                          {s.guide?.map((g, gIdx) => (
+                            <div key={gIdx}>
+                              {gIdx > 0 && (
+                                <p className="text-center text-emerald-500 font-black leading-none mb-1.5" aria-hidden>
+                                  ↓
+                                </p>
+                              )}
+                              <div className="rounded-xl bg-white border border-emerald-200 px-2.5 py-2 shadow-sm">
+                                <p className="text-[10px] font-bold text-emerald-600">手順 {gIdx + 1}</p>
+                                <p className="text-xs sm:text-sm font-bold text-slate-900 leading-snug">
+                                  {g.map((chunk, cIdx) => (
+                                    <span key={cIdx} className="inline-block">
+                                      {chunk}
+                                    </span>
+                                  ))}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -507,12 +611,13 @@ export default function LPPage() {
               料金プラン
             </p>
             <h2 className="text-2xl sm:text-4xl font-black tracking-tight">
-              まずは7日間、無料で。
+              はじめての方は、7日間無料で。
             </h2>
-            <p className="mt-3 text-slate-600 text-sm sm:text-base">
-              すべてのプランで7日間無料トライアル。
-              <br className="sm:hidden" />
-              期間中はいつでもキャンセル可能。
+            {/* 2026-10-01: 自動で有料に切り替わることを、無料の案内と同じ場所に書く */}
+            <p className="mt-3 text-slate-600 text-sm sm:text-base leading-relaxed">
+              どのプランも7日間の無料体験つきです。
+              <br className="hidden sm:inline" />
+              無料体験が終わる24時間前までに解約すれば料金はかかりません（解約しない場合は自動で有料プランに切り替わります）。
             </p>
           </div>
           <div className="grid sm:grid-cols-2 gap-4 sm:gap-6 max-w-3xl mx-auto">
@@ -526,7 +631,7 @@ export default function LPPage() {
                   'AI 食事分析 無制限',
                   'ガイコツ先生カウンセリング 無制限',
                   '30日コーチング',
-                  '7日間無料トライアル付き',
+                  '自動更新（いつでも解約できます）',
                 ]}
               />
             </AnimateOnScroll>
@@ -540,7 +645,8 @@ export default function LPPage() {
                 features={[
                   '月額プランのすべて',
                   '月換算 733 円',
-                  '14日分お得 (¥3,560 OFF)',
+                  // 2026-10-01: 880円×12か月＝10,560円 − 8,800円 ＝ 1,760円（旧表記「14日分お得 (¥3,560 OFF)」は誤り）
+                  '月額で1年使うより1,760円お得（2か月分）',
                   '長く続ける人におすすめ',
                 ]}
               />
@@ -558,7 +664,7 @@ export default function LPPage() {
             </details>
           </div>
           <div className="mt-10 text-center">
-            <AppStoreButton size="lg" />
+            <StoreButtons />
             <p className="mt-3 text-xs text-slate-500">
               いつでも解約OK / 隠れた追加料金なし
             </p>
@@ -585,8 +691,9 @@ export default function LPPage() {
                 Icon: LockIcon,
               },
               {
-                title: '施術者が開発したアプリ',
-                desc: '世界各地で施術を重ねてきたカイロプラクターが開発。現場で見てきた「続かない悩み」に寄り添う設計です。',
+                // 2026-10-01: 院の患者さん向けに「院の先生が作った」ことを書く。確かめていない実績・地名・院名は書かない
+                title: '治療院の先生が作ったアプリ',
+                desc: '治療院の先生（カイロプラクター）が、患者さんの毎日のセルフケアのために作ったアプリです。現場で見てきた「続かない悩み」に寄り添う設計です。',
                 Icon: HeartPulseIcon,
               },
             ].map((t, idx) => (
@@ -636,27 +743,19 @@ export default function LPPage() {
             />
           </div>
           <h2 className="text-3xl sm:text-5xl font-black tracking-tight mb-4" style={{ color: '#ffffff' }}>
-            痛みのない毎日を、今日から。
+            <span className="inline-block">毎日のセルフケアを、</span>
+            <span className="inline-block">今日から。</span>
           </h2>
+          {/* 2026-10-01: 「合わなければ、料金は一切かかりません」は自動更新に触れていなかったため変更 */}
           <p className="text-base sm:text-lg mb-8 leading-relaxed" style={{ color: '#ecfdf5' }}>
-            7日間無料で全機能をお試し。
+            はじめての方は7日間、無料で全機能をお試しいただけます。
             <br />
-            合わなければ、料金は一切かかりません。
+            無料体験が終わる24時間前までに解約すれば料金はかかりません（解約しない場合は自動で有料プランに切り替わります）。
           </p>
-          <a
-            href={APP_STORE_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center justify-center gap-2 px-8 py-5 rounded-full bg-white font-black text-lg sm:text-xl shadow-2xl hover:scale-[1.03] active:scale-[0.98] transition-transform"
-            style={{ color: '#047857' }}
-          >
-            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-              <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
-            </svg>
-            App Store で無料ダウンロード
-          </a>
+          <StoreButtons tone="light" />
+          {/* 必要な iOS は 16.6 以上（App Store の互換性表示・Xcode の設定と同じ） */}
           <p className="mt-4 text-sm" style={{ color: 'rgba(236, 253, 245, 0.85)' }}>
-            iPhone 専用 / iOS 16.0 以上
+            ダウンロード無料 / iOS 16.6 以上 / Android
           </p>
         </div>
       </section>
@@ -832,7 +931,7 @@ function PricingCard({
       </ul>
       <p className="text-xs text-emerald-700 font-semibold pt-2 border-t border-slate-100 flex items-center gap-1.5">
         <SparklesIcon className="w-4 h-4" />
-        7日間無料トライアル付き
+        はじめての方は7日間の無料体験つき
       </p>
     </div>
   );

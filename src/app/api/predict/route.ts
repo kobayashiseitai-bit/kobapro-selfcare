@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
 import { SAFE_LANGUAGE_RULES } from "../../lib/safe-language";
+import { getSubscriptionState } from "../../lib/subscription";
 
 import { createServerSupabase } from "../../lib/supabase-server";
 
@@ -15,9 +16,11 @@ function getClient() {
   return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 }
 
+// 体調チェックで選べる頭痛・猫背も入れる（無いと AI を使わない文が「headacheに注意しましょう」になる。名前は /api/report と同じ）
 const SYMPTOM_LABELS: Record<string, string> = {
   neck: "首こり", shoulder_stiff: "肩こり", shoulder_pain: "肩の痛み",
   back: "腰痛", eye_fatigue: "眼精疲労", eye_recovery: "視力回復",
+  headache: "頭痛", kyphosis: "猫背",
 };
 
 const DAYS = ["日", "月", "火", "水", "木", "金", "土"];
@@ -101,6 +104,28 @@ export async function POST(req: NextRequest) {
     });
     const topSymptom = Object.entries(symptomCounts).sort((a, b) => b[1] - a[1])[0];
 
+    // AI を使わない、記録からのルールの文（AI の答えが読めなかった時と、新規の未課金の方に使う）。
+    // basedOnRecords: 記録をもとにした答え。画面はこの時だけ、その日のあいだ控えておいて再び呼ばない
+    // （記録が無い時の「まだデータが少ない…」は控えない。記録を付けたらすぐ答えが変わるように）。
+    const ruleBased = {
+      prediction: topSymptom
+        ? `${SYMPTOM_LABELS[topSymptom[0]] || topSymptom[0]}に注意しましょう`
+        : "定期的なセルフケアで体調管理をしましょう",
+      riskLevel: postureIssues.length > 2 ? "high" : postureIssues.length > 0 ? "medium" : "low",
+      recommendedAction: "セルフケア動画を見る",
+      symptomId: topSymptom ? topSymptom[0] : null,
+      basedOnRecords: true,
+    };
+
+    // AI で予測文を作るのは、有料・トライアル中の方と、2026-09-13より前に登録した旧ユーザーだけ（/api/report と同じ線引き）。
+    // 2026-10-01 に新規の方も姿勢チェックを月1回保存できるようにしたため、記録が1件あるだけでここまで来る。
+    // ホームは開くたびにここを呼ぶので、課金の確認なしに AI を呼ぶと、お金を払わない方の分まで
+    // ホームを開くたびに費用がかかり続ける。新規の未課金の方には AI を呼ばずにルールの文を返す。
+    const subState = await getSubscriptionState(supabase, user.id);
+    if (!subState.isPaid && !subState.isLegacyUser) {
+      return NextResponse.json(ruleBased);
+    }
+
     // Claude AIで予測生成
     const today = DAYS[new Date().getDay()];
     const analysisPrompt = `あなたはカイロプラクティックの専門家AIです。以下のユーザーデータから、今日の体のコンディションを予測し、予防アドバイスを1つ生成してください。
@@ -151,19 +176,13 @@ ${postureIssues.length > 0 ? postureIssues.join("\n") : "特になし"}
           riskLevel: parsed.riskLevel || "low",
           symptomId: parsed.symptomId || (topSymptom ? topSymptom[0] : null),
           recommendedAction: "セルフケア動画を見る",
+          basedOnRecords: true,
         });
       }
     } catch { /* JSON parse error */ }
 
     // フォールバック
-    return NextResponse.json({
-      prediction: topSymptom
-        ? `${SYMPTOM_LABELS[topSymptom[0]] || topSymptom[0]}に注意しましょう`
-        : "定期的なセルフケアで体調管理をしましょう",
-      riskLevel: postureIssues.length > 2 ? "high" : postureIssues.length > 0 ? "medium" : "low",
-      recommendedAction: "セルフケア動画を見る",
-      symptomId: topSymptom ? topSymptom[0] : null,
-    });
+    return NextResponse.json(ruleBased);
   } catch (e) {
     console.error("Predict error:", e);
     return NextResponse.json({
