@@ -15,13 +15,20 @@ import { createClient, SupabaseClient } from "@supabase/supabase-js";
  * 実害として、RevenueCat Webhook で購入が記録されても、
  * アプリ起動時に一度読まれていると「無料プラン」のままになる。
  * そのため、ここで必ず no-store を指定する。
+ *
+ * キーはサービスロールだけを使う。anon キーには切り替えない。
+ * 2026-10-01 に anon 向けの「全部許可」ポリシーを消したので（supabase/migrations/rls_remove_anon_allow_all.sql）、
+ * anon で動くと全テーブルが空に見えて「未登録」「無料プラン」などの誤った応答を黙って返してしまう。
+ * キーが無いときは、ここで例外にして 500 で気づけるようにする。
  */
 export function createServerSupabase(): SupabaseClient {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-  const key =
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    "";
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) {
+    throw new Error(
+      "NEXT_PUBLIC_SUPABASE_URL または SUPABASE_SERVICE_ROLE_KEY が未設定です（anon キーでは代用しない）"
+    );
+  }
 
   return createClient(url, key, {
     auth: { persistSession: false },
@@ -33,20 +40,7 @@ export function createServerSupabase(): SupabaseClient {
 }
 
 /**
- * サービスロールキーだけを使う版。
- * 引き継ぎコードと RevenueCat Webhook は anon にフォールバックさせない
- * （キーが無いときは動かないのが正しい）。キャッシュ無効化は同じ。
+ * 引き継ぎコードと RevenueCat Webhook が使う名前。中身は createServerSupabase と同じ
+ * （以前は createServerSupabase だけが anon にフォールバックしていたので分けていた）。
  */
-export function createServiceSupabase(): SupabaseClient {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-    process.env.SUPABASE_SERVICE_ROLE_KEY || "",
-    {
-      auth: { persistSession: false },
-      global: {
-        fetch: (input: RequestInfo | URL, init?: RequestInit) =>
-          fetch(input, { ...init, cache: "no-store" }),
-      },
-    }
-  );
-}
+export const createServiceSupabase = createServerSupabase;
