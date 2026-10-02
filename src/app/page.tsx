@@ -777,11 +777,15 @@ function PlanGuideCard({
 function LegacyFreeEndingNotice({
   onNavigate,
   dismissible = false,
+  knownEndsAt,
 }: {
   onNavigate?: (s: Screen) => void;
   dismissible?: boolean;
+  /** 呼び出し側がすでに /api/subscription を読んでいるときに渡す（読み直さない。料金プラン画面で使う） */
+  knownEndsAt?: string | null;
 }) {
-  const [endsAt, setEndsAt] = useState<string | null>(null);
+  const [fetchedEndsAt, setEndsAt] = useState<string | null>(null);
+  const endsAt = knownEndsAt !== undefined ? knownEndsAt : fetchedEndsAt;
   const [hidden, setHidden] = useState(false);
   const todayKey = () => {
     const jst = new Date(Date.now() + 9 * 60 * 60 * 1000);
@@ -794,6 +798,7 @@ function LegacyFreeEndingNotice({
     } catch {
       /* 読めなければ出す */
     }
+    if (knownEndsAt !== undefined) return () => { cancelled = true; };
     (async () => {
       try {
         const res = await fetch(
@@ -9177,7 +9182,7 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
         {state && (
           <>
             {/* 既存ユーザーの無料枠が 10/31 で終わるお知らせ（対象の方だけ・この画面では閉じられない） */}
-            <LegacyFreeEndingNotice />
+            <LegacyFreeEndingNotice knownEndsAt={state.isPaid ? null : state.legacyFreeEndsAt ?? null} />
 
             {/* 現在のステータス */}
             <div className={state.isPaid ? "card-accent-amber p-5" : "card-base p-5"}>
