@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabase } from "../_helpers";
+import { validateAdmin, getSupabase } from "../_helpers";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const fetchCache = "force-no-store";
 
 export async function GET(req: NextRequest) {
+  // 管理者ログイン（/api/admin/auth が付ける admin_session）が無ければ何も返さない。
+  // 2026-10-02 まで認証が無く、だれでも全利用者の名前・健康情報・チャット本文を読めた
+  if (!validateAdmin(req)) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
   const supabase = getSupabase();
 
   const [users, chats, posture, symptoms] = await Promise.all([

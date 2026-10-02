@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabase } from "../_helpers";
+import { validateAdmin, getSupabase } from "../_helpers";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
+  // 管理者ログイン（/api/admin/auth が付ける admin_session）が無ければ何も返さない。
+  // 2026-10-02 まで認証が無く、だれでも全利用者の名前・健康情報・チャット本文を読めた
+  if (!validateAdmin(req)) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
   try {
     const { userId, name } = await req.json();
     if (!userId) {
