@@ -244,8 +244,37 @@ export default function DeleteAccountPage() {
           </ul>
         </section>
 
+        {/* Google Play のデータ セーフティ「アカウントを削除せずにデータの削除をリクエストできるか」の URL（#partial）。
+            privacy の「ご本人からのご請求」と同じく、フォームで受けて手で消す（2026-10-02） */}
+        <section id="partial" className="scroll-mt-16">
+          <h2 className="text-base font-bold text-white mb-2">6. アカウントを残したまま、一部のデータだけを消したい方</h2>
+          <p className="mb-2 text-gray-300">
+            アカウントは使い続けたまま、AI との会話（チャット）、食事の記録と写真、姿勢チェックの記録と写真、体調チェック、体重の記録などのうち、一部だけを消すこともできます。サポートのお問い合わせフォームからご依頼ください。
+          </p>
+          <ol className="space-y-1.5 pl-5 list-decimal text-gray-300">
+            <li>
+              <Link href="/support#contact" className="text-emerald-400 underline">
+                サポートのページ
+              </Link>
+              の「お問い合わせフォーム」に進み、カテゴリは「アカウント・課金」を選びます。
+            </li>
+            <li>
+              件名に<strong className="text-white">「データ削除の依頼」</strong>と書きます。
+            </li>
+            <li>
+              「お問い合わせ内容」に、アプリに登録したお名前、おおよその登録時期、使っている機種と、
+              <strong className="text-white">消したいデータの種類と時期</strong>（例: 2026年8月のチャット、食事の写真すべて）を書いて、送ります。
+            </li>
+          </ol>
+          <p className="mt-2 text-gray-300">
+            ご本人であることを確かめたうえで、
+            <strong className="text-white">30日以内にご指定のデータを削除し、終わったことをメールでお知らせします。</strong>
+            消したデータは元に戻せません。アカウントと、ご指定のデータ以外の記録は、そのまま残ります。
+          </p>
+        </section>
+
         <section>
-          <h2 className="text-base font-bold text-white mb-2">6. お問い合わせ</h2>
+          <h2 className="text-base font-bold text-white mb-2">7. お問い合わせ</h2>
           <p className="text-gray-300">
             このページの内容についてのご質問は、
             <Link href="/support#contact" className="text-emerald-400 underline">
