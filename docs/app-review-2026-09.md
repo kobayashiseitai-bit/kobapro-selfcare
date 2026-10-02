@@ -21,6 +21,18 @@ DB は書き換えないので、**審査が終わったら環境変数から外
 
 判定はサーバー側のみ。`NEXT_PUBLIC_` を付けていないのでクライアントから偽装できない。
 
+### 審査用アカウントはアプリから削除できない（2026-10-02）
+
+以前は、審査担当がこのアカウントで「アカウントを削除」を試すと `users` の行が消え、
+`transfer_codes` の ON DELETE CASCADE で `REVIEW26` も消えて、次の審査で入れなくなっていた。
+今は `/api/account` の DELETE が、reusable の引継ぎコードを持つアカウントを見つけると何も消さずに 403 を返し、
+削除の確認画面に「審査のための共用アカウントのため、削除できません。新しく登録したアカウントでお試しください」（英語の一文つき）と出す。
+
+そのため、審査のメモ欄（App Store Connect の App Review Information・Google Play の審査用の説明）に次の一文を足すこと。
+同じ端末では引継ぎで端末IDが審査用のものに置きかわっているので、新しいアカウントはアプリを入れ直してから作る。
+
+> The shared review account (transfer code REVIEW26) cannot be deleted, so that it stays available for future reviews. To test account deletion, please reinstall the app (or use another device), register a new account by entering any name, and delete it from メニュー (Menu) > 設定 (Settings) > アカウントを削除 (Delete account), then type DELETE.
+
 ### 動作確認の方法
 
 ```bash

@@ -3,6 +3,7 @@ import { Resend } from "resend";
 
 // Resend メール通知: 2026-04-18 環境変数適用版
 import { createServerSupabase } from "../../lib/supabase-server";
+import { stripAccountDeletedMarker } from "../../lib/support-ticket-markers";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -243,7 +244,9 @@ export async function POST(req: NextRequest) {
         name: name.trim().slice(0, 100),
         email: email.trim().toLowerCase().slice(0, 255),
         category,
-        subject: subject ? String(subject).trim().slice(0, 200) : null,
+        // 件名の頭の「【アカウント削除済み・対応後に削除】」は、アカウントの削除で残した行の目印
+        // （管理画面で解決済にすると消える）なので、フォームから送られても取り除く（lib/support-ticket-markers.ts）
+        subject: subject ? stripAccountDeletedMarker(String(subject).trim()).slice(0, 200) || null : null,
         message: message.trim().slice(0, 4000),
         status: "pending",
         device_id: deviceId ? String(deviceId).slice(0, 100) : null,

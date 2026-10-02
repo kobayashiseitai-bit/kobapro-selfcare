@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateAdmin, getSupabase } from "../_helpers";
+import {
+  isAccountDeletionTicket,
+  isFinishedTicketStatus,
+} from "../../../lib/support-ticket-markers";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -62,6 +66,11 @@ export async function GET(req: NextRequest) {
  * PATCH /api/admin/support
  * Body: { ticketId, status?, reply? }
  * 管理者用: ステータス変更・返信を記録
+ *
+ * アカウントを削除した方のお問い合わせ（lib/support-ticket-markers.ts の isAccountDeletionTicket。件名の頭に
+ * 「【アカウント削除済み・対応後に削除】」があるものと、RevenueCat の「やること」）を「解決済」・「スパム」にしたときは、
+ * 状態を変えずに行ごと削除して { ok: true, deleted: true } を返す
+ * （/delete-account と privacy の 8. で「対応が終わってから削除します」とお約束しているため。2026-10-02）。
  */
 export async function PATCH(req: NextRequest) {
   if (!validateAdmin(req)) {
@@ -72,6 +81,35 @@ export async function PATCH(req: NextRequest) {
     const { ticketId, status, reply } = await req.json();
     if (!ticketId) {
       return NextResponse.json({ error: "ticketId required" }, { status: 400 });
+    }
+
+    if (isFinishedTicketStatus(status)) {
+      const supabase = getSupabase();
+      const { data: ticket, error: findErr } = await supabase
+        .from("support_tickets")
+        .select("id, user_id, subject, email")
+        .eq("id", ticketId)
+        .maybeSingle();
+      if (findErr) {
+        return NextResponse.json(
+          { error: "fetch failed", detail: findErr.message },
+          { status: 500 }
+        );
+      }
+      if (ticket && isAccountDeletionTicket(ticket)) {
+        const { error: delErr, count } = await supabase
+          .from("support_tickets")
+          .delete({ count: "exact" })
+          .eq("id", ticketId);
+        if (delErr) {
+          return NextResponse.json(
+            { error: "delete failed", detail: delErr.message },
+            { status: 500 }
+          );
+        }
+        console.log("[admin-support] deleted ticket of a deleted account", JSON.stringify({ ticketId, count }));
+        return NextResponse.json({ ok: true, deleted: true });
+      }
     }
 
     const updates: Record<string, unknown> = {

@@ -28,14 +28,19 @@ type FAQItem = {
   q: string;
   a: string;
   category: string;
+  /** 答えの下に出す案内のリンク（任意）。答えの文はボタンの中にあるため、リンクはボタンの外に出す */
+  link?: { href: string; label: string };
 };
 
 const FAQ_ITEMS: FAQItem[] = [
   // アカウント・設定
   {
     category: "🔧 アカウント・設定",
-    q: "アカウントを削除するには？",
-    a: "「設定」画面の下部にある「🗑 アカウントを削除」ボタンから削除できます。「DELETE」と入力後、プロフィール・姿勢チェック記録・食事記録・チャット履歴など、関連するすべてのデータが完全に削除されます。この操作は取り消せませんのでご注意ください。",
+    q: "アカウント（データ）を削除するには？",
+    // 2026-10-02: 実際の画面どおりの手順に直し、定期購入が止まらないことと、
+    // アプリが手元にない方向けの /delete-account（Google Play に出すアカウント削除のページ）への案内を足した
+    a: "アプリの画面のいちばん下の右はしにある「メニュー」→「設定」→「データ管理」の「アカウントを削除」を押し、確認の欄に半角の大文字で「DELETE」と入力して「完全に削除する」を押すと、その場で削除されます。この操作は取り消せません。\n\n⚠️ アカウントを削除しても、有料プラン（定期購入）は解約されず、お支払いも止まりません。先に解約してください（手順は「サブスクリプションを解約するには？」をご覧ください）。\n\nアプリをすでに削除した方や、アプリを開けない方は、「アカウント削除のご案内」のページの方法でご依頼ください。削除されるデータと残るデータも、そちらに書いています。",
+    link: { href: "/delete-account", label: "アカウント削除のご案内を見る" },
   },
   {
     category: "🔧 アカウント・設定",
@@ -45,7 +50,10 @@ const FAQ_ITEMS: FAQItem[] = [
   {
     category: "🔧 アカウント・設定",
     q: "機種変更時のデータ移行は可能ですか？",
-    a: "現在、端末ごとのアカウントとなっており、機種変更時のデータ移行機能は実装中です。重要なデータは「設定」→「📥 データをエクスポート」からJSONファイルとしてダウンロードしておくことをおすすめします。",
+    // 2026-10-02: 「データ移行機能は実装中」「データをエクスポート」は古い記述だったので直した。
+    // 引継ぎコードは settings/page.tsx（1時間で失効・1回限り）。アプリではファイルへの保存ボタンを押せない。
+    // 「履歴」（過去の記録）の一覧は端末の localStorage（lib/storage.ts）にあり、引継ぎでは移らない
+    a: "できます。前の端末で「メニュー」→「設定」→「引継ぎコードを発行」を押すと、8桁のコードが出ます（1時間で使えなくなり、使えるのは1回だけです）。新しい端末ではアプリを入れて登録をすませてから、「メニュー」→「設定」→「コードを入力して復元」を押し、そのコードを入力してください。前の端末のアカウントと記録を、新しい端末で使えるようになります。\n\n※ メニューの「履歴」（過去の記録）の一覧は、それぞれの端末の中に保存しているため、新しい端末には移りません。\n※ アプリから記録をファイルに保存することはできません。",
   },
   // サブスク・課金
   {
@@ -93,7 +101,9 @@ const FAQ_ITEMS: FAQItem[] = [
   {
     category: "🦴 ガイコツ先生（AI）",
     q: "会話の内容は誰が見ていますか？",
-    a: "AI分析のためにAnthropic社（Claude API提供元）のサーバーに送信されます。Anthropic社は学習目的でのデータ利用は行いません。プライバシーポリシーに詳しく記載していますのでご確認ください。",
+    // 2026-10-02: 当方の担当者が管理用の画面（admin/chats）で会話の本文を読めることを書き足した。
+    // プライバシーポリシーの「3. 使う目的」と同じ内容にそろえる
+    a: "ガイコツ先生の返事を作るために、会話の内容を Anthropic 社（Claude を提供している会社）に送ります。Anthropic 社が、送った内容を AI の学習に使うことはありません。\n\nまた、サービスをよくするために、当方（運営: 有限会社トップバンク）の担当者が、管理用の画面で会話の内容を確認することがあります。\n\nくわしくはプライバシーポリシーをご覧ください。",
   },
   {
     category: "🦴 ガイコツ先生（AI）",
@@ -120,7 +130,8 @@ const FAQ_ITEMS: FAQItem[] = [
   {
     category: "🔒 プライバシー・その他",
     q: "プライバシーは守られますか？",
-    a: "はい。すべての通信はHTTPSで暗号化され、データは暗号化されたSupabaseデータベースに保存されます。個人を特定する情報と端末IDは紐付かないように設計されています。詳しくはプライバシーポリシーをご確認ください。",
+    // 2026-10-02: 「個人を特定する情報と端末IDは紐付かない」は誤りだった（users の同じ行に name と device_id を保存している）ので直した
+    a: "はい。通信はすべて HTTPS で暗号化しています。データは、日本（東京）にある Supabase のデータベースに、暗号化した状態で保存しています。端末ごとのランダムな番号は、ご登録のお名前などと同じアカウントの情報として保存し、アプリの機能と利用状況の把握に使います。広告のための追跡はしていません。詳しくはプライバシーポリシーをご確認ください。",
   },
   {
     category: "🔒 プライバシー・その他",
@@ -293,39 +304,49 @@ export default function SupportPage() {
                 const globalIdx = FAQ_ITEMS.indexOf(item);
                 const isOpen = expandedFAQ === globalIdx;
                 return (
-                  <button
-                    key={i}
-                    onClick={() =>
-                      setExpandedFAQ(isOpen ? null : globalIdx)
-                    }
-                    className="card-base w-full text-left p-3 transition active:scale-[0.99]"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="text-sm font-bold text-white flex-1">
-                        Q. {item.q}
-                      </p>
-                      <span
-                        className={`text-gray-500 text-lg transition-transform ${
-                          isOpen ? "rotate-180" : ""
-                        }`}
+                  <div key={i}>
+                    <button
+                      onClick={() =>
+                        setExpandedFAQ(isOpen ? null : globalIdx)
+                      }
+                      className="card-base w-full text-left p-3 transition active:scale-[0.99]"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-sm font-bold text-white flex-1">
+                          Q. {item.q}
+                        </p>
+                        <span
+                          className={`text-gray-500 text-lg transition-transform ${
+                            isOpen ? "rotate-180" : ""
+                          }`}
+                        >
+                          ▾
+                        </span>
+                      </div>
+                      {isOpen && (
+                        <p className="mt-2 pt-2 border-t border-white/5 text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">
+                          {item.a}
+                        </p>
+                      )}
+                    </button>
+                    {/* ボタンの中にリンクは置けないので、開いたときだけボタンのすぐ下に出す */}
+                    {isOpen && item.link && (
+                      <Link
+                        href={item.link.href}
+                        className="mt-1.5 ml-1 inline-block text-sm text-emerald-400 underline"
                       >
-                        ▾
-                      </span>
-                    </div>
-                    {isOpen && (
-                      <p className="mt-2 pt-2 border-t border-white/5 text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">
-                        {item.a}
-                      </p>
+                        {item.link.label} →
+                      </Link>
                     )}
-                  </button>
+                  </div>
                 );
               })}
             </div>
           ))}
         </section>
 
-        {/* お問い合わせフォーム */}
-        <section className="pt-4 border-t border-white/5 space-y-4">
+        {/* お問い合わせフォーム（/delete-account から /support#contact で直接ここへ来る） */}
+        <section id="contact" className="pt-4 border-t border-white/5 space-y-4 scroll-mt-16">
           <div>
             <h2 className="text-base font-bold text-white flex items-center gap-2">
               <span>📮</span>

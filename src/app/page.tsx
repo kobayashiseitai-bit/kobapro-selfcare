@@ -1411,7 +1411,13 @@ function RegisterScreen({ onComplete }: { onComplete: () => void }) {
               </span>
             </label>
 
-            {/* AI データ送信への同意（App Store Guideline 5.1.1(i) / 5.1.2(i) 対応） */}
+            {/* AI データ送信への同意（App Store Guideline 5.1.1(i) / 5.1.2(i) 対応）
+                2026-10-02: 実装に合わせて直した。OpenAI はどこからも呼んでいない（音声ガイドは public/voice-*.mp3 を流すだけ）ので消した。
+                送る先は Anthropic だけ（api/chat・checkin・coaching・predict・report・meal・meal/append・meal/reanalyze）。
+                姿勢の分析は端末の中（MediaPipe）で行い、AI には送らない。姿勢の写真は、チャットの相談のときに渡す。
+                くわしい中身は privacy/page.tsx の「4. 業務の委託」と合わせること。
+                個人情報保護法28条の根拠は、この同意ではなく Anthropic の DPA による基準適合体制（privacy/page.tsx の「5.」と冒頭のコメント）。
+                この同意は「あわせて」いただくもので、サーバーには保存していない（agreedAI は /api/register に送らない）。 */}
             <label className="flex items-start gap-2.5 cursor-pointer">
               <input
                 type="checkbox"
@@ -1420,21 +1426,20 @@ function RegisterScreen({ onComplete }: { onComplete: () => void }) {
                 className="mt-0.5 w-5 h-5 accent-emerald-500"
               />
               <span className="text-xs text-gray-200 leading-relaxed flex-1">
-                以下の<span className="font-bold text-white">第三者 AI サービス</span>へ、
-                姿勢分析・食事分析・チャット相談・体調予測のために、
-                <span className="font-bold text-white">撮影した写真・入力テキスト・プロフィール（身長・体重・年齢）・症状履歴</span>
-                を送信することに同意します。
+                ガイコツ先生への相談・食事の分析・体調チェック・痛み予測・振り返りレポート・30日コーチングのために、
+                <span className="font-bold text-white">撮った写真・入力した文章・プロフィール（お名前・年齢・性別・身長・体重など）・痛みやお悩み・姿勢チェックや食事の記録</span>
+                を、<span className="font-bold text-white">外部の AI サービス</span>へ送ることに同意します。
                 <br />
-                <span className="text-emerald-300 font-bold">送信先:</span> Anthropic, PBC (Claude API) / OpenAI, Inc. (音声生成のみ)
+                <span className="text-emerald-300 font-bold">送り先:</span> Anthropic, PBC（Claude API・アメリカ合衆国）
                 <br />
-                送信データは AI 分析にのみ使用され、AI モデルの学習には利用されません。詳細は
+                送ったデータが AI の学習に使われることはありません。くわしくは
                 <a
                   href="/privacy"
                   target="_blank"
                   rel="noopener"
                   className="text-emerald-400 underline"
                 >プライバシーポリシー</a>
-                をご確認ください。
+                をご覧ください。
               </span>
             </label>
           </div>

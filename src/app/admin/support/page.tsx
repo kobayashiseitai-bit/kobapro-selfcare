@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+// アカウントを削除した方のお問い合わせは、「解決済」にすると api/admin/support の PATCH が行ごと消す（2026-10-02）
+import { isAccountDeletionTicket } from "../../lib/support-ticket-markers";
+
 type Ticket = {
   id: string;
   user_id: string | null;
@@ -71,9 +74,19 @@ export default function AdminSupportPage() {
 
   const updateStatus = async (newStatus: Ticket["status"]) => {
     if (!selectedTicket) return;
+    const willDelete =
+      (newStatus === "resolved" || newStatus === "spam") && isAccountDeletionTicket(selectedTicket);
+    if (
+      willDelete &&
+      !window.confirm(
+        "この方はアカウントを削除しています。\n「解決済」にすると、このお問い合わせは削除され、元に戻せません。\n対応（メールでの返信など）は終わりましたか？"
+      )
+    ) {
+      return;
+    }
     setSaving(true);
     try {
-      await fetch("/api/admin/support", {
+      const res = await fetch("/api/admin/support", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -82,6 +95,17 @@ export default function AdminSupportPage() {
           reply: replyDraft !== selectedTicket.reply ? replyDraft : undefined,
         }),
       });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(`保存できませんでした: ${data.detail || data.error || res.status}`);
+        return;
+      }
+      if (data.deleted) {
+        closeTicket();
+        await load();
+        alert("解決済にして、このお問い合わせを削除しました");
+        return;
+      }
       setSelectedTicket({ ...selectedTicket, status: newStatus, reply: replyDraft });
       await load();
     } finally {
@@ -174,6 +198,11 @@ export default function AdminSupportPage() {
                   <span className={`text-[11px] px-2 py-0.5 rounded-full ${cat.color}`}>
                     {cat.emoji} {cat.label}
                   </span>
+                  {isAccountDeletionTicket(t) && (
+                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300">
+                      🗑 解決済で削除
+                    </span>
+                  )}
                   <span className="text-[11px] text-gray-500 ml-auto">
                     {formatDate(t.created_at)}
                   </span>
@@ -248,6 +277,16 @@ export default function AdminSupportPage() {
                 ✕
               </button>
             </div>
+
+            {isAccountDeletionTicket(selectedTicket) && (
+              <div className="bg-rose-500/10 border border-rose-500/30 rounded-lg p-3">
+                <p className="text-xs text-rose-200 leading-relaxed">
+                  この方は、アプリでアカウントを削除しています（またはアカウント削除の続きの作業です）。
+                  対応が終わったら「解決済にする」を押してください。このお問い合わせは、その時点で削除されます
+                  （/delete-account とプライバシーポリシーで「対応が終わってから削除します」とお約束しています）。
+                </p>
+              </div>
+            )}
 
             <div className="bg-gray-800 rounded-lg p-4">
               <p className="text-[11px] text-gray-500 mb-2 font-bold">お問い合わせ内容</p>

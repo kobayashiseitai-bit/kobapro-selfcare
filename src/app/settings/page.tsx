@@ -70,6 +70,8 @@ export default function SettingsPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteText, setDeleteText] = useState("");
   const [deleting, setDeleting] = useState(false);
+  // 削除に失敗したときの文。ページの下の message は削除の確認画面に隠れて見えないので、確認画面の中にも出す
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: "ok" | "error"; text: string } | null>(null);
   const [theme, setTheme] = useState<ThemeMode>("light");
   const [textSize, setTextSize] = useState<TextSize>("medium");
@@ -386,6 +388,7 @@ export default function SettingsPage() {
       return;
     }
     setDeleting(true);
+    setDeleteError(null);
     try {
       const res = await fetch("/api/account", {
         method: "DELETE",
@@ -395,18 +398,31 @@ export default function SettingsPage() {
           confirmText: "DELETE",
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "削除失敗");
+      const data = await res.json().catch(() => ({}));
+      // 2026-10-02: res.ok だけでなく ok: true を確かめ、incomplete（一部を消せなかった）も失敗として扱う。
+      // 以前は一部を消せなくても「削除しました」と出して端末IDを消していたため、やり直せなかった。
+      // 今の /api/account は、消せなかったものがあれば users を消さずに 500 を返す（もう一度押せば続きから消える）
+      if (!res.ok || data.ok !== true || data.incomplete) {
+        throw new Error(
+          data.error ||
+            "削除の途中で、一部のデータを消せませんでした。時間をおいて、もう一度お試しください。"
+        );
+      }
 
       // LocalStorage の端末ID もクリア（完全リセット）
       localStorage.removeItem("zero_pain_device_id");
       localStorage.removeItem("zero_pain_reminder_hours");
       localStorage.removeItem("zero_pain_last_active");
+      // 2026-10-02: 端末の中の姿勢チェックの記録（写真つき。lib/storage.ts の RECORDS_KEY）も消す。
+      // 以前は残っていて、削除のあと同じ端末で登録し直すと「履歴」に前の記録と写真が出ていた。
+      // /delete-account に「アプリから削除したときは、端末の中の記録も消える」と書いている
+      localStorage.removeItem("kobapro_records");
 
       // 完了画面を表示
+      // 2026-10-02: 「アカウントと全データを削除しました」から変更。お問い合わせの記録などは残るため
       setMessage({
         type: "ok",
-        text: "✅ アカウントと全データを削除しました。アプリを再起動してください。",
+        text: "✅ アカウントを削除しました。アプリを再起動してください。",
       });
       setShowDeleteModal(false);
 
@@ -415,10 +431,9 @@ export default function SettingsPage() {
         window.location.href = "/";
       }, 3000);
     } catch (e) {
-      setMessage({
-        type: "error",
-        text: e instanceof Error ? e.message : "削除失敗",
-      });
+      const text = e instanceof Error ? e.message : "削除失敗";
+      setMessage({ type: "error", text });
+      setDeleteError(text);
     } finally {
       setDeleting(false);
     }
@@ -879,7 +894,10 @@ export default function SettingsPage() {
             </button>
 
             <button
-              onClick={() => setShowDeleteModal(true)}
+              onClick={() => {
+                setDeleteError(null);
+                setShowDeleteModal(true);
+              }}
               className="card-base w-full flex items-center justify-between p-4 active:scale-[0.99] transition text-left border !border-red-500/30 hover:!border-red-500/50"
             >
               <div className="flex items-center gap-3">
@@ -891,7 +909,7 @@ export default function SettingsPage() {
                     アカウントを削除
                   </p>
                   <p className="text-[11px] text-gray-400 mt-0.5">
-                    すべてのデータが完全に削除されます
+                    登録情報と、これまでの記録・写真を削除します
                   </p>
                 </div>
               </div>
@@ -1063,24 +1081,41 @@ export default function SettingsPage() {
           className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-6"
           onClick={() => !deleting && setShowDeleteModal(false)}
         >
+          {/* 定期購入の注意を足して背が高くなったので、小さい画面やキーボード表示中でも下まで見られるようにスクロールさせる */}
           <div
-            className="w-full max-w-sm bg-gray-900 border border-red-500/40 rounded-3xl p-5 shadow-2xl space-y-4"
+            className="w-full max-w-sm max-h-[90vh] overflow-y-auto bg-gray-900 border border-red-500/40 rounded-3xl p-5 shadow-2xl space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-extrabold text-red-400">
               🗑 アカウントを削除しますか？
             </h3>
 
+            {/* 2026-10-02: 「以下のすべてのデータが完全に削除されます」から変更。お問い合わせの記録などは残るため
+                （残るものは /delete-account に書いている） */}
             <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 text-xs text-red-200 leading-relaxed">
-              この操作は取り消せません。以下のすべてのデータが完全に削除されます：
+              この操作は取り消せません。次のデータが削除されます：
               <ul className="mt-1.5 pl-4 list-disc space-y-0.5">
                 <li>プロフィール情報</li>
                 <li>姿勢チェック記録・写真</li>
                 <li>食事記録・写真</li>
                 <li>体重記録</li>
                 <li>チャット履歴</li>
-                <li>サブスクリプション情報（課金は別途App Storeで管理）</li>
+                <li>体調チェック・30日コーチング・家族グループの記録</li>
+                <li>アプリの中の有料プランの記録</li>
               </ul>
+            </div>
+
+            {/* 2026-10-02: 以前は「課金は別途App Storeで管理」とだけあり、Android の方への案内がなかった。
+                アカウントを消してもストアの定期購入は止まらない（/api/account は自社の subscriptions 行と RevenueCat の顧客記録を消すが、ストアの定期購入は解約しない）ので、はっきり書く。
+                解約の手順は利用規約 第4条・サポートの FAQ・/delete-account と同じ */}
+            <div className="card-accent-amber p-3 text-xs leading-relaxed space-y-1">
+              <p className="font-bold text-amber-300">⚠️ 定期購入は解約されません</p>
+              <p className="text-gray-200">
+                アカウントを削除しても、有料プラン（定期購入）は解約されず、お支払いも止まりません。先に、iPhone は App Store の「サブスクリプション」、Android は Google Play の「定期購入」から解約してください。
+              </p>
+              <Link href="/delete-account" className="inline-block text-emerald-400 underline">
+                削除されるデータ・残るデータを見る
+              </Link>
             </div>
 
             <div>
@@ -1095,6 +1130,12 @@ export default function SettingsPage() {
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white"
               />
             </div>
+
+            {deleteError && (
+              <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 text-xs text-red-300 leading-relaxed">
+                ⚠️ {deleteError}
+              </div>
+            )}
 
             <div className="flex gap-2">
               <button
