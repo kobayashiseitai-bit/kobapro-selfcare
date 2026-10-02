@@ -13,7 +13,7 @@ export default function TermsPage() {
 
       <div className="max-w-2xl mx-auto px-5 py-6 space-y-6 text-sm leading-relaxed text-gray-200">
         <section>
-          <p className="text-xs text-gray-400 mb-2">最終更新日: 2026年10月1日</p>
+          <p className="text-xs text-gray-400 mb-2">最終更新日: 2026年10月2日</p>
           <p>
             この利用規約（以下「本規約」といいます）は、TOPBANK.INC（有限会社トップバンク、以下「当方」といいます）が提供するセルフケア支援アプリ「ZERO-PAIN」（以下「本アプリ」といいます）の利用条件を定めるものです。ユーザーの皆様（以下「ユーザー」といいます）には、本規約に従って本アプリをご利用いただきます。
           </p>
@@ -59,11 +59,11 @@ export default function TermsPage() {
           <ol className="space-y-1 pl-5 list-decimal text-gray-300">
             {/* 2026-10-01: 実際の仕組みに合わせて改めた。利用登録だけでは無料トライアルは始まらず、
                 ストア（App Store / Google Play）で有料プランを申し込んだ時に付く。
-                新規の方も姿勢チェックの記録は月1回まで無料（lib/subscription.ts の FREE_LIMITS） */}
+                2026-10-02: 新規の方の姿勢チェック月1回無料を取りやめ（lib/subscription.ts の FREE_LIMITS はすべて0）、
+                既存ユーザーの無料枠は 2026-10-31 で終了（LEGACY_FREE_TIER_END） */}
             <li>
-              本アプリのダウンロードは無料です。2026年9月13日以降にご登録いただいた方が無料でご利用いただけるのは、
-              <strong className="text-white">姿勢チェックの記録 月1回まで</strong>です。
-              月2回目以降の姿勢チェック、AIチャット、食事分析をご利用いただくには、有料プラン（プレミアムプラン）へのご登録が必要です。
+              本アプリのダウンロードと体調チェック（その日の体調の記録）は無料です。
+              姿勢チェック、AIチャット、食事分析、30日コーチングをご利用いただくには、有料プラン（プレミアムプラン）へのご登録が必要です。
               はじめての方は、有料プランのお申し込み時に<strong className="text-white">7日間の無料トライアル</strong>が付きます。
               無料トライアルの対象となるかどうかは App Store / Google Play の判定によります（過去に無料トライアルをご利用になった方などは対象外となる場合があります）。
               有料プランをご利用でない間も、ご自身の記録・お写真・ストレッチ等のコンテンツは引き続きご覧いただけます。
@@ -71,7 +71,8 @@ export default function TermsPage() {
             <li>
               <strong className="text-white">既存ユーザーの経過措置</strong>:
               2026年9月13日より前にご登録いただいた方には、従来の無料枠（姿勢チェック月3回・
-              AIチャット月5回・食事分析月3回）を引き続き適用します。
+              AIチャット月5回・食事分析月3回）を<strong className="text-white">2026年10月31日まで</strong>適用します。
+              2026年11月1日以降は、前項と同じく有料プランへのご登録が必要です。
             </li>
             <li>
               <strong className="text-white">プラン内容と料金</strong>:

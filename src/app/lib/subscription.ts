@@ -10,7 +10,9 @@ import { applyRevenueCatLookup, fetchRevenueCatEntitlement } from "./revenuecat"
 
 /**
  * 2026-09-13 より前に登録した既存ユーザー向けの無料枠。
- * 仕様変更前から使ってくれている方をロックアウトしないため、この枠は残す。
+ * 仕様変更前から使ってくれている方をいきなり締め出さないため残していたが、
+ * 2026-10-31 で終了する（社長決定 2026-10-02。LEGACY_FREE_TIER_END）。
+ * 11月1日からは新規の方と同じ扱い（申し込めば7日間無料→自動で有料）。
  */
 export const LEGACY_FREE_LIMITS = {
   posture: 3, // 月3回まで
@@ -19,20 +21,15 @@ export const LEGACY_FREE_LIMITS = {
 } as const;
 
 /**
- * 新規ユーザー（2026-09-13 以降の登録）の無料枠。
- * - チャット・食事分析は AI を呼ぶので 0回（有料プランの機能）。
- * - 姿勢チェックは月1回まで記録できる（2026-10-01 社長決定）。
- *   判定はスマホの中（MediaPipe + postureAnalysis.ts）で行い、保存（/api/save）では AI を呼ばない。
- *   お金を払う前に「自分の体の傾きが数字で分かる」体験を1つ渡し、
- *   Before写真・連続記録も最初の1回から動くようにする。
- *   注意: 記録が1件でもあると「ガイコツ先生のレポート」（/api/report）が AI を呼べる状態になる。
- *   そのため /api/report は、有料・トライアル中と旧ユーザーにだけ AI の振り返り文を作り、
- *   新規の未課金の方には数字の集計だけを返す（AI の費用がかからないようにする）。
+ * 新規ユーザー（2026-09-13 以降の登録）の無料枠。すべて 0回。
+ * 姿勢チェック・チャット・食事分析は有料プランの機能で、お試しはストアの「7日間無料→自動で有料」に一本化する
+ * （社長決定 2026-10-02。10-01 に姿勢チェックを月1回無料にしたが取りやめた）。
+ * 申し込み前に無料で使えるのは体調チェック（/api/checkin。先生のひとことは AI・1日の上限あり）だけ。
  * ※ 履歴・過去の写真・ストレッチなど「本人のデータと静的コンテンツ」は
  *    引き続き閲覧できる（AI を呼ぶ機能だけを止める）。
  */
 export const FREE_LIMITS = {
-  posture: 1,
+  posture: 0,
   chat: 0,
   meal: 0,
 } as const;
@@ -42,6 +39,16 @@ export const FREE_LIMITS = {
  * 変更してはいけない: 後ろにずらすと既存ユーザーが突然使えなくなる。
  */
 export const LEGACY_FREE_TIER_CUTOFF = new Date("2026-09-13T00:00:00Z");
+
+/**
+ * 既存ユーザーの無料枠（LEGACY_FREE_LIMITS）が終わる日時。日本時間 2026-11-01 0:00（＝10月31日いっぱいまで）。
+ * これ以降は isLegacyUser が false になり、新規の方と同じ扱いになる
+ * （無料枠0・30日コーチングとレポートの AI は有料のみ・体調チェックは新規と同じ1日の上限）。
+ * 対象の方にはアプリのホームと料金プラン画面でお知らせする（LegacyFreeEndingNotice）。
+ */
+export const LEGACY_FREE_TIER_END = new Date("2026-10-31T15:00:00Z");
+/** お知らせ・案内文で使う「無料分の最終日」 */
+export const LEGACY_FREE_LAST_DAY_LABEL = "10月31日";
 
 /**
  * App Store / Google Play の審査担当者用アカウント。
@@ -150,6 +157,12 @@ const LIMIT_GUIDE_LABELS: Record<LimitGuideFeature, { use: string; quota: string
  * 「1日に」とは書かず「来月になると」と書く。
  * 「無料」と書くときは必ず「はじめての方は」の条件を付ける（ストアのお試しは初回だけ）。
  */
+/** 日本時間で次の月の1日0時（UTCのミリ秒）。利用回数がリセットされる時刻 */
+function nextMonthStartJst(now: number = Date.now()): number {
+  const jst = new Date(now + 9 * 60 * 60 * 1000);
+  return Date.UTC(jst.getUTCFullYear(), jst.getUTCMonth() + 1, 1) - 9 * 60 * 60 * 1000;
+}
+
 export function buildLimitReachedMessage(
   feature: LimitGuideFeature,
   limit: number
@@ -158,6 +171,11 @@ export function buildLimitReachedMessage(
   const trial = `はじめての方は${TRIAL_DAYS}日間無料体験つき`;
   if (limit <= 0) {
     return `${label.use}は有料プランでご利用いただけます（${trial}）。`;
+  }
+  // 無料枠が残っているのは既存ユーザーだけ。その枠は LEGACY_FREE_TIER_END で終わるので、
+  // 次の月が終了後なら「来月になるとまた使えます」とは書かない
+  if (nextMonthStartJst() >= LEGACY_FREE_TIER_END.getTime()) {
+    return `${label.quota}の今月の無料分（${limit}回）を使い切りました。以前からご利用の方の無料分は${LEGACY_FREE_LAST_DAY_LABEL}で終わります。続けて使う場合は、料金プランをご覧ください（${trial}）。`;
   }
   return `${label.quota}の今月の無料分（${limit}回）を使い切りました。来月になるとまた使えます。続けて使う場合は、料金プランをご覧ください（${trial}）。`;
 }
@@ -201,6 +219,8 @@ export interface SubscriptionState {
   isFamily: boolean; // 家族プラン購入者かどうか（家族グループ作成の可否判定に使用）
   /** 仕様変更(2026-09-13)より前からの利用者か。無料枠の有無がこれで変わる */
   isLegacyUser: boolean;
+  /** 既存ユーザーの無料枠が終わる日時（無料枠が有効な未課金の既存ユーザーだけ。それ以外は null / 無し） */
+  legacyFreeEndsAt?: string | null;
   trialEndsAt: string | null;
   currentPeriodEnd: string | null;
   usage: {
@@ -565,7 +585,9 @@ export async function getSubscriptionState(
   // 2-b. 仕様変更前から使っている既存ユーザーかどうか（無料枠を残すため）
   //      users.created_at が取れない場合は「既存扱い」に倒す。
   //      判定に失敗して現役ユーザーを締め出すより、少し甘い方が害が小さい。
-  let isLegacyUser = true;
+  //      無料枠は LEGACY_FREE_TIER_END（日本時間 10/31 いっぱい）で終わるので、それ以降は誰も既存扱いにしない
+  const legacyTierOpen = Date.now() < LEGACY_FREE_TIER_END.getTime();
+  let isLegacyUser = legacyTierOpen;
   try {
     const { data: u } = await supabase
       .from("users")
@@ -573,7 +595,7 @@ export async function getSubscriptionState(
       .eq("id", userId)
       .maybeSingle();
     if (u?.created_at) {
-      isLegacyUser = new Date(u.created_at) < LEGACY_FREE_TIER_CUTOFF;
+      isLegacyUser = legacyTierOpen && new Date(u.created_at) < LEGACY_FREE_TIER_CUTOFF;
     }
   } catch {
     // 取得できなければ既存扱いのまま
@@ -611,6 +633,8 @@ export async function getSubscriptionState(
     // 家族メンバーとして有料になっている人は含めない（/api/family の create も同じ判定）
     isFamily: isPaidStatus(status) && isFamilyPlanRow(sub),
     isLegacyUser,
+    // 既存ユーザーで無料枠がまだ有効な間だけ、終わる日時を返す（画面のお知らせ用）
+    legacyFreeEndsAt: isLegacyUser && !isPaid ? LEGACY_FREE_TIER_END.toISOString() : null,
     trialEndsAt: sub.trial_ends_at,
     currentPeriodEnd: sub.current_period_end,
     usage,

@@ -768,6 +768,84 @@ function PlanGuideCard({
   );
 }
 
+
+/**
+ * 既存ユーザー（2026-09-13 より前の登録）の無料枠が 10月31日で終わることのお知らせ（社長決定 2026-10-02・アプリ内の表示だけ）。
+ * /api/subscription が legacyFreeEndsAt を返した人（未課金で、無料枠がまだ有効な既存ユーザー）にだけ出す。
+ * ホームでは「閉じる」でその日は出さない（日本時間の日付ごとに localStorage へ控える）。料金プラン画面では閉じられない。
+ */
+function LegacyFreeEndingNotice({
+  onNavigate,
+  dismissible = false,
+}: {
+  onNavigate?: (s: Screen) => void;
+  dismissible?: boolean;
+}) {
+  const [endsAt, setEndsAt] = useState<string | null>(null);
+  const [hidden, setHidden] = useState(false);
+  const todayKey = () => {
+    const jst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+    return `zero_pain_legacy_notice_closed_${jst.toISOString().slice(0, 10)}`;
+  };
+  useEffect(() => {
+    let cancelled = false;
+    try {
+      if (dismissible && localStorage.getItem(todayKey()) === "1") setHidden(true);
+    } catch {
+      /* 読めなければ出す */
+    }
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/subscription?deviceId=${encodeURIComponent(getDeviceId() || "")}&t=${Date.now()}`,
+          { cache: "no-store" }
+        );
+        if (!res.ok) return;
+        const s = (await res.json()) as Partial<SubscriptionState>;
+        if (!cancelled && s.isPaid === false && s.legacyFreeEndsAt) setEndsAt(s.legacyFreeEndsAt);
+      } catch {
+        /* お知らせなので、読めなければ出さない */
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  if (!endsAt || hidden) return null;
+  // 終わる日時は「11月1日 0:00（日本時間）」なので、表示はその前日（最終日）にする
+  const last = new Date(new Date(endsAt).getTime() - 1 + 9 * 60 * 60 * 1000);
+  const lastLabel = `${last.getUTCMonth() + 1}月${last.getUTCDate()}日`;
+  return (
+    <div className="card-accent-amber px-4 py-3 space-y-2">
+      <p className="text-sm font-bold text-amber-200">以前からご利用の方へのお知らせ</p>
+      <p className="text-sm text-gray-100 leading-relaxed">
+        これまでの無料分（姿勢チェック 月3回・先生への相談 月5回・食事の写真分析 月3回）は、
+        <strong>{lastLabel}</strong>で終わります。そのあとは有料プランでご利用いただけます（はじめての方は{TRIAL_DAYS}日間無料体験つき）。
+        体調チェックはこれからも無料です。
+      </p>
+      <div className="flex gap-2 pt-1">
+        {onNavigate && (
+          <button
+            onClick={() => onNavigate("subscription")}
+            className="px-4 py-2 bg-amber-600 rounded-xl text-sm font-bold text-white"
+          >
+            料金プランを見る
+          </button>
+        )}
+        {dismissible && (
+          <button
+            onClick={() => {
+              setHidden(true);
+              try { localStorage.setItem(todayKey(), "1"); } catch { /* 控えられなくても閉じる */ }
+            }}
+            className="px-4 py-2 text-sm text-gray-300"
+          >
+            閉じる
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
 // ==================== 初回登録画面 ====================
 const PAIN_AREAS = [
   { id: "neck", label: "首" },
@@ -857,7 +935,7 @@ function OnboardingScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
         title: "写真は、あとからで大丈夫",
         subtitle: "健康診断と同じ、月1回が目安です",
         description:
-          "姿勢の記録は急ぎません。まずは今日の体の調子を、ガイコツ先生に伝えてみてください。撮りたくなったら、ホームの「姿勢の記録」からいつでも始められます。",
+          "まずは今日の体の調子を、ガイコツ先生に伝えてみてください（無料です）。姿勢の記録・先生への相談・食事の分析は、有料プランでご利用いただけます（はじめての方は7日間無料体験つき）。",
         image: "/icon-skeleton-sensei-face.png",
       },
     ],
@@ -1817,6 +1895,9 @@ function HomeScreen({
       </header>
 
       <div className="flex-1 px-4 py-5 space-y-5 max-w-md w-full mx-auto">
+        {/* 既存ユーザーの無料枠が 10/31 で終わるお知らせ（対象の方だけ） */}
+        <LegacyFreeEndingNotice onNavigate={onNavigate} dismissible />
+
         {/* リマインダーアラート */}
         {reminderAlert && (
           <div className="card-accent-amber px-4 py-3">
@@ -5885,7 +5966,7 @@ function MorningCheckinCard({
           </div>
         )}
 
-        {/* 次の一歩: 姿勢の記録がまだ無い人だけ（新規の方も月1回まで記録できる。回数の判定は撮影画面が行う） */}
+        {/* 次の一歩: 姿勢の記録がまだ無い人だけ（未課金の方は、撮影画面の準備で料金の案内が先に出る） */}
         {!hasPostureRecord && (
           <button
             onClick={() => onNavigate("check")}
@@ -8819,6 +8900,8 @@ type SubscriptionState = {
   status: "free" | "trial" | "active_monthly" | "active_yearly" | "cancelled" | "expired";
   isPaid: boolean;
   isTrial: boolean;
+  /** 既存ユーザーの無料枠が終わる日時（無料枠が有効な未課金の既存ユーザーだけ） */
+  legacyFreeEndsAt?: string | null;
   /** 2026-09-13 より前に登録した方（無料枠が残る）。/api/subscription が返す */
   isLegacyUser?: boolean;
   trialEndsAt: string | null;
@@ -9093,6 +9176,9 @@ function SubscriptionScreen({ onNavigate }: { onNavigate: (s: Screen) => void })
 
         {state && (
           <>
+            {/* 既存ユーザーの無料枠が 10/31 で終わるお知らせ（対象の方だけ・この画面では閉じられない） */}
+            <LegacyFreeEndingNotice />
+
             {/* 現在のステータス */}
             <div className={state.isPaid ? "card-accent-amber p-5" : "card-base p-5"}>
               <p className="text-xs text-gray-400 mb-1 tracking-wide">現在のプラン</p>
@@ -9943,9 +10029,8 @@ function BeforeAfterScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) 
                 alt="Before"
                 className="w-full aspect-[3/4] object-cover rounded-xl border-2 border-emerald-500/40"
               />
-              {/* 2026-10-01: 新規の未課金の方は姿勢チェックが月1回までで、この1件で今月分を使い切っている。
-                  「今すぐ姿勢チェックする」を出すと、押した直後に「今月の無料分を使い切りました」と断られるため、
-                  ホームの「次は来月ごろでOK」とそろえて、間をあけてからの記録をすすめ、ボタンはホームへ戻すだけにする */}
+              {/* 記録が1件だけのとき。姿勢の記録は月1回が目安なので、間をあけてからの記録をすすめ、ボタンはホームへ戻すだけにする
+                  （ホームの「次は来月ごろでOK」とそろえる） */}
               <p className="text-xs text-amber-300 mt-3">
                 💡 1か月ほどあけて、もう一度記録すると<br />
                 Before / After を比べられます（月1回が目安です）。
