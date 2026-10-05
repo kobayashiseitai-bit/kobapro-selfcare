@@ -9,3 +9,4 @@
 - 2026-10-03 19:55 ごろ、App Store Connect で 1.0.3（ビルド10）を審査に提出した（状態「審査待ち」）。
 - `REVIEWER_USER_IDS` は社長が Vercel の画面で入れ、そのあと本番を作り直した。審査用の端末ID（reviewer-apple-1789391362）で `/api/subscription` が isPaid: true・すべて unlimited になることを確かめてから出した。
 - 公開は「承認後に自動でリリース」。**承認されたら `REVIEWER_USER_IDS` を外して本番を作り直す**（外さないと、審査用のコードを知っている人は誰でも無料で全機能を使える）。
+- 2026-10-04 朝に承認・公開（App Store で 1.0.3 と新しい説明文を確認）。2026-10-05 に `REVIEWER_USER_IDS` を外して本番を作り直し、審査用の端末IDが無料（isPaid: false）に戻ったことを確認した。
